@@ -1,4 +1,15 @@
 require('dotenv').config();
+
+// --- CRITICAL DEPLOYMENT SAFETY SHIELD ---
+process.on('uncaughtException', (err) => {
+    console.error('🔥 FATAL UNCAUGHT EXCEPTION:', err.message);
+    console.error(err.stack);
+});
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('🔥 UNHANDLED REJECTION:', reason);
+});
+console.log('🚀 Server process starting...');
+
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
