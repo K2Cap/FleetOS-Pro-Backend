@@ -15,6 +15,9 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_for_dev_only';
 
 const app = express();
 const port = process.env.PORT || 7331;
+const MAX_UPLOAD_SIZE_MB = Number(process.env.MAX_UPLOAD_SIZE_MB || 15);
+const MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024;
+const PASSWORD_KEYLEN = 64;
 
 // --- PRODUCTION CORS: Allow all origins and headers for mobile ---
 app.use(cors({ origin: true, credentials: true, methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
