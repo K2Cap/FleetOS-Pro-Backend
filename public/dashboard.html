@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+        <title>FleetOS Dashboard</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="config.js"></script>
+    <meta name="theme-color" content="#1a5c3a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>:root{--ff:'DM Sans',sans-serif;--fd:'Sora',sans-serif;--fm:'JetBrains Mono',monospace;}
+ html, body { height: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; background: #edeae2 !important; }
+</style>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
+    <script src="fleetos-datepicker.js"></script>
+    <style>
+        body { margin: 0; padding: 20px 0; background: #edeae2; overflow: hidden; height: 100%; width: 100%; display:flex; justify-content:center; align-items:flex-start; }
+        .phone-shell { width: 390px; background: #f5f2ec; border-radius: 44px; overflow: hidden; transform: translate3d(0,0,0); box-shadow: 0 32px 80px rgba(26,24,20,.35),0 0 0 9px #181510; border: 5px solid #232018; display:flex; flex-direction:column; height: 820px; position:relative; }
+        .status-bar { background:#1a5c3a; padding:12px 22px 5px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+        .status-time { font-family: 'JetBrains Mono', monospace; font-size:11px; font-weight:700; color:#fff; }
+        .status-pill { width:80px; height:16px; background:#0d3626; border-radius:18px; display:flex; align-items:center; justify-content:center; }
+        .status-dot { width:7px; height:7px; border-radius:50%; background:#0a2c1d; }
+        .status-icons { display:flex; gap:5px; align-items:center; color:#fff; }
+        .app-screen { position:relative; flex:1; min-height:0; }
+        #root { width: 100%; height: 100%; }
+        .loader-wrap { display: flex; align-items: center; justify-content:center; height: 100%; font-family: 'DM Sans', sans-serif; color: #1a5c3a; flex-direction: column; gap: 15px; background: radial-gradient(circle at center, #f5f2ec 0%, #edeae2 100%); transition: opacity 0.4s ease; z-index: 100; position: absolute; inset: 0; }
+        .spinner { width: 44px; height: 44px; border: 4px solid rgba(26,92,58,0.1); border-top-color: #1a5c3a; border-radius: 50%; animation: spin 0.8s cubic-bezier(0.4,0,0.2,1) infinite; }
+        .logo-load { font-family: 'Sora', sans-serif; font-weight: 800; font-size: 24px; letter-spacing: -1px; }
+        .error-log { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #fff5f5; padding: 30px; z-index: 1000; font-family: 'JetBrains Mono', monospace; overflow-y: auto; }
+        .dp-card { position: absolute; width: 300px; background: #fff; border: 1px solid #d4d4c8; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,.04),0 12px 32px rgba(0,0,0,.09); animation: dpPopIn .22s cubic-bezier(.22,1,.36,1) both; z-index: 100000; display: none; }
+        @keyframes dpPopIn { from { opacity: 0; transform: translateY(-8px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .dp-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,#1a4731,#2d6a4f,#40916c); }
+        .dp-header { display:flex; align-items:center; justify-content:space-between; padding:20px 14px 10px; }
+        .dp-nav { width:28px; height:28px; display:flex; align-items:center; justify-content:center; border:1px solid #e0e0d6; border-radius:7px; cursor:pointer; color:#6b7468; font-size:16px; font-weight:600; background:#f8f8f2; transition:all .15s; user-select:none; flex-shrink:0; }
+        .dp-nav:hover { background:#edf7f1; border-color:#2d6a4f; color:#2d6a4f; }
+        .dp-header-centre { display:flex; align-items:center; gap:2px; }
+        .dp-month-btn, .dp-year-btn { display:flex; align-items:center; gap:4px; padding:5px 8px; border-radius:8px; cursor:pointer; transition:background .15s; user-select:none; }
+        .dp-month-btn:hover, .dp-year-btn:hover { background:#edf7f1; }
+        .dp-month-btn .lbl, .dp-year-btn .lbl { font-size:14px; font-weight:700; color:#1a2e1f; letter-spacing:-.2px; }
+        .dp-year-btn .lbl { font-family: var(--fm); font-size:13px; font-weight:500; color:#2d6a4f; }
+        .dp-month-btn .chev, .dp-year-btn .chev { font-size:8px; color:#aaa; transition:transform .2s; }
+        .dp-month-btn.open .chev, .dp-year-btn.open .chev { transform:rotate(180deg); }
+        .dp-dot { color:#ccc; font-size:13px; padding:0 1px; }
+        .dp-panel { display:none; flex-direction:column; }
+        .dp-panel.visible { display:flex; animation:dpSlideDown .18s cubic-bezier(.22,1,.36,1) both; }
+        @keyframes dpSlideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+        .dp-panel-nav-row { display:flex; align-items:center; justify-content:space-between; padding:10px 14px 8px; border-bottom:1px solid #ebebdf; }
+        .dp-pnav { display:flex; align-items:center; gap:5px; padding:4px 9px; border-radius:6px; border:1px solid #e0e0d6; background:#f8f8f2; font-size:11px; font-weight:600; color:#6b7468; cursor:pointer; transition:all .15s; user-select:none; }
+        .dp-pnav:hover { background:#edf7f1; border-color:#2d6a4f; color:#2d6a4f; }
+        .dp-pnav svg { width:9px; height:9px; stroke:currentColor; fill:none; stroke-width:2; }
+        .dp-panel-title { font-family: var(--fm); font-size:11px; font-weight:500; color:#9a9a8a; }
+        .dp-month-grid, .dp-year-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; padding:12px 12px 14px; }
+        .dp-mcell, .dp-ycell { padding:10px 4px; text-align:center; border-radius:8px; font-size:12.5px; font-weight:500; color:#3a4a3c; cursor:pointer; transition:all .13s; border:1.5px solid transparent; }
+        .dp-mcell:hover, .dp-ycell:hover { background:#edf7f1; color:#1a4731; }
+        .dp-mcell.cur, .dp-ycell.cur { color:#2d6a4f; font-weight:700; }
+        .dp-mcell.sel, .dp-ycell.sel { background:#2d6a4f; color:#fff; font-weight:700; border-color:#2d6a4f; }
+        .dp-daynames { display:grid; grid-template-columns:repeat(7,1fr); padding:0 10px 4px; }
+        .dp-dayname { text-align:center; font-size:9px; font-weight:600; color:#b0b0a0; letter-spacing:.5px; padding:2px 0 6px; }
+        .dp-divider { height:1px; margin:0 14px 4px; background:#ebebdf; }
+        .dp-grid { display:grid; grid-template-columns:repeat(7,1fr); padding:0 8px 12px; gap:1px; }
+        .dp-cell { aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:8px; font-size:12.5px; font-weight:500; cursor:pointer; color:#2d3a2e; transition:all .13s; user-select:none; position:relative; }
+        .dp-cell:hover:not(.dp-om):not(.dp-sel) { background:#edf7f1; color:#1a4731; }
+        .dp-cell.dp-om { color:#c8c8b8; cursor:default; }
+        .dp-cell.dp-td { font-weight:700; color:#2d6a4f; }
+        .dp-cell.dp-td::after { content:''; position:absolute; bottom:3px; left:50%; transform:translateX(-50%); width:3px; height:3px; border-radius:50%; background:#2d6a4f; }
+        .dp-cell.dp-sel { background:#2d6a4f !important; color:#fff !important; font-weight:700; }
+        .dp-cell.dp-sel::after { display:none; }
+        .dp-footer { display:flex; align-items:center; justify-content:space-between; padding:10px 16px 14px; border-top:1px solid #ebebdf; background:#fafaf4; }
+        .dp-sel-label { font-family: var(--fm); font-size:11px; color:#9a9a8a; }
+        .dp-sel-label span { color:#2d6a4f; font-weight:500; }
+        .dp-today-btn { font-size:11px; font-weight:600; color:#2d6a4f; background:#edf7f1; border:1px solid #b7dfc9; border-radius:6px; padding:4px 10px; cursor:pointer; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 430px) {
+            body { padding: 0; background: #f5f2ec; }
+            .phone-shell { width: 100%; height: 100%; border-radius: 0; box-shadow: none; border: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="phone-shell">
+        <div class="status-bar">
+            <span class="status-time" id="statusTime">9:41</span>
+            <div class="status-pill"><div class="status-dot"></div></div>
+            <div class="status-icons">
+                <svg width="14" height="10" viewBox="0 0 14 10"><rect x="0" y="7.6" width="2.5" height="2.4" fill="white" opacity=".8" rx=".5"/><rect x="3.5" y="5.2" width="2.5" height="4.8" fill="white" opacity=".8" rx=".5"/><rect x="7" y="2.6" width="2.5" height="7.4" fill="white" opacity=".8" rx=".5"/><rect x="10.5" y="0" width="2.5" height="10" fill="white" opacity=".3" rx=".5"/></svg>
+                <svg width="16" height="10" viewBox="0 0 16 10"><rect x="1" y="2.5" width="10.5" height="6.5" rx="1.5" fill="none" stroke="white" stroke-width="1" opacity=".8"/><rect x="2" y="3.5" width="7.5" height="4.5" rx=".5" fill="white" opacity=".8"/><rect x="12" y="4.5" width="2" height="3" rx=".8" fill="white" opacity=".45"/></svg>
+            </div>
+        </div>
+        <div class="app-screen">
+            <div id="root"></div>
+            <div class="loader-wrap" id="loader">
+                <div class="logo-load">Gravity <span style="color:#e8671a">Intelligence</span></div>
+                <div class="spinner"></div>
+                <div style="font-size: 11px; font-weight: 800; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; margin-top: 10px;">Booting Fleet OS 2.0...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="errorBox" class="error-log">
+        <h2 style="color:#c53030">Logistics Engine Fault</h2>
+        <div id="errorMessage" style="white-space: pre-wrap; margin-bottom: 20px;"></div>
+        <button onclick="window.location.reload()" style="padding: 10px 20px; cursor: pointer;">Emergency Restart</button>
+    </div>
+
+    <script>
+        const logError = (msg) => {
+            const box = document.getElementById('errorBox');
+            const msgEl = document.getElementById('errorMessage');
+            box.style.display = 'block';
+            msgEl.innerText += "\n" + msg;
+        };
+
+        window.onerror = function(msg, url, line, col, error) {
+            logError(`Runtime: ${msg} (${line}:${col})`);
+            return false;
+        };
+
+        function syncStatusTime() {
+            const el = document.getElementById('statusTime');
+            if (!el) return;
+            el.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        syncStatusTime();
+        setInterval(syncStatusTime, 30000);
+
+        async function launch() {
+            try {
+                const saved = localStorage.getItem('fleetUser');
+                if (!saved) { window.location.href = 'App - Login.html'; return; }
+                const userObj = JSON.parse(saved);
+
+                const appBase = window.FLEETOS_APP_BASE || '';
+                const response = await fetch(`${appBase}/FleetOS_Mobile.jsx?v=${Date.now()}`);
+                if (!response.ok) throw new Error("Could not fetch logistics definition file.");
+                const rawCode = await response.text();
+                
+                // PERFORMANCE FIX: Transpilation Caching
+                const codeHash = btoa(unescape(encodeURIComponent(rawCode))).slice(0, 32);
+                const cached = localStorage.getItem('fleet_transpiled_cache');
+                const cachedHash = localStorage.getItem('fleet_code_hash');
+                
+                let transpiled;
+                if (cached && cachedHash === codeHash) {
+                    console.log("[FleetOS] Using cached transpiled logic (Instant Boot)");
+                    transpiled = cached;
+                } else {
+                    console.log("[FleetOS] Transpiling core logistics engine... (First-run delay)");
+                    let code = rawCode;
+                    code = code.replace(/^import\s+.*?;?$/gm, '');
+                    code = code.replace(/export\s+default\s+function\s+App/, 'function FleetOSApp');
+                    
+                    try {
+                        transpiled = Babel.transform(code, {
+                            presets: ['react'],
+                            filename: 'FleetOS_Mobile.jsx'
+                        }).code;
+                        
+                        localStorage.setItem('fleet_transpiled_cache', transpiled);
+                        localStorage.setItem('fleet_code_hash', codeHash);
+                    } catch (be) {
+                        throw new Error("Transpilation failure: " + be.message);
+                    }
+                }
+
+                const execCode = `
+                    (function() {
+                        try {
+                            const { useState, useEffect, useRef } = React;
+                            ${transpiled}
+                            
+                            const container = document.getElementById('root');
+                            const root = ReactDOM.createRoot(container);
+                            
+                            const AppWithUser = () => {
+                                return React.createElement(FleetOSApp, { user: ${JSON.stringify(userObj)} });
+                            };
+                            
+                            root.render(React.createElement(AppWithUser));
+                            
+                            setTimeout(() => {
+                                const l = document.getElementById('loader');
+                                if(l) { l.style.opacity = '0'; setTimeout(()=>l.remove(), 400); }
+                            }, 500);
+                        } catch (ee) {
+                            window.dispatchEvent(new ErrorEvent('error', {
+                                message: 'Execution Error: ' + ee.message,
+                                error: ee
+                            }));
+                        }
+                    })();
+                `;
+
+                const script = document.createElement('script');
+                script.text = execCode;
+                document.body.appendChild(script);
+
+            } catch (e) {
+                logError(e.message);
+            }
+        }
+
+        setTimeout(launch, 200);
+    </script>
+</body>
+</html>

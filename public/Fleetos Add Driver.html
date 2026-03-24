@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>FleetOS — Add New Driver</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --g:#1a5c3a;--g2:#236b47;--glt:#e8f5ee;--glt2:#d1ead9;
+  --s:#e8671a;--slt:#fdf0e8;--slt2:#fcd9c0;
+  --cr:#c0392b;--crlt:#fdecea;
+  --go:#c9930a;--golt:#fdf6e3;
+  --bl:#1a4a8c;--bllt:#e8eef8;
+  --bg:#f5f2ec;--bg2:#edeae2;--wh:#ffffff;
+  --ink:#1a1814;--ink2:#3d3a34;--mu:#7a7570;--mu2:#b0aca4;--bd:#ddd9d0;--bd2:#c8c4bb;
+  --ff:'DM Sans', sans-serif;--fm:'JetBrains Mono',monospace;
+}
+html, body { height: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; background: #f5f2ec !important; }
+body{background:var(--bg2);font-family:var(--ff);color:var(--ink);display:flex;justify-content:center;align-items:flex-start;padding:18px 0;overflow:auto;}
+.phone{width:390px;max-width:100%;background:var(--bg);overflow:hidden;display:flex;flex-direction:column;min-height:844px;max-height:calc(100dvh - 36px);position:relative;border-radius:38px;box-shadow:0 24px 70px rgba(26,24,20,.18);border:6px solid #231f1a;}
+
+/* STATUS BAR */
+.sbar{background:var(--g);padding:12px 22px 5px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.sbar-time{font-family:var(--fm);font-size:11px;font-weight:700;color:#fff;}
+.sbar-pill{width:80px;height:16px;background:#0d3626;border-radius:18px;display:flex;align-items:center;}
+.sbar-dot{width:7px;height:7px;border-radius:50%;background:#0a2c1d;}
+
+/* HEADER */
+.modal-header{background:var(--g);padding:14px 18px 16px;flex-shrink:0;}
+.mh-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;}
+.mh-title{font-family:'Sora', sans-serif;font-weight:900;font-size:21px;color:#fff;letter-spacing:-.5px;line-height:1;}
+.mh-title em{color:var(--s);font-style:italic;font-weight:400;}
+.mh-sub{font-size:10.5px;color:rgba(255,255,255,.6);font-weight:500;margin-top:3px;}
+.close-btn{width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;font-size:13px;color:rgba(255,255,255,.8);cursor:pointer;flex-shrink:0;}
+.mode-toggle{display:flex;background:rgba(0,0,0,.2);border-radius:11px;padding:4px;gap:3px;}
+.mode-btn{flex:1;padding:10px 0;border:none;border-radius:8px;cursor:pointer;font-family:var(--ff);font-size:12px;font-weight:700;transition:all .2s;background:transparent;color:rgba(255,255,255,.45);display:flex;align-items:center;gap:6px;}
+.mode-btn.active{background:var(--s);color:#fff;box-shadow:0 3px 12px rgba(232,103,26,.45);}
+
+/* TAB BAR */
+.tab-bar{background:var(--wh);border-bottom:1.5px solid var(--bd);display:flex;flex-shrink:0;}
+.tab{flex:1;padding:12px 4px 9px;text-align:center;font-size:10.5px;font-weight:700;color:var(--mu2);cursor:pointer;border-bottom:2.5px solid transparent;transition:all .15s;display:flex;align-items:center;gap:4px;}
+.tab.active{color:var(--s);border-bottom-color:var(--s);}
+.tab.done{color:var(--g);}
+.tab.done .tab-check{display:inline;}
+.tab-check{display:none;font-size:9px;}
+
+/* SCROLL BODY */
+.scroll-body{flex:1;overflow-y:auto;padding:16px 16px 0;-webkit-overflow-scrolling:touch;}
+.scroll-body::-webkit-scrollbar{display:none;}
+
+/* FORM ELEMENTS */
+.lbl{display:block;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--mu);margin-bottom:6px;}
+.fg{display:flex;flex-direction:column;gap:14px;}
+.r2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;}
+.finput{display:flex;align-items:center;background:var(--bg);border:1.5px solid var(--bd);border-radius:12px;padding:0 13px;height:44px;box-sizing:border-box;transition:all .15s;}
+.finput:focus-within{background:var(--wh);border-color:var(--g);box-shadow:0 0 0 4px var(--glt);}
+.finput input{border:none;outline:none;background:transparent;flex:1;min-width:0;font-size:13px;color:var(--ink);font-weight:400;font-family:var(--ff);height:100%;}
+.finput input::placeholder{color:var(--mu2);}
+.finput .pfx{font-size:11px;color:var(--mu);margin-right:6px;font-family:var(--fm);font-weight:700;flex-shrink:0;}
+.fsel{width:100%;height:44px;background:var(--bg);border:1.5px solid var(--bd);border-radius:12px;padding:0 36px 0 13px;font-size:13px;color:var(--ink);font-family:var(--ff);font-weight:400;-webkit-appearance:none;appearance:none;outline:none;transition:all .15s;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23b0aca4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;cursor:pointer;}
+.fsel:focus{border-color:var(--g);box-shadow:0 0 0 4px var(--glt);}
+.fdate{width:100%;height:44px;background:var(--bg);border:1.5px solid var(--bd);border-radius:12px;padding:0 13px;font-size:13px;color:var(--ink);font-family:var(--ff);-webkit-appearance:none;appearance:none;outline:none;transition:all .15s;box-sizing:border-box;}
+.fdate:focus{border-color:var(--g);box-shadow:0 0 0 4px var(--glt);}
+.ftextarea{width:100%;background:var(--bg);border:1.5px solid var(--bd);border-radius:12px;padding:11px 13px;font-size:13px;color:var(--ink);font-family:var(--ff);resize:none;outline:none;transition:all .15s;min-height:72px;box-sizing:border-box;}
+.ftextarea:focus{background:var(--wh);border-color:var(--g);box-shadow:0 0 0 4px var(--glt);}
+.ftextarea::placeholder{color:var(--mu2);}
+.sub-hd{font-size:10px;font-weight:800;color:var(--mu);letter-spacing:1.2px;text-transform:uppercase;border-bottom:1px solid var(--bd);padding-bottom:8px;margin-bottom:2px;}
+.sec-title{font-family:'Sora', sans-serif;font-weight:700;font-size:15px;color:var(--ink);margin-bottom:14px;}
+
+/* SCAN MODE — DOC CARDS */
+.docs-lbl{font-size:11px;font-weight:700;color:var(--mu);margin-bottom:10px;letter-spacing:.3px;}
+
+/* DOC UPLOAD CARDS — 2 col for scan */
+.docs-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.doc-card{background:var(--wh);border:1.5px solid var(--bd);border-radius:14px;padding:14px 11px;display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;box-shadow:0 1px 4px rgba(26,24,20,.05);transition:all .25s;cursor:pointer;position:relative;}
+.doc-card:hover{border-color:var(--s);box-shadow:0 3px 14px rgba(232,103,26,.12);}
+.doc-card.scanned{border-color:var(--glt2);background:var(--glt);}
+.doc-card.scanning{border-color:var(--go);background:var(--golt);animation:scanPulse 1s infinite;}
+@keyframes scanPulse{0%,100%{opacity:1}50%{opacity:.7}}
+.doc-card-icon{font-size:26px;}
+.doc-card-name{font-size:11.5px;font-weight:700;color:var(--ink);line-height:1.3;}
+.doc-card-stat{font-size:9.5px;color:var(--mu2);font-weight:600;}
+.doc-card-stat.ok{color:var(--g);font-weight:700;}
+.doc-card-stat.scanning{color:var(--go);font-weight:700;}
+.scan-btn{padding:7px 0;border-radius:8px;border:none;background:var(--s);color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--ff);transition:all .15s;width:100%;}
+.scan-btn.done{background:var(--g);}
+.scan-btn:active{transform:scale(.97);}
+.scan-badge{position:absolute;top:8px;right:8px;width:18px;height:18px;border-radius:50%;background:var(--g);color:#fff;font-size:10px;display:flex;align-items:center;opacity:0;transition:opacity .2s;}
+.doc-card.scanned .scan-badge{opacity:1;}
+
+/* DOC LIST — manual upload (tab 3) */
+.doc-li{background:var(--wh);border:1.5px solid var(--bd);border-radius:13px;padding:13px 15px;display:flex;align-items:center;gap:12px;margin-bottom:9px;transition:all .2s;cursor:pointer;}
+.doc-li:hover{border-color:var(--s);}
+.doc-li.uploaded{border-color:var(--glt2);background:var(--glt);}
+.doc-li-icon{font-size:22px;flex-shrink:0;}
+.doc-li-info{flex:1;}
+.doc-li-name{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:2px;}
+.doc-li-sub{font-size:10.5px;color:var(--mu2);}
+.doc-li-sub.ok{color:var(--g);font-weight:600;}
+.pill{padding:4px 11px;border-radius:20px;font-size:9.5px;font-weight:700;flex-shrink:0;}
+.pill-p{background:var(--bg2);color:var(--mu2);}
+.pill-u{background:var(--glt2);color:var(--g);}
+
+/* PROGRESS BAR */
+.prog-wrap{background:var(--bg2);height:3px;flex-shrink:0;}
+.prog-bar{height:3px;background:var(--s);transition:width .4s cubic-bezier(.4,0,.2,1);}
+
+/* ACTION BAR */
+.footer{background:var(--wh);padding:11px 16px 10px;flex-shrink:0;}
+.footer-inner{display:flex;align-items:center;justify-content:space-between;}
+.f-count{font-size:11.5px;color:var(--mu);font-weight:600;}
+.f-btns{display:flex;gap:9px;}
+.btn{padding:11px 18px;border-radius:12px;font-family:var(--ff);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;border:none;}
+.btn-g{border:1.5px solid var(--bd);background:var(--bg);color:var(--ink2);}
+.btn-p{background:var(--s);color:#fff;box-shadow:0 3px 14px rgba(232,103,26,.35);}
+.btn-p:active{transform:scale(.98);}
+.btn-reg{background:var(--g);color:#fff;box-shadow:0 3px 14px rgba(26,92,58,.35);width:100%;}
+/* APP FOOTER */
+.app-footer{background:var(--wh);padding:0 10px 10px;flex-shrink:0;position:relative;z-index:20;box-shadow:none;border-top:none;}
+.app-footer-inner{display:flex;align-items:flex-end;justify-content:space-between;gap:4px;background:var(--wh);padding:6px 4px 8px;box-shadow:none;border-top:none;}
+.app-tab{flex:1;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--mu2);font-family:var(--ff);padding:6px 4px;}
+.app-tab-icon{font-size:16px;line-height:1;color:inherit;}
+.app-tab-label{font-size:8.5px;font-weight:700;color:inherit;}
+.app-tab.active{color:var(--g);}
+.app-fab-slot{flex:1;display:flex;justify-content:center;}
+.app-fab{border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--g);font-family:var(--ff);padding:0 4px;}
+.app-fab-circle{width:44px;height:44px;border-radius:14px;background:var(--g);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 8px 20px rgba(26,92,58,.28);font-size:24px;line-height:1;}
+.app-fab-label{font-size:8.5px;font-weight:800;color:var(--g);}
+
+/* SUCCESS */
+.success{flex:1;display:flex;flex-direction:column;align-items:center;padding:28px 22px;text-align:center;overflow-y:auto;background:var(--bg);}
+.s-ring{width:76px;height:76px;border-radius:50%;background:var(--glt2);border:3px solid var(--g);display:flex;align-items:center;font-size:32px;margin-bottom:16px;position:relative;}
+.s-badge{position:absolute;bottom:-4px;right:-4px;width:26px;height:26px;border-radius:50%;background:var(--s);display:flex;align-items:center;font-size:12px;border:2px solid var(--bg);color:#fff;font-weight:800;}
+.s-title{font-family:'Sora', sans-serif;font-weight:900;font-size:22px;color:var(--ink);letter-spacing:-.5px;margin-bottom:5px;}
+.s-id{font-family:var(--fm);font-size:12px;color:#fff;background:var(--ink);padding:5px 14px;border-radius:8px;margin-bottom:22px;display:inline-block;}
+.s-card{background:var(--wh);border:1px solid var(--bd);border-radius:18px;padding:16px;width:100%;max-width:320px;margin-bottom:18px;box-shadow:0 4px 20px rgba(26,24,20,.08);text-align:left;}
+.s-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bg2);font-size:12px;}
+.s-row:last-child{border-bottom:none;}
+.s-lbl{color:var(--mu);font-weight:600;}
+.s-val{color:var(--ink);font-weight:700;}
+
+
+/* BOTTOM SHEET PICKER */
+.sheet-backdrop{position:absolute;inset:0;background:rgba(26,24,20,.55);z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;}
+.sheet-backdrop.active{opacity:1;pointer-events:all;}
+.bottom-sheet{position:absolute;bottom:0;left:0;right:0;background:var(--wh);border-radius:24px 24px 0 0;z-index:201;padding:0 0 32px;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);box-shadow:0 -8px 40px rgba(26,24,20,.2);}
+.bottom-sheet.active{transform:translateY(0);}
+.sheet-handle{width:36px;height:4px;border-radius:2px;background:var(--bd2);margin:12px auto 16px;}
+.sheet-doc-icon{text-align:center;font-size:32px;margin-bottom:6px;}
+.sheet-title{text-align:center;font-family:'Sora', sans-serif;font-weight:700;font-size:17px;color:var(--ink);margin-bottom:3px;}
+.sheet-sub{text-align:center;font-size:11px;color:var(--mu);font-weight:600;margin-bottom:18px;}
+.sheet-options{display:flex;flex-direction:column;gap:10px;padding:0 16px;}
+.sheet-opt{display:flex;align-items:center;gap:13px;padding:14px 15px;border-radius:14px;border:1.5px solid var(--bd);background:var(--bg);cursor:pointer;font-family:var(--ff);text-align:left;transition:all .15s;}
+.sheet-opt:hover{border-color:var(--s);background:var(--slt);}
+.sheet-opt-icon{font-size:22px;flex-shrink:0;}
+.sheet-opt-text{flex:1;}
+.sheet-opt-label{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:1px;}
+.sheet-opt-desc{font-size:10.5px;color:var(--mu);font-weight:500;}
+.sheet-opt-arrow{font-size:18px;color:var(--mu2);font-weight:300;}
+.scan-opt{border-color:var(--s);background:var(--slt);}
+.scan-opt .sheet-opt-label{color:var(--s);}
+.req{color:var(--cr);font-size:10px;margin-left:2px;}
+
+/* TIP BOX */
+.tip-box{background:var(--golt);border:1px solid #e8d48a;border-radius:12px;padding:12px 14px;display:flex;gap:9px;margin-top:2px;}
+.tip-txt{font-size:11px;color:var(--go);font-weight:600;line-height:1.55;}
+
+/* AVATAR UPLOAD */
+.avatar-upload{display:flex;align-items:center;gap:14px;margin-bottom:4px;}
+.avatar-circle{width:60px;height:60px;border-radius:50%;background:var(--bg2);border:2px dashed var(--bd2);display:flex;align-items:center;font-size:24px;flex-shrink:0;cursor:pointer;transition:all .2s;}
+.avatar-circle:hover{border-color:var(--s);background:var(--slt);}
+.avatar-circle.filled{border-style:solid;border-color:var(--g);background:var(--glt);}
+.avatar-info{flex:1;}
+.avatar-title{font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:2px;}
+.avatar-sub{font-size:10.5px;color:var(--mu2);}
+.avatar-btn{margin-top:7px;padding:6px 13px;border-radius:8px;border:1.5px solid var(--bd);background:var(--bg);font-family:var(--ff);font-size:11px;font-weight:700;color:var(--ink2);cursor:pointer;}
+
+/* SCAN CAMERA OVERLAY */
+.cam-overlay{position:absolute;inset:0;background:rgba(26,24,20,.88);z-index:100;display:none;flex-direction:column;align-items:center;gap:0;}
+.cam-overlay.active{display:flex;}
+.cam-box{width:280px;background:#000;border-radius:16px;overflow:hidden;position:relative;}
+.cam-viewport{width:100%;height:180px;background:linear-gradient(135deg,#111 0%,#1a2a1a 100%);display:flex;align-items:center;position:relative;}
+.cam-corner{position:absolute;width:22px;height:22px;border-color:var(--s);border-style:solid;border-width:0;}
+.cam-corner.tl{top:10px;left:10px;border-top-width:2.5px;border-left-width:2.5px;border-radius:3px 0 0 0;}
+.cam-corner.tr{top:10px;right:10px;border-top-width:2.5px;border-right-width:2.5px;border-radius:0 3px 0 0;}
+.cam-corner.bl{bottom:10px;left:10px;border-bottom-width:2.5px;border-left-width:2.5px;border-radius:0 0 0 3px;}
+.cam-corner.br{bottom:10px;right:10px;border-bottom-width:2.5px;border-right-width:2.5px;border-radius:0 0 3px 0;}
+.scan-line{position:absolute;left:14px;right:14px;height:2px;background:linear-gradient(90deg,transparent,var(--s),transparent);animation:scanLine 1.8s ease-in-out infinite;}
+@keyframes scanLine{0%,100%{top:14px;opacity:1}50%{top:calc(100% - 16px);opacity:.8}}
+.cam-icon{font-size:36px;opacity:.25;}
+.cam-label{color:#fff;font-size:11px;font-weight:700;padding:10px 14px;text-align:center;opacity:.7;}
+.cam-actions{display:flex;gap:8px;padding:12px 14px;background:#111;}
+.cam-cancel{flex:1;padding:10px;border-radius:10px;border:1.5px solid rgba(255,255,255,.15);background:transparent;color:rgba(255,255,255,.6);font-family:var(--ff);font-size:12px;font-weight:700;cursor:pointer;}
+.cam-capture{flex:1;padding:10px;border-radius:10px;border:none;background:var(--s);color:#fff;font-family:var(--ff);font-size:12px;font-weight:700;cursor:pointer;}
+.cam-title{color:#fff;font-family:'Sora', sans-serif;font-size:18px;font-weight:700;margin-bottom:16px;text-align:center;}
+.cam-sub{color:rgba(255,255,255,.5);font-size:10.5px;font-weight:600;margin-top:-12px;margin-bottom:16px;text-align:center;}
+
+
+ @media (max-width: 520px){
+   body{padding:0;overflow:hidden;}
+   .phone{width:100%;min-height:100dvh;max-height:100dvh;border-radius:0;border:none;box-shadow:none;}
+ }
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- STATUS BAR -->
+  <div class="sbar">
+    <span class="sbar-time">9:41</span>
+    <div class="sbar-pill"><div class="sbar-dot"></div></div>
+    <div style="display:flex;gap:5px;align-items:center">
+      <svg width="14" height="10" viewBox="0 0 14 10"><rect x="0" y="7.6" width="2.5" height="2.4" fill="white" opacity=".8" rx=".5"/><rect x="3.5" y="5.2" width="2.5" height="4.8" fill="white" opacity=".8" rx=".5"/><rect x="7" y="2.6" width="2.5" height="7.4" fill="white" opacity=".8" rx=".5"/><rect x="10.5" y="0" width="2.5" height="10" fill="white" opacity=".3" rx=".5"/></svg>
+      <svg width="16" height="10" viewBox="0 0 16 10"><rect x="1" y="2.5" width="10.5" height="6.5" rx="1.5" fill="none" stroke="white" stroke-width="1" opacity=".8"/><rect x="2" y="3.5" width="7.5" height="4.5" rx=".5" fill="white" opacity=".8"/><rect x="12" y="4.5" width="2" height="3" rx=".8" fill="white" opacity=".45"/></svg>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <div class="modal-header">
+    <div class="mh-row">
+      <div>
+        <div class="mh-title">Add New <em>Driver</em></div>
+        <div class="mh-sub" id="mh-sub">Auto-extracting details from uploaded documents</div>
+      </div>
+      <div class="close-btn" onclick="window.location.href='dashboard.html?page=drivers'">✕</div>
+    </div>
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="btn-scan" onclick="setMode('scan')">📄 Scan Documents</button>
+      <button class="mode-btn" id="btn-manual" onclick="setMode('manual')">✏️ Add Manually</button>
+    </div>
+  </div>
+
+  <!-- PROGRESS BAR -->
+  <div class="prog-wrap"><div class="prog-bar" id="prog-bar" style="width:0%"></div></div>
+
+  <!-- TAB BAR (manual mode only) -->
+  <div class="tab-bar" id="tab-bar" style="display:none">
+    <div class="tab active" id="tab-personal" onclick="setTab('personal')">
+      <span>👤</span> Personal <span class="tab-check" id="chk-personal">✓</span>
+    </div>
+    <div class="tab" id="tab-license" onclick="setTab('license')">
+      <span>🪪</span> License <span class="tab-check" id="chk-license">✓</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SCAN VIEW
+  ═══════════════════════════════════════════ -->
+  <div id="view-scan" class="scroll-body" style="position:relative">
+    <div class="docs-lbl" style="margin-top:4px;">Add Driver Documents</div>
+    <div class="docs-grid">
+      <div class="doc-card" id="dc-dl">
+        <div class="scan-badge">✓</div>
+        <div class="doc-card-icon">🪪</div>
+        <div class="doc-card-name">Driving License</div>
+        <div class="doc-card-stat" id="ds-dl">Not added</div>
+        <button class="scan-btn" id="sb-dl" onclick="openPicker('dl','Driving License','Hold DL front face inside the frame')">Upload</button>
+      </div>
+      <div class="doc-card" id="dc-aadhar">
+        <div class="scan-badge">✓</div>
+        <div class="doc-card-icon">🪙</div>
+        <div class="doc-card-name">Aadhaar Card</div>
+        <div class="doc-card-stat" id="ds-aadhar">Not added</div>
+        <button class="scan-btn" id="sb-aadhar" onclick="openPicker('aadhar','Aadhaar Card','Align the front of Aadhaar inside frame')">Upload</button>
+      </div>
+      <div class="doc-card" id="dc-pan">
+        <div class="scan-badge">✓</div>
+        <div class="doc-card-icon">📄</div>
+        <div class="doc-card-name">PAN Card</div>
+        <div class="doc-card-stat" id="ds-pan">Not added</div>
+        <button class="scan-btn" id="sb-pan" onclick="openPicker('pan','PAN Card','Align PAN card inside the scanning frame')">Upload</button>
+      </div>
+      <div class="doc-card" id="dc-photo">
+        <div class="scan-badge">✓</div>
+        <div class="doc-card-icon">📷</div>
+        <div class="doc-card-name">Passport Photo</div>
+        <div class="doc-card-stat" id="ds-photo">Not added</div>
+        <button class="scan-btn" id="sb-photo" onclick="openPicker('photo','Passport Photo','Position face clearly in the centre of frame')">Upload</button>
+      </div>
+    </div>
+
+    <div class="tip-box" style="margin-top:14px;margin-bottom:16px;">
+      <div style="font-size:14px;flex-shrink:0;margin-top:1px;">💡</div>
+      <div class="tip-txt">Scan or upload each document. OCR auto-fills Name, DL Number, DOB, Aadhaar & PAN fields instantly.</div>
+    </div>
+
+    <!-- Camera overlay -->
+    <div class="cam-overlay" id="cam-overlay" onclick="closeCam(event)">
+      <div class="cam-title" id="cam-title">Driving License</div>
+      <div class="cam-sub" id="cam-sub">Hold DL front face inside the frame</div>
+      <div class="cam-box" onclick="event.stopPropagation()">
+        <div class="cam-viewport">
+          <div class="cam-corner tl"></div>
+          <div class="cam-corner tr"></div>
+          <div class="cam-corner bl"></div>
+          <div class="cam-corner br"></div>
+          <div class="scan-line"></div>
+          <div class="cam-icon">🪪</div>
+        </div>
+        <div class="cam-actions">
+          <button class="cam-cancel" onclick="closeCam()">Cancel</button>
+          <button class="cam-capture" onclick="captureDoc()">Capture ✓</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       TAB 1 — PERSONAL INFO
+  ═══════════════════════════════════════════ -->
+  <div id="view-personal" class="scroll-body" style="display:none">
+    <div class="sec-title">Personal Details</div>
+    <div class="fg">
+
+      <!-- Avatar -->
+      <div class="avatar-upload">
+        <div class="avatar-circle" id="avatar-circle" onclick="openPicker('avatar','Driver Photo','Position face clearly in the centre of frame')">👤</div>
+        <div class="avatar-info">
+          <div class="avatar-title">Driver Photo</div>
+          <div class="avatar-sub">Upload a clear passport-size photo</div>
+          <button class="avatar-btn" onclick="openPicker('avatar','Driver Photo','Position face clearly in the centre of frame')">Choose Photo</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="lbl">Full Name <span class="req">*</span></label>
+        <div class="finput"><input type="text" placeholder="e.g. Ramesh Kumar" id="full-name"></div>
+      </div>
+
+      <div class="r2">
+        <div>
+          <label class="lbl">Date of Birth</label>
+          <input type="date" class="fdate" id="dob" value="">
+        </div>
+        <div>
+          <label class="lbl">Blood Group</label>
+          <select class="fsel" id="blood-group">
+            <option value="">Select…</option>
+            <option>A+</option><option>A-</option>
+            <option>B+</option><option>B-</option>
+            <option>O+</option><option>O-</option>
+            <option>AB+</option><option>AB-</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="r2">
+        <div>
+          <label class="lbl">Mobile Number <span class="req">*</span></label>
+          <div class="finput"><span class="pfx">+91</span><input type="tel" placeholder="10-digit number" id="mobile" maxlength="10"></div>
+        </div>
+        <div>
+          <label class="lbl">Emergency Number</label>
+          <div class="finput"><span class="pfx">+91</span><input type="tel" placeholder="Emergency" id="emergency" maxlength="10"></div>
+        </div>
+      </div>
+
+      <div class="r2">
+        <div>
+          <label class="lbl">Employment Type</label>
+          <select class="fsel" id="emp-type">
+            <option>Full-time</option>
+            <option>Part-time</option>
+            <option>Contract</option>
+          </select>
+        </div>
+        <div>
+          <label class="lbl">Join Date</label>
+          <input type="date" class="fdate" id="join-date">
+        </div>
+      </div>
+
+      <div class="r2">
+        <div>
+          <label class="lbl">Status</label>
+          <select class="fsel" id="status">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="on-leave">On Leave</option>
+          </select>
+        </div>
+        <div>
+          <label class="lbl">Monthly Salary</label>
+          <div class="finput"><span class="pfx">₹</span><input type="number" placeholder="Salary" id="salary"></div>
+        </div>
+      </div>
+
+      <div>
+        <label class="lbl">Current Address</label>
+        <textarea class="ftextarea" placeholder="House / Flat, Street, Area…" id="address"></textarea>
+      </div>
+
+      <div class="r2">
+        <div>
+          <label class="lbl">City</label>
+          <div class="finput"><input type="text" placeholder="City" id="city"></div>
+        </div>
+        <div>
+          <label class="lbl">State</label>
+          <div class="finput"><input type="text" placeholder="State" id="state"></div>
+        </div>
+      </div>
+
+      <div class="r2">
+        <div>
+          <label class="lbl">PIN Code</label>
+          <div class="finput"><input type="text" placeholder="6-digit PIN" id="pin" maxlength="6"></div>
+        </div>
+        <div>
+          <label class="lbl">Experience (Yrs)</label>
+          <div class="finput"><input type="number" placeholder="Yrs" id="experience"></div>
+        </div>
+      </div>
+
+      <div style="height:8px"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       TAB 2 — LICENSE INFO
+  ═══════════════════════════════════════════ -->
+  <div id="view-license" class="scroll-body" style="display:none">
+    <div class="sec-title">License & Identification</div>
+    <div class="fg">
+
+      <div>
+        <label class="lbl">DL Number <span class="req">*</span></label>
+        <div class="finput"><input type="text" placeholder="e.g. MH01 20180012345" id="dl-number" style="font-family:var(--fm);font-size:12px;letter-spacing:.5px;"></div>
+      </div>
+
+      <div class="r2">
+        <div>
+          <label class="lbl">DL Expiry Date <span class="req">*</span></label>
+          <input type="date" class="fdate" id="dl-expiry">
+        </div>
+        <div>
+          <label class="lbl">License Type</label>
+          <select class="fsel" id="lic-type">
+            <option>HMV</option>
+            <option>LMV</option>
+            <option>HMV + Trailer</option>
+            <option>Transport Vehicle</option>
+            <option>MGV</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="r2">
+        <div>
+          <label class="lbl">Aadhaar Number</label>
+          <div class="finput"><input type="text" placeholder="XXXX XXXX XXXX" id="aadhaar" maxlength="14" style="font-family:var(--fm);font-size:12px;letter-spacing:.5px;"></div>
+        </div>
+        <div>
+          <label class="lbl">PAN Number</label>
+          <div class="finput"><input type="text" placeholder="ABCDE1234F" id="pan" maxlength="10" style="font-family:var(--fm);font-size:12px;letter-spacing:.5px;text-transform:uppercase;"></div>
+        </div>
+      </div>
+
+      <div style="height:8px"></div>
+    </div>
+  </div>
+
+
+
+  <!-- ═══════════════════════════════════════════
+       SUCCESS SCREEN
+  ═══════════════════════════════════════════ -->
+  <div id="view-success" class="success" style="display:none">
+    <div class="s-ring">
+      🧑‍✈️
+      <div class="s-badge">✓</div>
+    </div>
+    <div class="s-title">Driver Registered!</div>
+    <div class="s-id" id="s-driver-id">DRV-2026-0041</div>
+    <div class="s-card">
+      <div class="s-row"><span class="s-lbl">Name</span><span class="s-val" id="s-name">—</span></div>
+      <div class="s-row"><span class="s-lbl">Mobile</span><span class="s-val" id="s-mobile">—</span></div>
+      <div class="s-row"><span class="s-lbl">DL Number</span><span class="s-val" id="s-dl">—</span></div>
+      <div class="s-row"><span class="s-lbl">License Type</span><span class="s-val" id="s-lictype">—</span></div>
+      <div class="s-row"><span class="s-lbl">Status</span><span class="s-val" style="color:var(--g)">Active ●</span></div>
+      <div class="s-row" style="background:var(--slt2); margin-top:10px; padding:10px 14px; border-radius:12px; border:1px dashed var(--s);">
+        <span class="s-lbl" style="color:var(--s); font-weight:800;">Initial PIN (OTP)</span>
+        <span class="s-val" id="s-otp" style="font-family:var(--fm); font-size:18px; color:var(--s); letter-spacing:2px;">999999</span>
+      </div>
+    </div>
+    <button onclick="window.location.href='dashboard.html?page=drivers'" style="width:100%;max-width:320px;padding:14px;border-radius:12px;border:none;background:var(--g);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;box-shadow:0 4px 20px rgba(26,92,58,.35);font-family:var(--ff)">Go to Driver Roster</button>
+    <button class="btn btn-reg" style="background:var(--wh);color:var(--ink2);border:1.5px solid var(--bd);box-shadow:none;margin-bottom:10px;" onclick="resetForm()">+ Add Another Driver</button>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer" id="footer">
+    <div class="footer-inner">
+      <div class="f-count" id="f-count">Scan Documents</div>
+      <div class="f-btns">
+        <button class="btn btn-g" id="btn-back" style="display:none" onclick="goBack()">← Back</button>
+        <button class="btn btn-p" id="btn-next" onclick="goNext()">Next →</button>
+      </div>
+    </div>
+  </div>
+  <div class="app-footer">
+    <div class="app-footer-inner">
+      <button class="app-tab" type="button" onclick="window.location.href='dashboard.html?page=dashboard'">
+        <span class="app-tab-icon">⊞</span>
+        <span class="app-tab-label">Home</span>
+      </button>
+      <button class="app-tab" type="button" onclick="window.location.href='dashboard.html?page=trips'">
+        <span class="app-tab-icon">📦</span>
+        <span class="app-tab-label">Trips</span>
+      </button>
+      <div class="app-fab-slot">
+        <button class="app-fab" type="button" onclick="window.location.href='log-trip.html'">
+          <span class="app-fab-circle">+</span>
+          <span class="app-fab-label">New Trip</span>
+        </button>
+      </div>
+      <button class="app-tab" type="button" onclick="window.location.href='dashboard.html?page=finance'">
+        <span class="app-tab-icon">₹</span>
+        <span class="app-tab-label">Finance</span>
+      </button>
+      <button class="app-tab" type="button" onclick="window.location.href='dashboard.html?page=insights'">
+        <span class="app-tab-icon">💡</span>
+        <span class="app-tab-label">Insights</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── BOTTOM SHEET PICKER ── -->
+  <div class="sheet-backdrop" id="sheet-backdrop" onclick="closePicker()"></div>
+  <div class="bottom-sheet" id="bottom-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-doc-icon" id="sheet-doc-icon">🪪</div>
+    <div class="sheet-title" id="sheet-title">Driving License</div>
+    <div class="sheet-sub">How would you like to add this document?</div>
+    <div class="sheet-options">
+      <button class="sheet-opt scan-opt" onclick="sheetPrimary()">
+        <div class="sheet-opt-icon">📷</div>
+        <div class="sheet-opt-text">
+          <div class="sheet-opt-label" id="sheet-primary-label">Scan</div>
+          <div class="sheet-opt-desc" id="sheet-primary-desc">Use camera to scan document</div>
+        </div>
+        <div class="sheet-opt-arrow">›</div>
+      </button>
+      <button class="sheet-opt" onclick="sheetUpload()">
+        <div class="sheet-opt-icon">📁</div>
+        <div class="sheet-opt-text">
+          <div class="sheet-opt-label">Upload File</div>
+          <div class="sheet-opt-desc">Choose from phone storage</div>
+        </div>
+        <div class="sheet-opt-arrow">›</div>
+      </button>
+    </div>
+  </div>
+
+</div><!-- end .phone -->
+<script>
+/* ─── STATE ─────────────────────────────────── */
+let mode = 'scan';          // 'scan' | 'manual'
+let currentTab = 'personal';    // 'scan' | 'personal' | 'license' | 'documents'
+const tabOrder = ['personal','license'];
+let scannedDocs = {};       // which docs have been scanned/captured
+let uploadedDocs = {};      // which docs uploaded in manual mode
+let filesStore = {}; // Store real file blobs For Database
+let activeScanDoc = null;   // currently scanning doc key
+
+/* ─── MODE TOGGLE ───────────────────────────── */
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-scan').classList.toggle('active', m === 'scan');
+  document.getElementById('btn-manual').classList.toggle('active', m === 'manual');
+  document.getElementById('mh-sub').textContent = m === 'scan'
+    ? 'Auto-extracting details from uploaded documents'
+    : 'Review and complete driver information';
+
+  if (m === 'scan') {
+    showView('scan');
+    document.getElementById('tab-bar').style.display = 'none';
+    document.getElementById('btn-back').style.display = 'none';
+    document.getElementById('btn-next').textContent = 'Next →';
+    document.getElementById('f-count').textContent = 'Scan Documents';
+    updateProgress(0);
+  } else {
+    showView('personal');
+    document.getElementById('tab-bar').style.display = 'flex';
+    currentTab = 'personal';
+    activateTab('personal');
+    updateFooterManual();
+    updateProgress(50);
+  }
+}
+
+/* ─── TAB NAVIGATION ────────────────────────── */
+function setTab(tab) {
+  currentTab = tab;
+  activateTab(tab);
+  showView(tab);
+  updateFooterManual();
+  const idx = tabOrder.indexOf(tab);
+  updateProgress(50 * (idx + 1));
+}
+
+function activateTab(tab) {
+  tabOrder.forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+  });
+}
+
+function showView(id) {
+  ['scan','personal','license','success'].forEach(v => {
+    const el = document.getElementById('view-' + v);
+    if(el) el.style.display = (v === id) ? 'flex' : 'none';
+  });
+  const active = document.getElementById('view-' + id);
+  if(active && id !== 'success') active.style.display = 'block';
+}
+
+function updateFooterManual() {
+  const idx = tabOrder.indexOf(currentTab);
+  document.getElementById('f-count').textContent = 'Tab ' + (idx+1) + ' of 2 — ' +
+    currentTab.charAt(0).toUpperCase() + currentTab.slice(1);
+  document.getElementById('btn-back').style.display = (idx > 0) ? 'flex' : 'none';
+  document.getElementById('btn-next').textContent = (idx === 1) ? '✓ Register' : 'Next →';
+}
+
+/* ─── NEXT / BACK ───────────────────────────── */
+function goNext() {
+  if (mode === 'scan' && document.getElementById('view-scan').style.display !== 'none') {
+    // Show form but stay in "Scan" visual mode
+    setTab('personal');
+    document.getElementById('tab-bar').style.display = 'flex';
+  } else {
+    const idx = tabOrder.indexOf(currentTab);
+    if (idx < tabOrder.length - 1) {
+      // Mark current tab done
+      document.getElementById('tab-' + currentTab).classList.add('done');
+      document.getElementById('chk-' + currentTab).style.display = 'inline';
+      setTab(tabOrder[idx + 1]);
+    } else {
+      // Register
+      registerDriver();
+    }
+  }
+}
+
+function goBack() {
+  if (mode === 'scan' && currentTab === 'personal') {
+    document.getElementById('tab-bar').style.display = 'none';
+    showView('scan');
+    document.getElementById('btn-back').style.display = 'none';
+    document.getElementById('btn-next').textContent = 'Next →';
+    document.getElementById('f-count').textContent = 'Scan Documents';
+    updateProgress(0);
+    return;
+  }
+  const idx = tabOrder.indexOf(currentTab);
+  if (idx > 0) setTab(tabOrder[idx - 1]);
+}
+
+/* ─── PROGRESS ───────────────────────────────── */
+function updateProgress(pct) {
+  document.getElementById('prog-bar').style.width = pct + '%';
+}
+
+/* ─── BOTTOM SHEET PICKER ────────────────────── */
+const docMeta = {
+  dl:     { icon:'🪪', scanLabel:'Scan',    scanDesc:'Use camera to scan document',    camSub:'Hold DL front face inside the frame' },
+  aadhar: { icon:'🪙', scanLabel:'Scan',    scanDesc:'Use camera to scan document',    camSub:'Align the front of Aadhaar inside frame' },
+  pan:    { icon:'📄', scanLabel:'Scan',    scanDesc:'Use camera to scan document',    camSub:'Align PAN card inside the scanning frame' },
+  photo:  { icon:'📷', scanLabel:'Capture', scanDesc:'Open camera to take a photo',    camSub:'Position face clearly in the centre of frame' },
+  avatar: { icon:'🤳', scanLabel:'Capture', scanDesc:'Take a photo using camera',      camSub:'Position face clearly in the centre of frame' },
+};
+
+const API_BASE = (window.FLEETOS_API_BASE || "") + "/api";
+function getFleetAuthHeaders(extra = {}) {
+  const token = localStorage.getItem('fleetToken');
+  return token ? { ...extra, Authorization: `Bearer ${token}` } : extra;
+}
+
+function normalizeDateInputValue(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) return raw;
+
+  const dayFirstMatch = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (dayFirstMatch) {
+    const day = dayFirstMatch[1].padStart(2, '0');
+    const month = dayFirstMatch[2].padStart(2, '0');
+    const year = dayFirstMatch[3].length === 2 ? `20${dayFirstMatch[3]}` : dayFirstMatch[3];
+    return `${year}-${month}-${day}`;
+  }
+
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString().split('T')[0];
+  }
+
+  return '';
+}
+
+const INDIAN_STATE_CODE_MAP = {
+  AP: 'Andhra Pradesh',
+  AR: 'Arunachal Pradesh',
+  AS: 'Assam',
+  BR: 'Bihar',
+  CG: 'Chhattisgarh',
+  CH: 'Chandigarh',
+  DD: 'Dadra and Nagar Haveli and Daman and Diu',
+  DL: 'Delhi',
+  GA: 'Goa',
+  GJ: 'Gujarat',
+  HR: 'Haryana',
+  HP: 'Himachal Pradesh',
+  JH: 'Jharkhand',
+  JK: 'Jammu and Kashmir',
+  KA: 'Karnataka',
+  KL: 'Kerala',
+  LA: 'Ladakh',
+  LD: 'Lakshadweep',
+  MH: 'Maharashtra',
+  ML: 'Meghalaya',
+  MN: 'Manipur',
+  MP: 'Madhya Pradesh',
+  MZ: 'Mizoram',
+  NL: 'Nagaland',
+  OD: 'Odisha',
+  OR: 'Odisha',
+  PB: 'Punjab',
+  PY: 'Puducherry',
+  RJ: 'Rajasthan',
+  SK: 'Sikkim',
+  TN: 'Tamil Nadu',
+  TR: 'Tripura',
+  TS: 'Telangana',
+  UK: 'Uttarakhand',
+  UP: 'Uttar Pradesh',
+  WB: 'West Bengal',
+  AN: 'Andaman and Nicobar Islands'
+};
+
+const INDIAN_STATE_NAME_MAP = Object.fromEntries(
+  Object.values(INDIAN_STATE_CODE_MAP).map((name) => [name.toLowerCase(), name])
+);
+
+function normalizeIndianState(value) {
+  const raw = String(value || '').trim().replace(/\./g, '');
+  if (!raw) return '';
+  const upper = raw.toUpperCase();
+  if (INDIAN_STATE_CODE_MAP[upper]) return INDIAN_STATE_CODE_MAP[upper];
+  return INDIAN_STATE_NAME_MAP[raw.toLowerCase()] || raw;
+}
+
+function parseIndianAddress(value) {
+  const raw = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!raw) return { address: '', city: '', state: '', pin: '' };
+
+  const pinMatch = raw.match(/\b(\d{6})\b(?!.*\b\d{6}\b)/);
+  const pin = pinMatch ? pinMatch[1] : '';
+  const withoutPin = pin ? raw.replace(pin, '').replace(/[, ]+$/, '').trim() : raw;
+  const parts = withoutPin.split(',').map((part) => part.trim()).filter(Boolean);
+
+  let state = '';
+  let city = '';
+  let cityIndex = -1;
+
+  for (let i = parts.length - 1; i >= 0; i -= 1) {
+    const normalized = normalizeIndianState(parts[i]);
+    if (normalized && normalized !== parts[i] || INDIAN_STATE_NAME_MAP[parts[i].toLowerCase()]) {
+      state = normalized;
+      cityIndex = i - 1;
+      break;
+    }
+  }
+
+  if (!state && parts.length) {
+    const last = parts[parts.length - 1];
+    const normalized = normalizeIndianState(last);
+    if (normalized !== last || INDIAN_STATE_NAME_MAP[last.toLowerCase()]) {
+      state = normalized;
+      cityIndex = parts.length - 2;
+    }
+  }
+
+  if (cityIndex >= 0 && parts[cityIndex]) {
+    city = parts[cityIndex].replace(/^(dist|district|city|teh|tehsil)\s+/i, '').trim();
+  }
+
+  if (!city) {
+    const districtMatch = withoutPin.match(/\b(?:dist|district)\s+([a-z ]+)\b/i);
+    if (districtMatch) city = districtMatch[1].trim().toUpperCase();
+  }
+
+  const addressParts = parts.filter((_, index) => index !== cityIndex && parts[index] !== state && normalizeIndianState(parts[index]) !== state);
+  const address = addressParts.join(', ').replace(/\s+,/g, ',').trim();
+
+  return {
+    address,
+    city: city ? city.toUpperCase() : '',
+    state,
+    pin
+  };
+}
+
+async function callDriverOCR(base64, mimeType, retry = 0) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
+
+    const res = await fetch(`${API_BASE}/ocr-gemini`, {
+      method: "POST",
+      headers: getFleetAuthHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ image: base64, mimeType: mimeType }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || "Gemini processing failed");
+    }
+    return await res.json();
+  } catch (err) {
+    if (retry < 1 && (err.name === 'AbortError' || err.message.includes('fetch'))) {
+      return callDriverOCR(base64, mimeType, retry + 1);
+    }
+    throw err;
+  }
+}
+
+async function optimizeImage(file, maxSide = 1600) {
+  if (file.type === 'application/pdf') return file;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(img.src);
+      let w = img.width, h = img.height;
+      if (w > maxSide || h > maxSide) {
+        if (w > h) { h = Math.round((h * maxSide) / w); w = maxSide; }
+        else { w = Math.round((w * maxSide) / h); h = maxSide; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob((blob) => resolve(blob || file), 'image/jpeg', 0.85);
+    };
+    img.onerror = () => { URL.revokeObjectURL(img.src); resolve(file); };
+  });
+}
+
+function toBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+  });
+}
+
+function completeAvatar() {
+  const circle = document.getElementById('avatar-circle');
+  circle.textContent = '🧑';
+  circle.classList.add('filled');
+  const btn = circle.nextElementSibling?.querySelector('.avatar-btn');
+  if(btn) btn.textContent = '✓ Photo Added';
+}
+
+let pickerDoc = null;
+let pickerTitle = '';
+
+function openPicker(key, title, camSub) {
+  pickerDoc   = key;
+  pickerTitle = title;
+  const meta  = docMeta[key];
+  document.getElementById('sheet-doc-icon').textContent       = meta.icon;
+  document.getElementById('sheet-title').textContent          = title;
+  document.getElementById('sheet-primary-label').textContent  = meta.scanLabel;
+  document.getElementById('sheet-primary-desc').textContent   = meta.scanDesc;
+  document.getElementById('sheet-backdrop').classList.add('active');
+  document.getElementById('bottom-sheet').classList.add('active');
+}
+
+function closePicker() {
+  document.getElementById('sheet-backdrop').classList.remove('active');
+  document.getElementById('bottom-sheet').classList.remove('active');
+}
+
+function sheetPrimary() {
+  closePicker();
+  if(pickerDoc === 'avatar') {
+    setTimeout(() => completeAvatar(), 200);
+    return;
+  }
+  const meta = docMeta[pickerDoc];
+  setTimeout(() => startScan(pickerDoc, pickerTitle, meta.camSub), 200);
+}
+
+async function sheetUpload() {
+  closePicker();
+  if(pickerDoc === 'avatar') {
+    setTimeout(() => completeAvatar(), 400);
+    return;
+  }
+  
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*,application/pdf';
+  input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if(!file) return;
+      await processScan(pickerDoc, file);
+  };
+  input.click();
+}
+
+async function processScan(key, file) {
+  const card = document.getElementById('dc-' + key);
+  const stat = document.getElementById('ds-' + key);
+  const btn  = document.getElementById('sb-' + key);
+  if(!card) return;
+
+  card.classList.add('scanning');
+  stat.className = 'doc-card-stat scanning';
+  stat.textContent = 'Scanning…';
+  btn.textContent = '⏳'; btn.disabled = true;
+
+  try {
+    const optimizedBlob = await optimizeImage(file);
+    filesStore[key] = optimizedBlob; // Save for database submission
+    const base64Full = await toBase64(optimizedBlob);
+    const base64 = base64Full.split(',')[1];
+    const data = await callDriverOCR(base64, file.type);
+    if (data.error) throw new Error(data.error);
+
+    const getVal = (keys) => {
+        for(let k of keys) {
+            if (data[k]) return data[k];
+            for (let dk in data) {
+                if (dk.toLowerCase().replace(/[^a-z0-9]/g,'') === k.toLowerCase().replace(/[^a-z0-9]/g,'')) return data[dk];
+            }
+        }
+        return null;
+    };
+
+    // Map extracted fields
+    const name = getVal(["Full Name", "Name", "Driver Name"]);
+    if (name) document.getElementById('full-name').value = name;
+    
+    const dob = getVal(["DOB", "Date of Birth", "Birth Date"]);
+    const normalizedDob = normalizeDateInputValue(dob);
+    if (normalizedDob) document.getElementById('dob').value = normalizedDob;
+    
+    const dl = getVal(["DL Number", "License Number", "DL No"]);
+    if (dl) document.getElementById('dl-number').value = dl;
+    
+    const phone = getVal(["Phone", "Mobile", "Contact"]);
+    if (phone) document.getElementById('mobile').value = phone.replace(/\D/g,'').slice(-10);
+    
+    const dlExp = getVal(["DL Expiry", "DL Valid UpTo", "License Expiry", "Licence Expiry", "License Valid UpTo", "Valid UpTo", "Validity"]);
+    const normalizedDlExp = normalizeDateInputValue(dlExp);
+    if (normalizedDlExp) document.getElementById('dl-expiry').value = normalizedDlExp;
+    
+    const addr = getVal(["Address", "Full Address"]);
+    const parsedAddress = parseIndianAddress(addr);
+    if (addr) document.getElementById('address').value = parsedAddress.address || addr;
+    
+    const aadhar = getVal(["Aadhaar Number", "Aadhar", "UID"]);
+    if (aadhar) document.getElementById('aadhaar').value = aadhar;
+    
+    const pan = getVal(["PAN Number", "PAN", "Income Tax Number"]);
+    if (pan) document.getElementById('pan').value = pan.toUpperCase();
+    
+    const bg = getVal(["Blood Group"]);
+    if (bg) {
+        const sel = document.getElementById('blood-group');
+        for(let i=0; i<sel.options.length; i++) {
+            if(sel.options[i].text.toLowerCase().includes(bg.toLowerCase())) {
+                sel.selectedIndex = i; break;
+            }
+        }
+    }
+    
+    const cat = getVal(["Vehicle Category", "Category", "License Type"]);
+    if (cat) {
+        const sel = document.getElementById('lic-type');
+        for(let i=0; i<sel.options.length; i++) {
+            if(sel.options[i].text.toLowerCase().includes(cat.toLowerCase())) {
+                sel.selectedIndex = i; break;
+            }
+        }
+    }
+    
+    const city = getVal(["City"]);
+    if (city || parsedAddress.city) document.getElementById('city').value = city || parsedAddress.city;
+
+    const state = normalizeIndianState(getVal(["State", "State Code"]));
+    if (state || parsedAddress.state) document.getElementById('state').value = state || parsedAddress.state;
+
+    const pin = getVal(["PIN Code", "PIN", "Zip"]);
+    if (pin || parsedAddress.pin) document.getElementById('pin').value = (pin || parsedAddress.pin || '').replace(/\D/g, '').slice(0, 6);
+
+    card.classList.remove('scanning');
+    card.classList.add('scanned');
+    stat.className = 'doc-card-stat ok';
+    stat.textContent = '✓ Extracted';
+    btn.textContent = '✓ Done';
+    btn.className = 'scan-btn done'; btn.disabled = false;
+    scannedDocs[key] = true;
+    checkScanComplete();
+  } catch (err) {
+    console.error("OCR Error:", err);
+    card.classList.remove('scanning');
+    stat.className = 'doc-card-stat';
+    stat.textContent = '✗ Failed';
+    btn.textContent = 'Retry';
+    btn.disabled = false;
+    alert(`SCAN FAILED: ${err.message}`);
+  }
+}
+
+/* ─── SCAN LOGIC ─────────────────────────────── */
+const scanIcons = {dl:'🪪', aadhar:'🪙', pan:'📄', photo:'📷'};
+
+function startScan(key, title, sub) {
+  activeScanDoc = key;
+  document.getElementById('cam-title').textContent = title;
+  document.getElementById('cam-sub').textContent = sub;
+  // Update cam-icon
+  const vp = document.querySelector('.cam-viewport .cam-icon');
+  if(vp) vp.textContent = scanIcons[key] || '📄';
+  document.getElementById('cam-overlay').classList.add('active');
+}
+
+function closeCam(e) {
+  if(e && e.target !== document.getElementById('cam-overlay')) return;
+  document.getElementById('cam-overlay').classList.remove('active');
+  activeScanDoc = null;
+}
+
+function captureDoc() {
+  if(!activeScanDoc) return;
+  const key = activeScanDoc;
+  document.getElementById('cam-overlay').classList.remove('active');
+
+  // Since we don't have a real camera access in this simulator context, 
+  // we'll trigger a file upload which is what users often do when "capturing" on mobile web
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = (e) => processScan(key, e.target.files[0]);
+  input.click();
+
+  activeScanDoc = null;
+}
+
+function autofillFromScan(key) {
+  // Simulate OCR autofill
+  const fills = {
+    dl:     { 'dl-number': 'MH01 20190034567', 'full-name': 'Ramesh Kumar Patil', 'dob': '1992-07-14', 'dl-issue':'2019-01-10','dl-expiry':'2039-01-09','lic-type':'HMV' },
+    aadhar: { 'aadhaar': '7845 3312 9900', 'full-name': 'Ramesh Kumar Patil', 'dob': '1992-07-14', 'city':'Mumbai','pin':'400072' },
+    pan:    { 'pan': 'BKRPK9832M' },
+    photo:  {}
+  };
+  const data = fills[key] || {};
+  Object.entries(data).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if(el && !el.value) {
+      el.value = val;
+      // flash green
+      const wrap = el.closest('.finput') || el;
+      wrap.style.transition = 'background .3s';
+      wrap.style.background = 'var(--glt)';
+      setTimeout(() => { wrap.style.background = ''; }, 1000);
+    }
+  });
+}
+
+function checkScanComplete() {
+  const count = Object.keys(scannedDocs).length;
+  if(count >= 3) { // DL, Aadhaar, PAN
+    document.getElementById('btn-next').textContent = '✓ Review & Register';
+    updateProgress(80);
+  } else {
+    updateProgress(count * 25);
+  }
+}
+
+/* ─── UPLOAD (Manual Tab 3) ──────────────────── */
+function uploadDoc(liId, pillId, subId, name) {
+  // Simulate a file pick
+  const li   = document.getElementById(liId);
+  const pill = document.getElementById(pillId);
+  const sub  = document.getElementById(subId);
+  if(li.classList.contains('uploaded')) return;
+
+  pill.textContent = '⏳';
+  setTimeout(() => {
+    li.classList.add('uploaded');
+    pill.className = 'pill pill-u';
+    pill.textContent = '✓ Saved';
+    sub.className = 'doc-li-sub ok';
+    sub.textContent = name.toLowerCase().replace(' ','_') + '_scan.pdf';
+    uploadedDocs[liId] = true;
+    const count = Object.keys(uploadedDocs).length;
+    updateProgress(66 + count * 8);
+  }, 900);
+}
+
+/* ─── AVATAR ─────────────────────────────────── */
+function openAvatarPicker() {
+  // Reuse the bottom sheet in "avatar" mode
+  pickerDoc   = 'avatar';
+  pickerTitle = 'Driver Photo';
+  document.getElementById('sheet-doc-icon').textContent      = '📷';
+  document.getElementById('sheet-title').textContent         = 'Driver Photo';
+  document.getElementById('sheet-primary-label').textContent = 'Capture';
+  document.getElementById('sheet-primary-desc').textContent  = 'Take a photo using camera';
+  document.getElementById('sheet-backdrop').classList.add('active');
+  document.getElementById('bottom-sheet').classList.add('active');
+}
+
+function completeAvatar() {
+  const circle = document.getElementById('avatar-circle');
+  circle.classList.add('filled');
+  circle.textContent = '🧑';
+  document.querySelector('.avatar-sub').textContent = '✓ Photo added';
+  document.querySelector('.avatar-btn').textContent = 'Change Photo';
+  document.querySelector('.avatar-btn').style.color = 'var(--g)';
+}
+
+/* ─── REGISTER ───────────────────────────────── */
+async function registerDriver() {
+  const val = (id) => {
+      const el = document.getElementById(id);
+      return el ? el.value.trim() : "";
+  };
+
+  const normalizePhoneInput = (value) => String(value || '').replace(/\D/g, '').slice(-10);
+
+  // Validation: Mobile, DL, and PAN are compulsory
+  const mobile = normalizePhoneInput(val('mobile'));
+  const emergency = normalizePhoneInput(val('emergency'));
+  const dlNo = val('dl-number');
+  const pan = val('pan');
+  const name = val('full-name');
+
+  if (!name) {
+    alert("CRITICAL ERROR: Full Name is compulsory for driver registration.");
+    setTab('personal');
+    return;
+  }
+  if (mobile.length !== 10) {
+    alert("CRITICAL ERROR: Mobile Number (10 digits) is compulsory for driver registration.");
+    setTab('personal');
+    return;
+  }
+  if (val('emergency') && emergency.length !== 10) {
+    alert("CRITICAL ERROR: Emergency Mobile Number must be a proper 10 digit number after +91.");
+    setTab('personal');
+    return;
+  }
+  if (!dlNo) {
+    alert("CRITICAL ERROR: DL Number is compulsory for driver registration.");
+    setTab('license');
+    return;
+  }
+  if (!pan) {
+    alert("CRITICAL ERROR: PAN Card is compulsory for driver registration.");
+    setTab('license');
+    return;
+  }
+
+  const btn = document.getElementById('btn-next');
+
+  btn.textContent = 'Saving…'; btn.disabled = true;
+
+  try {
+    const formData = new FormData();
+    formData.append('fullName', val('full-name'));
+    formData.append('dob', val('dob'));
+    formData.append('bloodGroup', val('blood-group'));
+    formData.append('phone', mobile);
+    formData.append('emergencyPhone', emergency);
+    formData.append('joinDate', val('join-date'));
+    formData.append('status', val('status'));
+    formData.append('empType', val('emp-type'));
+    formData.append('salary', val('salary'));
+    formData.append('address', val('address'));
+    formData.append('city', val('city'));
+    formData.append('state', val('state'));
+    formData.append('pin', val('pin'));
+    formData.append('dlNo', val('dl-number'));
+    formData.append('dlExpiry', val('dl-expiry'));
+    formData.append('licenseType', val('lic-type'));
+    formData.append('vehicleCategory', val('lic-type'));
+    formData.append('experience', val('experience'));
+    formData.append('aadhar', val('aadhaar'));
+    formData.append('pan', val('pan'));
+
+    // Append documents with correct extensions
+    const getExt = f => f.type === 'application/pdf' ? '.pdf' : '.jpg';
+    if (filesStore.dl) formData.append('file_dl', filesStore.dl, 'dl' + getExt(filesStore.dl));
+    if (filesStore.aadhar) formData.append('file_aadhar', filesStore.aadhar, 'aadhar' + getExt(filesStore.aadhar));
+    if (filesStore.pan) formData.append('file_pan', filesStore.pan, 'pan' + getExt(filesStore.pan));
+    if (filesStore.photo) formData.append('file_photo', filesStore.photo, 'photo' + getExt(filesStore.photo));
+
+    const token = localStorage.getItem('fleetToken');
+    const res = await fetch((window.FLEETOS_API_BASE || "") + '/api/drivers', {
+      method: 'POST',
+      body: formData,
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    });
+
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Registration failed');
+    }
+
+    const data = await res.json();
+    document.getElementById('s-name').textContent = val('full-name');
+    document.getElementById('s-mobile').textContent = '+91 ' + mobile;
+    document.getElementById('s-dl').textContent = val('dl-number');
+    document.getElementById('s-lictype').textContent = val('lic-type');
+    document.getElementById('s-driver-id').textContent = 'DRV-' + (data.id || '2026-NEW');
+    document.getElementById('s-otp').textContent = data.tempPassword || '------';
+
+
+    document.getElementById('tab-bar').style.display = 'none';
+    document.getElementById('footer').style.display = 'none';
+    document.getElementById('prog-bar').style.width = '100%';
+    showView('success');
+  } catch (err) {
+    console.error("Registration Error:", err);
+    alert("FAILED TO SAVE: " + err.message);
+    btn.textContent = '✓ Register';
+    btn.disabled = false;
+  }
+}
+
+function resetForm() {
+  // Reset everything
+  document.querySelectorAll('input, textarea').forEach(el => { if(el.type !== 'date') el.value = ''; });
+  scannedDocs = {}; uploadedDocs = {};
+  ['dl','aadhar','pan','photo'].forEach(k => {
+    const card = document.getElementById('dc-' + k);
+    const stat = document.getElementById('ds-' + k);
+    const btn  = document.getElementById('sb-' + k);
+    if(!card) return;
+    card.classList.remove('scanned','scanning');
+    stat.className = 'doc-card-stat'; stat.textContent = 'Not added';
+    btn.className = 'scan-btn'; btn.textContent = 'Upload'; btn.disabled = false;
+  });
+  ['li-dl','li-aadhar','li-pan-doc','li-photo-doc'].forEach(id => {
+    const li = document.getElementById(id);
+    if(!li) return; li.classList.remove('uploaded');
+  });
+  tabOrder.forEach(t => {
+    document.getElementById('tab-' + t).classList.remove('done','active');
+    document.getElementById('chk-' + t).style.display = 'none';
+  });
+  document.getElementById('footer').style.display = '';
+  document.getElementById('avatar-circle').textContent = '👤';
+  document.getElementById('avatar-circle').classList.remove('filled');
+  setMode('scan');
+}
+
+/* ─── AADHAAR FORMAT ────────────────────────── */
+document.getElementById('aadhaar').addEventListener('input', function(){
+  let v = this.value.replace(/\D/g,'').slice(0,12);
+  this.value = v.replace(/(\d{4})(?=\d)/g,'$1 ');
+});
+
+['mobile', 'emergency'].forEach((id) => {
+  const input = document.getElementById(id);
+  if (!input) return;
+  input.addEventListener('input', function() {
+    this.value = this.value.replace(/\D/g, '').slice(-10);
+  });
+});
+
+/* ─── INIT ───────────────────────────────────── */
+setMode('scan');
+</script>
+</body>
+</html>

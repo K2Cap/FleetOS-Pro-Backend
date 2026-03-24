@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>FleetOS — My Fleet</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=Sora:wght@600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --g:#1a5c3a;--g2:#236b47;--glt:#e8f5ee;--glt2:#d1ead9;
+  --s:#e8671a;--slt:#fdf0e8;--slt2:#fcd9c0;
+  --go:#c9930a;--golt:#fdf6e3;
+  --cr:#c0392b;--crlt:#fdecea;
+  --bg:#f5f2ec;--bg2:#edeae2;--wh:#ffffff;
+  --ink:#1a1814;--ink2:#3d3a34;--mu:#7a7570;--mu2:#b0aca4;--bd:#ddd9d0;--bd2:#c8c4bb;
+  --ff:'DM Sans',sans-serif;--fd:'Sora',sans-serif;--fm:'JetBrains Mono',monospace;
+}
+body{background:var(--bg2);font-family:var(--ff);color:var(--ink);height: 100%;align-items:flex-start;padding: 0;}
+
+/* PHONE SHELL */
+.phone{width:100%;max-width:450px;background:var(--bg);;overflow:hidden;;;display:flex;flex-direction:column;height: 100%;position:relative;}
+
+/* STATUS BAR */
+.sbar{background:var(--g);padding:12px 22px 5px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.sbar-time{font-family:var(--fm);font-size:11px;font-weight:700;color:#fff;}
+.sbar-pill{width:80px;height:16px;background:#0d3626;border-radius:18px;display:flex;align-items:center;}
+.sbar-dot{width:7px;height:7px;border-radius:50%;background:#0a2c1d;}
+
+/* HEADER */
+.header{background:var(--g);padding:14px 18px 18px;flex-shrink:0;}
+.hdr-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;}
+.hdr-title{font-family:var(--fd);font-weight:800;font-size:21px;color:#fff;letter-spacing:-.3px;line-height:1;}
+.hdr-title em{color:var(--s);font-style:italic;font-weight:600;}
+.hdr-sub{font-size:11px;color:rgba(255,255,255,.6);font-weight:500;margin-top:3px;}
+.add-btn{display:flex;align-items:center;gap:5px;background:var(--s);color:#fff;border:none;border-radius:10px;padding:8px 13px;font-family:var(--ff);font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;box-shadow:0 3px 12px rgba(232,103,26,.4);}
+
+/* SEARCH BAR */
+.search-wrap{position:relative;margin-bottom:0;}
+.search-input{width:100%;height:40px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:11px;padding:0 14px 0 36px;font-family:var(--ff);font-size:13px;color:#fff;outline:none;}
+.search-input::placeholder{color:rgba(255,255,255,.45);}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.5;pointer-events:none;}
+
+/* FILTER PILLS */
+.filter-bar{display:flex;gap:7px;padding:12px 16px;flex-shrink:0;background:var(--wh);border-bottom:1px solid var(--bd);}
+.filter-bar::-webkit-scrollbar{display:none;}
+.fpill{padding:6px 13px;border-radius:20px;font-size:11.5px;font-weight:700;border:1.5px solid var(--bd);background:var(--bg);color:var(--mu);cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0;}
+.fpill.active{background:var(--g);color:#fff;border-color:var(--g);}
+.fpill.idle-pill.active{background:var(--go);border-color:var(--go);color:#fff;}
+.fpill.active-pill.active{background:var(--g);border-color:var(--g);}
+.fpill.maintenance-pill.active{background:var(--cr);border-color:var(--cr);}
+
+/* STATS ROW */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--bd);flex-shrink:0;}
+.stat-cell{background:var(--wh);padding:10px 0;text-align:center;}
+.stat-num{font-family:var(--fd);font-size:18px;font-weight:700;color:var(--ink);line-height:1;}
+.stat-lbl{font-size:9.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--mu);margin-top:2px;}
+.stat-num.active{color:var(--g);}
+.stat-num.idle{color:var(--go);}
+.stat-num.maint{color:var(--cr);}
+
+/* SCROLL BODY */
+.scroll-body{flex:1;overflow-y:auto;padding:14px 14px 80px;-webkit-overflow-scrolling:touch;}
+.scroll-body::-webkit-scrollbar{display:none;}
+
+/* SECTION LABEL */
+.section-lbl{font-size:9.5px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--mu);margin-bottom:9px;margin-top:4px;}
+
+/* TRUCK CARD — Option B status strip */
+.truck-card{background:var(--wh);border:1px solid var(--bd);border-radius:14px;overflow:hidden;display:flex;margin-bottom:10px;transition:all .18s;cursor:pointer;active:opacity:.85;}
+.truck-card:active{transform:scale(.985);}
+.tc-strip{width:5px;flex-shrink:0;}
+.tc-strip.active{background:var(--g);}
+.tc-strip.idle{background:var(--go);}
+.tc-strip.maintenance{background:var(--cr);}
+.tc-body{flex:1;padding:13px 14px;display:flex;align-items:center;gap:12px;min-width:0;}
+.tc-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;flex-shrink:0;}
+.tc-icon.active{background:var(--glt);}
+.tc-icon.idle{background:var(--golt);}
+.tc-icon.maintenance{background:var(--crlt);}
+.tc-info{flex:1;min-width:0;}
+.tc-reg{font-family:var(--fm);font-size:14.5px;font-weight:700;color:var(--ink);letter-spacing:.3px;}
+.tc-sub{font-size:11px;color:var(--mu);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tc-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;}
+.status-badge{font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;letter-spacing:.3px;}
+.status-badge.active{background:var(--glt);color:var(--g);}
+.status-badge.idle{background:var(--golt);color:#7a5200;}
+.status-badge.maintenance{background:var(--crlt);color:var(--cr);}
+.tc-arrow{width:28px;height:28px;border-radius:8px;background:var(--bg);border:1px solid var(--bd);display:flex;align-items:center;font-size:15px;color:var(--mu);font-weight:400;}
+
+/* APP FOOTER */
+.app-footer{position:absolute;bottom:0;left:0;right:0;background:var(--wh);padding:0 10px 10px;z-index:20;box-shadow:none;border-top:none;}
+.app-footer-inner{display:flex;align-items:flex-end;justify-content:space-between;gap:4px;background:var(--wh);padding:6px 4px 8px;box-shadow:none;border-top:none;}
+.app-tab{flex:1;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--mu2);font-family:var(--ff);padding:6px 4px;}
+.app-tab-icon{font-size:16px;line-height:1;color:inherit;}
+.app-tab-label{font-size:8.5px;font-weight:700;color:inherit;}
+.app-tab.active{color:var(--g);}
+.app-fab-slot{flex:1;display:flex;justify-content:center;}
+.app-fab{border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--g);font-family:var(--ff);padding:0 4px;}
+.app-fab-circle{width:44px;height:44px;border-radius:14px;background:var(--g);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 8px 20px rgba(26,92,58,.28);font-size:24px;line-height:1;}
+.app-fab-label{font-size:8.5px;font-weight:800;color:var(--g);}
+
+/* DETAIL SHEET */
+.sheet-backdrop{position:absolute;inset:0;background:rgba(26,24,20,.55);z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;}
+.sheet-backdrop.active{opacity:1;pointer-events:all;}
+.detail-sheet{position:absolute;bottom:0;left:0;right:0;background:var(--bg);border-radius:24px 24px 0 0;z-index:201;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);}
+.detail-sheet.active{transform:translateY(0);}
+.ds-handle{width:36px;height:4px;border-radius:2px;background:var(--bd2);margin:12px auto 0;}
+.ds-header{padding:16px 18px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px;}
+.ds-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;flex-shrink:0;}
+.ds-reg{font-family:var(--fm);font-size:18px;font-weight:700;color:var(--ink);}
+.ds-type{font-size:11.5px;color:var(--mu);margin-top:2px;}
+.ds-rows{padding:14px 18px;}
+.ds-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bg2);}
+.ds-row:last-child{border-bottom:none;}
+.ds-key{font-size:12px;color:var(--mu);font-weight:600;}
+.ds-val{font-size:12.5px;color:var(--ink);font-weight:700;font-family:var(--fm);}
+.ds-val.plain{font-family:var(--ff);}
+.ds-actions{display:flex;gap:9px;padding:0 18px 28px;}
+.ds-btn-g{flex:1;padding:12px;border-radius:12px;border:1.5px solid var(--bd);background:var(--bg);font-family:var(--ff);font-size:13px;font-weight:700;color:var(--ink2);cursor:pointer;}
+.ds-btn-p{flex:1;padding:12px;border-radius:12px;border:none;background:var(--g);color:#fff;font-family:var(--ff);font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 3px 12px rgba(26,92,58,.3);}
+
+ html, body { height: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; background: #f5f2ec !important; }
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- STATUS BAR -->
+  <div class="sbar">
+    <span class="sbar-time">9:41</span>
+    <div class="sbar-pill"><div class="sbar-dot"></div></div>
+    <div style="display:flex;gap:5px;align-items:center">
+      <svg width="14" height="10" viewBox="0 0 14 10"><rect x="0" y="7.6" width="2.5" height="2.4" fill="white" opacity=".8" rx=".5"/><rect x="3.5" y="5.2" width="2.5" height="4.8" fill="white" opacity=".8" rx=".5"/><rect x="7" y="2.6" width="2.5" height="7.4" fill="white" opacity=".8" rx=".5"/><rect x="10.5" y="0" width="2.5" height="10" fill="white" opacity=".3" rx=".5"/></svg>
+      <svg width="16" height="10" viewBox="0 0 16 10"><rect x="1" y="2.5" width="10.5" height="6.5" rx="1.5" fill="none" stroke="white" stroke-width="1" opacity=".8"/><rect x="2" y="3.5" width="7.5" height="4.5" rx=".5" fill="white" opacity=".8"/><rect x="12" y="4.5" width="2" height="3" rx=".8" fill="white" opacity=".45"/></svg>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="hdr-row">
+      <div>
+        <div class="hdr-title">My <em>Fleet</em></div>
+        <div class="hdr-sub">12 trucks registered</div>
+      </div>
+      <button class="add-btn" onclick="alert('Add Truck')">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+        Add Truck
+      </button>
+    </div>
+    <div class="search-wrap">
+      <svg class="search-icon" width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="white" stroke-width="1.5"/><path d="M10.5 10.5L13 13" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <input class="search-input" type="text" placeholder="Search by reg number, driver…" oninput="filterCards(this.value)">
+    </div>
+  </div>
+
+  <!-- STATS ROW -->
+  <div class="stats-row">
+    <div class="stat-cell"><div class="stat-num active">7</div><div class="stat-lbl">Active</div></div>
+    <div class="stat-cell"><div class="stat-num idle">3</div><div class="stat-lbl">Idle</div></div>
+    <div class="stat-cell"><div class="stat-num maint">2</div><div class="stat-lbl">In Service</div></div>
+  </div>
+
+  <!-- FILTER PILLS -->
+  <div class="filter-bar">
+    <div class="fpill active" onclick="setFilter('all',this)">All (12)</div>
+    <div class="fpill active-pill" onclick="setFilter('active',this)">● Active</div>
+    <div class="fpill idle-pill" onclick="setFilter('idle',this)">● Idle</div>
+  </div>
+
+  <!-- TRUCK LIST -->
+  <div class="scroll-body" id="truck-list">
+    <div class="section-lbl">Active — On Route</div>
+
+    <div class="truck-card" data-status="active" data-driver="Ravi Kumar" data-reg="MH12AB1234" onclick="openDetail('MH12AB1234','active','HCV','Ravi Kumar','Mumbai → Pune','18 Apr 2027','85%')">
+      <div class="tc-strip active"></div>
+      <div class="tc-body">
+        <div class="tc-icon active">
+          <svg width="22" height="16" viewBox="0 0 24 16" fill="none" stroke="#1a5c3a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="14" height="10" rx="1.5"/><path d="M15 5h5l3 5v4h-8V5z"/><circle cx="5" cy="14" r="2"/><circle cx="19" cy="14" r="2"/></svg>
+        </div>
+        <div class="tc-info">
+          <div class="tc-reg">MH12AB1234</div>
+          <div class="tc-sub">HCV · Ravi Kumar · Mumbai → Pune</div>
+        </div>
+        <div class="tc-right">
+          <div class="status-badge active">● Active</div>
+          <div class="tc-arrow">›</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="truck-card" data-status="active" data-driver="Suresh Yadav" data-reg="GJ05CX4521" onclick="openDetail('GJ05CX4521','active','LCV','Suresh Yadav','Surat → Ahmedabad','22 Mar 2026','62%')">
+      <div class="tc-strip active"></div>
+      <div class="tc-body">
+        <div class="tc-icon active">
+          <svg width="22" height="16" viewBox="0 0 24 16" fill="none" stroke="#1a5c3a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="14" height="10" rx="1.5"/><path d="M15 5h5l3 5v4h-8V5z"/><circle cx="5" cy="14" r="2"/><circle cx="19" cy="14" r="2"/></svg>
+        </div>
+        <div class="tc-info">
+          <div class="tc-reg">GJ05CX4521</div>
+          <div class="tc-sub">LCV · Suresh Yadav · Surat → Ahmedabad</div>
+        </div>
+        <div class="tc-right">
+          <div class="status-badge active">● Active</div>
+          <div class="tc-arrow">›</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="truck-card" data-status="active" data-driver="Arjun Singh" data-reg="DL01CA7890" onclick="openDetail('DL01CA7890','active','HMV','Arjun Singh','Delhi → Jaipur','09 Jun 2026','91%')">
+      <div class="tc-strip active"></div>
+      <div class="tc-body">
+        <div class="tc-icon active">
+          <svg width="22" height="16" viewBox="0 0 24 16" fill="none" stroke="#1a5c3a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="14" height="10" rx="1.5"/><path d="M15 5h5l3 5v4h-8V5z"/><circle cx="5" cy="14" r="2"/><circle cx="19" cy="14" r="2"/></svg>
+        </div>
+        <div class="tc-info">
+          <div class="tc-reg">DL01CA7890</div>
+          <div class="tc-sub">HMV · Arjun Singh · Delhi → Jaipur</div>
+        </div>
+        <div class="tc-right">
+          <div class="status-badge active">● Active</div>
+          <div class="tc-arrow">›</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-lbl" style="margin-top:16px;">Idle — Yard</div>
+
+    <div class="truck-card" data-status="idle" data-driver="Unassigned" data-reg="RJ7TG56" onclick="openDetail('RJ7TG56','idle','HCV','Unassigned','—','14 Nov 2026','—')">
+      <div class="tc-strip idle"></div>
+      <div class="tc-body">
+        <div class="tc-icon idle">
+          <svg width="22" height="16" viewBox="0 0 24 16" fill="none" stroke="#c9930a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="14" height="10" rx="1.5"/><path d="M15 5h5l3 5v4h-8V5z"/><circle cx="5" cy="14" r="2"/><circle cx="19" cy="14" r="2"/></svg>
+        </div>
+        <div class="tc-info">
+          <div class="tc-reg">RJ7TG56</div>
+          <div class="tc-sub">HCV · Unassigned</div>
+        </div>
+        <div class="tc-right">
+          <div class="status-badge idle">● Idle</div>
+          <div class="tc-arrow">›</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="truck-card" data-status="idle" data-driver="Deepak Verma" data-reg="KA03MN2210" onclick="openDetail('KA03MN2210','idle','LCV','Deepak Verma','—','30 Aug 2026','—')">
+      <div class="tc-strip idle"></div>
+      <div class="tc-body">
+        <div class="tc-icon idle">
+          <svg width="22" height="16" viewBox="0 0 24 16" fill="none" stroke="#c9930a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="14" height="10" rx="1.5"/><path d="M15 5h5l3 5v4h-8V5z"/><circle cx="5" cy="14" r="2"/><circle cx="19" cy="14" r="2"/></svg>
+        </div>
+        <div class="tc-info">
+          <div class="tc-reg">KA03MN2210</div>
+          <div class="tc-sub">LCV · Deepak Verma</div>
+        </div>
+        <div class="tc-right">
+          <div class="status-badge idle">● Idle</div>
+          <div class="tc-arrow">›</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-lbl" style="margin-top:16px;">In Service — Workshop</div>
+
+    <div class="truck-card" data-status="maintenance" data-driver="—" data-reg="TN22BZ0033" onclick="openDetail('TN22BZ0033','maintenance','HMV','—','—','02 Feb 2027','—')">
+      <div class="tc-strip maintenance"></div>
+      <div class="tc-body">
+        <div class="tc-icon maintenance">
+          <svg width="22" height="16" viewBox="0 0 24 16" fill="none" stroke="#c0392b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="14" height="10" rx="1.5"/><path d="M15 5h5l3 5v4h-8V5z"/><circle cx="5" cy="14" r="2"/><circle cx="19" cy="14" r="2"/></svg>
+        </div>
+        <div class="tc-info">
+          <div class="tc-reg">TN22BZ0033</div>
+          <div class="tc-sub">HMV · Engine overhaul</div>
+        </div>
+        <div class="tc-right">
+          <div class="status-badge maintenance">● Service</div>
+          <div class="tc-arrow">›</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="app-footer">
+    <div class="app-footer-inner">
+      <button class="app-tab" type="button" onclick="window.location.href='dashboard.html?page=dashboard'">
+        <span class="app-tab-icon">⊞</span>
+        <span class="app-tab-label">Home</span>
+      </button>
+      <button class="app-tab active" type="button" onclick="window.location.href='dashboard.html?page=fleet'">
+        <span class="app-tab-icon">📦</span>
+        <span class="app-tab-label">Trips</span>
+      </button>
+      <div class="app-fab-slot">
+        <button class="app-fab" type="button" onclick="window.location.href='log-trip.html'">
+          <span class="app-fab-circle">+</span>
+          <span class="app-fab-label">New Trip</span>
+        </button>
+      </div>
+      <button class="app-tab" type="button" onclick="window.location.href='dashboard.html?page=finance'">
+        <span class="app-tab-icon">₹</span>
+        <span class="app-tab-label">Finance</span>
+      </button>
+      <button class="app-tab" type="button" onclick="window.location.href='dashboard.html?page=insights'">
+        <span class="app-tab-icon">💡</span>
+        <span class="app-tab-label">Insights</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- DETAIL BOTTOM SHEET -->
+  <div class="sheet-backdrop" id="sheet-backdrop" onclick="closeDetail()"></div>
+  <div class="detail-sheet" id="detail-sheet">
+    <div class="ds-handle"></div>
+    <div class="ds-header">
+      <div class="ds-icon" id="ds-icon"></div>
+      <div>
+        <div class="ds-reg" id="ds-reg">—</div>
+        <div class="ds-type" id="ds-type">—</div>
+      </div>
+      <div style="flex:1"></div>
+      <div class="status-badge" id="ds-badge">—</div>
+    </div>
+    <div class="ds-rows">
+      <div class="ds-row"><span class="ds-key">Driver</span><span class="ds-val plain" id="ds-driver">—</span></div>
+      <div class="ds-row"><span class="ds-key">Current Route</span><span class="ds-val plain" id="ds-route">—</span></div>
+      <div class="ds-row"><span class="ds-key">Insurance Expiry</span><span class="ds-val" id="ds-ins">—</span></div>
+      <div class="ds-row"><span class="ds-key">Fuel Level</span><span class="ds-val plain" id="ds-fuel">—</span></div>
+    </div>
+    <div class="ds-actions">
+      <button class="ds-btn-g" onclick="closeDetail()">Close</button>
+      <button class="ds-btn-p">Full Details →</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const statusColors = {
+  active:      { strip:'#1a5c3a', icon:'#1a5c3a', bg:'var(--glt)' },
+  idle:        { strip:'#c9930a', icon:'#c9930a', bg:'var(--golt)' },
+  maintenance: { strip:'#c0392b', icon:'#c0392b', bg:'var(--crlt)' },
+};
+
+function openDetail(reg, status, type, driver, route, ins, fuel) {
+  const s = statusColors[status] || statusColors.idle;
+  document.getElementById('ds-reg').textContent   = reg;
+  document.getElementById('ds-type').textContent  = type + ' · ' + (status === 'active' ? 'On Route' : status === 'idle' ? 'Parked' : 'In Workshop');
+  document.getElementById('ds-driver').textContent = driver;
+  document.getElementById('ds-route').textContent  = route;
+  document.getElementById('ds-ins').textContent    = ins;
+  document.getElementById('ds-fuel').textContent   = fuel;
+  const badge = document.getElementById('ds-badge');
+  badge.textContent = '● ' + (status === 'maintenance' ? 'Service' : status.charAt(0).toUpperCase() + status.slice(1));
+  badge.className = 'status-badge ' + status;
+  const icon = document.getElementById('ds-icon');
+  icon.style.background = s.bg;
+  icon.innerHTML = `<svg width="22" height="16" viewBox="0 0 24 16" fill="none" stroke="${s.icon}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="14" height="10" rx="1.5"/><path d="M15 5h5l3 5v4h-8V5z"/><circle cx="5" cy="14" r="2"/><circle cx="19" cy="14" r="2"/></svg>`;
+  document.getElementById('sheet-backdrop').classList.add('active');
+  document.getElementById('detail-sheet').classList.add('active');
+}
+
+function closeDetail() {
+  document.getElementById('sheet-backdrop').classList.remove('active');
+  document.getElementById('detail-sheet').classList.remove('active');
+}
+
+function setFilter(f, el) {
+  document.querySelectorAll('.fpill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  const cards = document.querySelectorAll('.truck-card');
+  const labels = document.querySelectorAll('.section-lbl');
+  labels.forEach(l => l.style.display = '');
+  cards.forEach(c => {
+    if(f === 'all') { c.style.display = ''; return; }
+    if(f === 'unassigned') {
+      c.style.display = c.dataset.driver === 'Unassigned' || c.dataset.driver === '—' ? '' : 'none';
+    } else {
+      c.style.display = c.dataset.status === f ? '' : 'none';
+    }
+  });
+}
+
+function filterCards(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('.truck-card').forEach(c => {
+    const match = c.dataset.reg.toLowerCase().includes(q) || c.dataset.driver.toLowerCase().includes(q);
+    c.style.display = match ? '' : 'none';
+  });
+}
+</script>
+</body>
+</html>

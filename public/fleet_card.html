@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fleet Live Map — Card</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,900;1,9..144,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --forest:    #1a5c3a;
+      --forest-d:  #133f28;
+      --forest-l:  #236b47;
+      --forest-xl: #e8f5ee;
+      --ember:     #e8671a;
+      --ember-l:   #f07a30;
+      --ember-xl:  #fdf0e8;
+      --gold:      #c9930a;
+      --gold-xl:   #fdf6e3;
+      --cream:     #f5f2ec;
+      --parchment: #edeae2;
+      --sand:      #ddd9d0;
+      --sand-d:    #c8c4bb;
+      --bark:      #7a7570;
+      --ink:       #1a1814;
+      --white:     #ffffff;
+      --sh-sm:  0 2px 8px  rgba(26,24,20,.07);
+      --sh-md:  0 8px 28px rgba(26,24,20,.12);
+      --sh-lg:  0 16px 48px rgba(26,24,20,.14);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--cream);
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 28px;
+      flex-wrap: wrap;
+      min-height: 100vh;
+      padding: 48px 28px;
+      font-family: 'DM Sans', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Column labels ── */
+    .col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .col-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--bark);
+    }
+
+    /* ── Card shell ── */
+    .card {
+      width: 300px;
+      background: var(--white);
+      border: 1.5px solid var(--sand);
+      border-radius: 22px;
+      overflow: hidden;
+      cursor: pointer;
+      box-shadow: var(--sh-sm);
+      transition: box-shadow .22s, transform .22s;
+      position: relative;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--sh-md);
+    }
+
+    /* ── Card header ── */
+    .card-header {
+      padding: 16px 18px 13px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--parchment);
+    }
+    .header-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; letter-spacing: .13em;
+      text-transform: uppercase; color: var(--bark);
+    }
+    .live-badge {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--forest-xl);
+      border: 1px solid rgba(26,92,58,.22);
+      border-radius: 100px; padding: 4px 11px 4px 8px;
+    }
+    .live-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #22c55e;
+      animation: livePulse 2s ease-in-out infinite;
+    }
+    @keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+    .live-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9.5px; letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--forest); font-weight: 500;
+    }
+
+    /* ── Stat row (4-trip card only) ── */
+    .stat-row {
+      padding: 16px 18px 14px;
+      display: flex; align-items: baseline; justify-content: space-between;
+      border-bottom: 1px solid var(--parchment);
+      background: linear-gradient(135deg, rgba(26,92,58,.04) 0%, transparent 100%);
+    }
+    .big-num {
+      font-family: 'Fraunces', serif;
+      font-size: 44px; font-weight: 900; letter-spacing: -2px;
+      color: var(--forest); line-height: 1;
+    }
+    .big-sub {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--bark);
+      margin-top: 4px;
+    }
+    .stat-right { text-align: right; }
+    .kv-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--bark);
+      margin-bottom: 2px;
+    }
+    .kv-val {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px; font-weight: 700;
+      color: var(--ink); line-height: 1.3;
+    }
+    .kv-val.highlight { color: var(--ember); }
+
+    /* ── Trip rows ── */
+    .trips-list { padding: 4px 0; }
+    .trip-row {
+      display: flex; align-items: center; gap: 11px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--parchment);
+      transition: background .14s; cursor: pointer;
+    }
+    .trip-row:last-child { border-bottom: none; }
+    .trip-row:hover { background: var(--parchment); }
+
+    /* coloured left bar */
+    .trip-bar {
+      width: 3px; height: 34px;
+      border-radius: 99px; flex-shrink: 0;
+    }
+
+    .trip-info { flex: 1; min-width: 0; }
+    .trip-route {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13.5px; font-weight: 700; letter-spacing: -.1px;
+      color: var(--ink); line-height: 1.2;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .trip-meta {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9.5px; color: var(--bark);
+      letter-spacing: .06em; margin-top: 3px;
+    }
+
+    /* progress section */
+    .trip-right { text-align: right; flex-shrink: 0; }
+    .trip-pct {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; font-weight: 500; letter-spacing: .04em;
+    }
+    .trip-track {
+      width: 54px; height: 3px;
+      background: var(--parchment);
+      border-radius: 99px; margin-top: 6px;
+      position: relative; overflow: visible;
+    }
+    .trip-fill {
+      height: 100%; border-radius: 99px;
+      position: relative;
+    }
+    .trip-fill .dot {
+      position: absolute; right: -3px; top: -3px;
+      width: 9px; height: 9px; border-radius: 50%;
+      border: 2px solid var(--white);
+    }
+
+    /* ── CTA Footer ── */
+    .open-cta {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 13px 18px;
+      border-top: 1px solid var(--parchment);
+      background: transparent;
+      transition: background .16s;
+    }
+    .card:hover .open-cta { background: var(--forest-xl); }
+    .cta-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--forest); font-weight: 500;
+    }
+    .cta-icon { width: 14px; height: 14px; transition: transform .2s; }
+    .card:hover .cta-icon { transform: translateX(3px); }
+
+    /* ── Subtle animation on load ── */
+    .card { animation: cardIn .5s ease both; }
+    .col:nth-child(1) .card { animation-delay: .05s; }
+    .col:nth-child(2) .card { animation-delay: .12s; }
+    .col:nth-child(3) .card { animation-delay: .19s; }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── 1 LIVE TRIP ─── -->
+  <div class="col">
+    <span class="col-label">1 live trip</span>
+    <div class="card">
+
+      <div class="card-header">
+        <span class="header-label">Fleet / Live Map</span>
+        <div class="live-badge">
+          <span class="live-dot"></span>
+          <span class="live-text">1 Live</span>
+        </div>
+      </div>
+
+      <div class="trips-list">
+        <div class="trip-row">
+          <div class="trip-bar" style="background:var(--ember)"></div>
+          <div class="trip-info">
+            <div class="trip-route">Jaipur → Mumbai</div>
+            <div class="trip-meta">TN-08 &nbsp;·&nbsp; 4h 20m left</div>
+          </div>
+          <div class="trip-right">
+            <div class="trip-pct" style="color:var(--ember)">62%</div>
+            <div class="trip-track">
+              <div class="trip-fill" style="width:62%;background:var(--ember)">
+                <span class="dot" style="background:var(--ember);box-shadow:0 0 5px rgba(232,103,26,.5)"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="open-cta">
+        <span class="cta-text">Open full map</span>
+        <svg class="cta-icon" viewBox="0 0 14 14" fill="none" stroke="var(--forest)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 7h10M8 3l4 4-4 4"/>
+        </svg>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── 2 LIVE TRIPS ─── -->
+  <div class="col">
+    <span class="col-label">2 live trips</span>
+    <div class="card">
+
+      <div class="card-header">
+        <span class="header-label">Fleet / Live Map</span>
+        <div class="live-badge">
+          <span class="live-dot"></span>
+          <span class="live-text">2 Live</span>
+        </div>
+      </div>
+
+      <div class="trips-list">
+        <div class="trip-row">
+          <div class="trip-bar" style="background:var(--ember)"></div>
+          <div class="trip-info">
+            <div class="trip-route">Jaipur → Mumbai</div>
+            <div class="trip-meta">TN-08 &nbsp;·&nbsp; 4h 20m left</div>
+          </div>
+          <div class="trip-right">
+            <div class="trip-pct" style="color:var(--ember)">62%</div>
+            <div class="trip-track">
+              <div class="trip-fill" style="width:62%;background:var(--ember)">
+                <span class="dot" style="background:var(--ember);box-shadow:0 0 5px rgba(232,103,26,.5)"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="trip-row">
+          <div class="trip-bar" style="background:var(--gold)"></div>
+          <div class="trip-info">
+            <div class="trip-route">Delhi → Pune</div>
+            <div class="trip-meta">MH-12 &nbsp;·&nbsp; 6h 50m left</div>
+          </div>
+          <div class="trip-right">
+            <div class="trip-pct" style="color:var(--gold)">38%</div>
+            <div class="trip-track">
+              <div class="trip-fill" style="width:38%;background:var(--gold)">
+                <span class="dot" style="background:var(--gold);box-shadow:0 0 5px rgba(201,147,10,.5)"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="open-cta">
+        <span class="cta-text">Open full map</span>
+        <svg class="cta-icon" viewBox="0 0 14 14" fill="none" stroke="var(--forest)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 7h10M8 3l4 4-4 4"/>
+        </svg>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── 4 LIVE TRIPS ─── -->
+  <div class="col">
+    <span class="col-label">4 live trips</span>
+    <div class="card">
+
+      <div class="card-header">
+        <span class="header-label">Fleet / Live Map</span>
+        <div class="live-badge">
+          <span class="live-dot"></span>
+          <span class="live-text">4 Live</span>
+        </div>
+      </div>
+
+      <!-- summary stat -->
+      <div class="stat-row">
+        <div>
+          <div class="big-num">4</div>
+          <div class="big-sub">On Route</div>
+        </div>
+        <div class="stat-right">
+          <div class="kv-label">Corridors</div>
+          <div class="kv-val">3 active</div>
+          <div class="kv-label" style="margin-top:8px">Avg Progress</div>
+          <div class="kv-val highlight">51%</div>
+        </div>
+      </div>
+
+      <div class="trips-list">
+
+        <div class="trip-row">
+          <div class="trip-bar" style="background:var(--ember)"></div>
+          <div class="trip-info">
+            <div class="trip-route">Jaipur → Mumbai</div>
+            <div class="trip-meta">TN-08 &nbsp;·&nbsp; 4h 20m left</div>
+          </div>
+          <div class="trip-right">
+            <div class="trip-pct" style="color:var(--ember)">62%</div>
+            <div class="trip-track">
+              <div class="trip-fill" style="width:62%;background:var(--ember)">
+                <span class="dot" style="background:var(--ember)"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="trip-row">
+          <div class="trip-bar" style="background:var(--ember);opacity:.55"></div>
+          <div class="trip-info">
+            <div class="trip-route">Delhi → Chennai</div>
+            <div class="trip-meta">HR-26 &nbsp;·&nbsp; 9h 10m left</div>
+          </div>
+          <div class="trip-right">
+            <div class="trip-pct" style="color:var(--ember);opacity:.7">28%</div>
+            <div class="trip-track">
+              <div class="trip-fill" style="width:28%;background:var(--ember);opacity:.7">
+                <span class="dot" style="background:var(--ember)"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="trip-row">
+          <div class="trip-bar" style="background:var(--gold)"></div>
+          <div class="trip-info">
+            <div class="trip-route">Delhi → Pune</div>
+            <div class="trip-meta">MH-12 &nbsp;·&nbsp; 6h 50m left</div>
+          </div>
+          <div class="trip-right">
+            <div class="trip-pct" style="color:var(--gold)">38%</div>
+            <div class="trip-track">
+              <div class="trip-fill" style="width:38%;background:var(--gold)">
+                <span class="dot" style="background:var(--gold)"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="trip-row">
+          <div class="trip-bar" style="background:var(--forest)"></div>
+          <div class="trip-info">
+            <div class="trip-route">Kolkata → Surat</div>
+            <div class="trip-meta">WB-04 &nbsp;·&nbsp; 2h 05m left</div>
+          </div>
+          <div class="trip-right">
+            <div class="trip-pct" style="color:var(--forest)">76%</div>
+            <div class="trip-track">
+              <div class="trip-fill" style="width:76%;background:var(--forest)">
+                <span class="dot" style="background:var(--forest)"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="open-cta">
+        <span class="cta-text">Open full map</span>
+        <svg class="cta-icon" viewBox="0 0 14 14" fill="none" stroke="var(--forest)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 7h10M8 3l4 4-4 4"/>
+        </svg>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>

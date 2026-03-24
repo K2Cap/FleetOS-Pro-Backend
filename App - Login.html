@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Gravity Intelligence</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="config.js"></script>
+    <meta name="theme-color" content="#1a3028">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon.png">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green-900: #1a3028;
+    --green-800: #1f3d2e;
+    --green-700: #2d5240;
+    --green-600: #3a6b52;
+    --green-500: #4d8a6a;
+    --orange: #e07c3a;
+    --cream: #f5f2eb;
+    --cream-dark: #ede9df;
+    --text-dark: #1a2218;
+    --text-mid: #4a5547;
+    --text-light: #8a9988;
+    --border: #d4cfc3;
+    --white: #ffffff;
+    --shadow-btn: 0 6px 24px rgba(26,48,40,0.28);
+    --radius-sm: 10px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #edeae2;
+    min-height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px 0;
+    overflow: hidden;
+  }
+  body::before, body::after {
+    content: ''; position: fixed; border-radius: 50%;
+    pointer-events: none; z-index: 0;
+  }
+  body::before {
+    width: 340px; height: 340px;
+    background: radial-gradient(circle, rgba(77,138,106,0.25) 0%, transparent 70%);
+    top: -80px; right: -80px;
+  }
+  body::after {
+    width: 280px; height: 280px;
+    background: radial-gradient(circle, rgba(224,124,58,0.15) 0%, transparent 70%);
+    bottom: -60px; left: -60px;
+  }
+
+  .phone-shell {
+    position: relative; z-index: 1;
+    width: 390px; max-width: 100%; height: 820px; margin: 0 auto;
+    background: var(--cream);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    border-radius: 44px;
+    box-shadow: 0 32px 80px rgba(26,24,20,.35),0 0 0 9px #181510;
+    border: 5px solid #232018;
+  }
+
+  .notch {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 126px; height: 34px; background: var(--green-900);
+    border-radius: 0 0 20px 20px; z-index: 20;
+  }
+
+  .status-bar {
+    flex-shrink: 0;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 28px 0;
+    font-size: 12px; font-weight: 600; color: var(--text-dark);
+    z-index: 5; position: relative;
+  }
+  .status-bar .time { font-size: 15px; font-weight: 700; }
+  .status-icons { display: flex; gap: 5px; align-items: center; }
+  .status-icons svg { width: 16px; height: 16px; fill: var(--text-dark); }
+
+  /* ── Screen system ── */
+  .screens { flex: 1; position: relative; overflow: hidden; }
+
+  .screen {
+    position: absolute; inset: 0;
+    overflow-y: auto; overflow-x: hidden;
+    scrollbar-width: none;
+    padding: 20px 26px 36px;
+    transition: transform 0.42s cubic-bezier(0.4,0,0.2,1), opacity 0.38s ease;
+    will-change: transform, opacity;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  .screen.register { transform: translateX(0); opacity: 1; }
+  .screen.login    { transform: translateX(100%); opacity: 0; pointer-events: none; }
+
+  .screen.login.active   { transform: translateX(0);    opacity: 1; pointer-events: auto; }
+  .screen.register.away  { transform: translateX(-60%); opacity: 0; pointer-events: none; }
+
+  /* ── Logo ── */
+  .logo-row {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 6px;
+    animation: fadeUp 0.5s ease both;
+  }
+  .logo-icon {
+    width: 48px; height: 48px; background: var(--green-800);
+    border-radius: 14px; display: flex; align-items: center; 
+    flex-shrink: 0; box-shadow: 0 4px 14px rgba(26,48,40,0.22);
+    position: relative; overflow: hidden;
+  }
+  .logo-icon::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 60%);
+  }
+  .logo-icon svg { width: 26px; height: 26px; }
+  .logo-text .brand { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--green-900); line-height: 1.1; }
+  .logo-text .brand span { color: var(--orange); }
+  .logo-text .tagline { font-size: 10px; font-weight: 600; color: var(--text-light); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 1px; }
+
+  .page-title {
+    font-family: 'DM Serif Display', serif; font-size: 24px; color: var(--green-900);
+    margin: 18px 0 4px; line-height: 1.2; text-align: center; white-space: nowrap;
+    animation: fadeUp 0.5s 0.1s ease both;
+  }
+  .page-subtitle {
+    font-size: 13px; color: var(--text-mid); margin-bottom: 22px; text-align: center; white-space: nowrap;
+    animation: fadeUp 0.5s 0.15s ease both;
+  }
+
+  /* ── Fields ── */
+  .field-group {
+    display: flex; flex-direction: column; gap: 13px; margin-bottom: 18px;
+    animation: fadeUp 0.5s 0.3s ease both;
+  }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field-label { font-size: 11.5px; font-weight: 600; color: var(--text-mid); }
+
+  .input-wrap {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--white); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); padding: 13px 14px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .input-wrap:focus-within {
+    border-color: var(--green-600);
+    box-shadow: 0 0 0 3px rgba(77,138,106,0.12);
+  }
+  .input-wrap svg { width: 17px; height: 17px; flex-shrink: 0; opacity: 0.5; }
+  .input-wrap input {
+    flex: 1; border: none; outline: none; background: none;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text-dark);
+  }
+  .input-wrap input::placeholder { color: var(--text-light); font-size: 13.5px; }
+  .input-prefix {
+    font-size: 13px; font-weight: 600; color: var(--text-mid);
+    border-right: 1.5px solid var(--border); padding-right: 10px; margin-right: 2px;
+  }
+  .eye-btn { background: none; border: none; cursor: pointer; padding: 0; color: var(--text-light); display: flex; align-items: center; }
+  .eye-btn svg { width: 17px; height: 17px; }
+
+  .forgot-row { text-align: right; margin-top: 4px; }
+  .forgot-row a { font-size: 12px; color: var(--orange); font-weight: 600; text-decoration: none; }
+
+  .divider {
+    display: flex; align-items: center; gap: 12px; margin: 6px 0 16px;
+    animation: fadeUp 0.5s 0.35s ease both;
+  }
+  .divider-line { flex: 1; height: 1px; background: var(--border); }
+  .divider-text { font-size: 11.5px; color: var(--text-light); font-weight: 500; white-space: nowrap; }
+
+  .social-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px;
+    animation: fadeUp 0.5s 0.4s ease both;
+  }
+  .social-btn {
+    display: flex; align-items: center;  gap: 8px;
+    background: var(--white); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); padding: 11px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+    color: var(--text-dark); cursor: pointer; transition: all 0.2s;
+  }
+  .social-btn:hover { background: var(--cream-dark); }
+  .social-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+  .terms-row {
+    display: flex; align-items: flex-start; gap: 10px; margin-bottom: 20px;
+    animation: fadeUp 0.5s 0.45s ease both;
+  }
+  .checkbox-wrap {
+    width: 18px; height: 18px; flex-shrink: 0;
+    border: 2px solid var(--border); border-radius: 5px; background: var(--white);
+    margin-top: 1px; display: flex; align-items: center; 
+    cursor: pointer; transition: all 0.2s;
+  }
+  .checkbox-wrap.checked { background: var(--green-700); border-color: var(--green-700); }
+  .checkbox-wrap.checked::after {
+    content: ''; width: 10px; height: 6px;
+    border-left: 2px solid white; border-bottom: 2px solid white;
+    transform: rotate(-45deg) translate(1px,-1px);
+  }
+  .terms-text { font-size: 12.5px; color: var(--text-mid); line-height: 1.5; }
+  .terms-text a { color: var(--green-700); font-weight: 600; text-decoration: none; }
+
+  .cta-btn {
+    width: 100%; padding: 15px;
+    background: linear-gradient(135deg, var(--green-800) 0%, var(--green-700) 100%);
+    color: var(--white); border: none; border-radius: var(--radius-sm);
+    font-family: 'DM Serif Display', serif; font-size: 17px; cursor: pointer;
+    box-shadow: var(--shadow-btn);
+    display: flex; align-items: center;  gap: 10px;
+    transition: transform 0.15s, box-shadow 0.15s;
+    animation: fadeUp 0.5s 0.5s ease both;
+    position: relative; overflow: hidden;
+  }
+  .cta-btn::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 60%);
+  }
+  .cta-btn:active { transform: scale(0.98); }
+  .cta-arrow { font-size: 20px; transition: transform 0.2s; }
+  .cta-btn:hover .cta-arrow { transform: translateX(4px); }
+
+  .switch-row {
+    text-align: center; margin-top: 16px;
+    font-size: 13px; color: var(--text-mid);
+    animation: fadeUp 0.5s 0.55s ease both;
+  }
+  .switch-row a { color: var(--orange); font-weight: 600; text-decoration: none; cursor: pointer; }
+
+  /* ── Login extras ── */
+  .back-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: none; border: none; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+    color: var(--text-mid); padding: 0; margin-bottom: 20px;
+    animation: fadeUp 0.4s ease both;
+  }
+  .back-btn svg { width: 16px; height: 16px; }
+  .back-btn:hover { color: var(--green-700); }
+
+  .welcome-badge {
+    display: inline-block; background: var(--green-800); color: var(--cream);
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 5px 12px; border-radius: 20px; margin-bottom: 10px;
+    animation: fadeUp 0.5s 0.05s ease both;
+  }
+
+  .home-indicator {
+    flex-shrink: 0; height: 30px;
+    display: flex; align-items: center; 
+    padding-bottom: 6px; background: var(--cream); position: relative; z-index: 5;
+  }
+  .home-indicator-bar { width: 130px; height: 5px; background: var(--text-dark); border-radius: 3px; opacity: 0.18; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .login-hint {
+    font-size: 11.5px; font-weight: 600; margin-top: 4px;
+    min-height: 16px; transition: opacity 0.2s;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .login-hint.email { color: var(--green-600); }
+  .login-hint.phone { color: var(--orange); }
+
+  /* ── Login method tabs ── */
+  .login-tabs {
+    display: flex; gap: 10px; margin-bottom: 22px;
+    animation: fadeUp 0.5s 0.22s ease both;
+  }
+  .ltab {
+    flex: 1; display: flex; align-items: center;  gap: 7px;
+    padding: 11px 10px;
+    background: var(--white); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif; font-size: 13.5px; font-weight: 500;
+    color: var(--text-mid); cursor: pointer;
+    transition: all 0.22s ease;
+  }
+  .ltab svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .ltab.active {
+    background: var(--green-800); color: var(--white);
+    border-color: var(--green-800);
+    box-shadow: 0 4px 14px rgba(26,48,40,0.22);
+  }
+  .ltab.active svg { stroke: white; }
+
+  /* ── OTP boxes ── */
+  .otp-row {
+    display: flex; gap: 8px; justify-content: space-between;
+  }
+  .otp-box {
+    flex: 1; height: 52px;
+    text-align: center; font-size: 20px; font-weight: 700;
+    color: var(--green-900);
+    background: var(--white); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); outline: none;
+    font-family: 'DM Serif Display', serif;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    caret-color: var(--green-600);
+  }
+  .otp-box:focus {
+    border-color: var(--green-600);
+    box-shadow: 0 0 0 3px rgba(77,138,106,0.12);
+  }
+  .otp-box.filled { background: var(--cream-dark); border-color: var(--green-500); }
+
+  .resend-row {
+    font-size: 12px; color: var(--text-light); text-align: center; margin-top: 6px;
+  }
+  .resend-row a { color: var(--orange); font-weight: 600; text-decoration: none; }
+
+  @media (max-width: 430px) {
+    body { padding: 0; background: var(--cream); }
+    .phone-shell { width: 100%; height: 100%; border-radius: 0; box-shadow: none; border: none; }
+    .notch { display: none; }
+  }
+
+  html, body { height: 100%; width: 100%; margin: 0; }
+  @media (min-width: 431px) {
+    .phone-shell {
+      width: 390px !important;
+      max-width: 390px !important;
+      height: 820px !important;
+      flex: 0 0 390px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="phone-shell">
+  <div class="notch"></div>
+
+  <div class="status-bar">
+    <span class="time">9:41</span>
+    <div class="status-icons">
+      <svg viewBox="0 0 24 24"><rect x="2" y="14" width="3" height="6" rx="1"/><rect x="7" y="10" width="3" height="10" rx="1"/><rect x="12" y="6" width="3" height="14" rx="1"/><rect x="17" y="2" width="3" height="18" rx="1" opacity="0.3"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M1.42 9a16 16 0 0 1 21.16 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg>
+      <svg viewBox="0 0 24 24"><rect x="2" y="7" width="18" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="4" y="9" width="12" height="6" rx="1"/><path d="M22 11v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+  </div>
+
+  <div class="screens">
+
+    <!-- ═══════════ REGISTER ═══════════ -->
+    <div class="screen register" id="screenRegister">
+
+      <div class="logo-row">
+        <div class="logo-icon">
+          <svg viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="4" fill="#e07c3a"/><circle cx="13" cy="13" r="9" stroke="#4d8a6a" stroke-width="1.5" stroke-dasharray="3 2"/><circle cx="13" cy="4" r="2" fill="white" opacity="0.8"/><circle cx="22" cy="16" r="1.5" fill="#e07c3a" opacity="0.7"/></svg>
+        </div>
+        <div class="logo-text">
+          <div class="brand">Gravity <span>Intelligence</span></div>
+          <div class="tagline">Create your account</div>
+        </div>
+      </div>
+
+      <div class="page-title">Join the fleet network.</div>
+      <div class="page-subtitle">Register to start managing your logistics.</div>
+
+      <div class="field-group">
+        <div class="field">
+          <div class="field-label">Full Name</div>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <input type="text" id="regFullName" placeholder="e.g. Rajan Mehta">
+          </div>
+        </div>
+
+        <div class="field" id="companyField">
+          <div class="field-label">Company / Fleet Name</div>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+            <input type="text" id="regCompany" placeholder="e.g. Mehta Logistics Pvt. Ltd.">
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Mobile Number</div>
+          <div class="input-wrap">
+            <span class="input-prefix">+91</span>
+            <input type="tel" id="regMobile" placeholder="9876543210">
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Email Address</div>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
+            <input type="email" id="regEmail" placeholder="you@example.com">
+          </div>
+        </div>
+
+        <!-- ✅ Password — full width, stacked -->
+        <div class="field">
+          <div class="field-label">Password</div>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+            <input type="password" id="pw1" placeholder="Minimum 8 characters">
+            <button class="eye-btn" onclick="togglePw('pw1',this)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- ✅ Confirm — full width, stacked -->
+        <div class="field">
+          <div class="field-label">Confirm Password</div>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+            <input type="password" id="pw2" placeholder="Re-enter password">
+            <button class="eye-btn" onclick="togglePw('pw2',this)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="terms-row">
+        <div class="checkbox-wrap" id="ckbox" onclick="toggleCheck()"></div>
+        <div class="terms-text">I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></div>
+      </div>
+
+      <button class="cta-btn" id="regBtn" onclick="handleRegister(this)">
+        Create Account <span class="cta-arrow">→</span>
+      </button>
+
+      <div class="switch-row">
+        Already have an account? <a onclick="goToLogin()">Login here</a>
+      </div>
+    </div>
+
+    <!-- ═══════════ LOGIN ═══════════ -->
+    <div class="screen login" id="screenLogin">
+
+      <button class="back-btn" onclick="goToRegister()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back
+      </button>
+
+      <div class="logo-row">
+        <div class="logo-icon">
+          <svg viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="4" fill="#e07c3a"/><circle cx="13" cy="13" r="9" stroke="#4d8a6a" stroke-width="1.5" stroke-dasharray="3 2"/><circle cx="13" cy="4" r="2" fill="white" opacity="0.8"/><circle cx="22" cy="16" r="1.5" fill="#e07c3a" opacity="0.7"/></svg>
+        </div>
+        <div class="logo-text">
+          <div class="brand">Gravity <span>Intelligence</span></div>
+          <div class="tagline">Welcome back</div>
+        </div>
+      </div>
+
+      <div class="welcome-badge">👋 Good to see you again</div>
+      <div class="page-title">Sign back<br>into your account.</div>
+      <div class="page-subtitle">Enter your email or phone number to continue.</div>
+
+      <!-- Single smart field -->
+      <div class="field-group" id="loginFieldGroup">
+        <div class="field">
+          <div class="field-label" id="loginIdentifierLabel">Email or Phone Number</div>
+          <div class="input-wrap" id="loginIdentifierWrap">
+            <!-- icon swaps based on input -->
+            <span id="loginIcon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;opacity:0.5"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
+            </span>
+            <input type="text" id="loginIdentifier" placeholder="you@example.com or 9876543210" oninput="detectLoginType(this)" autocomplete="username">
+          </div>
+          <div class="login-hint" id="loginHint"></div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Password</div>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+            <input type="password" id="lpw" placeholder="Enter your password">
+            <button class="eye-btn" onclick="togglePw('lpw',this)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <div class="forgot-row"><a href="#">Forgot password?</a></div>
+        </div>
+      </div>
+
+      <button class="cta-btn" id="loginBtn" onclick="handleLogin(this)" style="animation-delay:0.35s">
+        Sign In <span class="cta-arrow">→</span>
+      </button>
+
+      <div class="switch-row" style="margin-top:20px">
+        Don't have an account? <a onclick="goToRegister()">Register here</a>
+      </div>
+    </div>
+
+  </div><!-- /screens -->
+
+  <div class="home-indicator"><div class="home-indicator-bar"></div></div>
+</div>
+
+<script>
+  function goToLogin() {
+    document.getElementById('screenRegister').classList.add('away');
+    const log = document.getElementById('screenLogin');
+    log.classList.add('active');
+    log.scrollTop = 0;
+  }
+
+  function goToRegister() {
+    document.getElementById('screenRegister').classList.remove('away');
+    document.getElementById('screenLogin').classList.remove('active');
+    document.getElementById('screenRegister').scrollTop = 0;
+  }
+
+let currentRole = 'transporter';
+
+async function clearLegacyMobileCaches() {
+  if ('serviceWorker' in navigator) {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(regs.map(reg => reg.unregister()));
+  }
+  if ('caches' in window) {
+    const keys = await caches.keys();
+    await Promise.all(keys.map(key => caches.delete(key)));
+  }
+}
+
+  function togglePw(id, btn) {
+    const el = document.getElementById(id);
+    el.type = el.type === 'password' ? 'text' : 'password';
+    btn.style.color = el.type === 'text' ? 'var(--green-700)' : '';
+  }
+
+  function toggleCheck() {
+    document.getElementById('ckbox').classList.toggle('checked');
+  }
+
+  function detectLoginType(input) {
+    const val = input.value.trim();
+    const hint = document.getElementById('loginHint');
+    const iconSpan = document.getElementById('loginIcon');
+    const wrap = document.getElementById('loginIdentifierWrap');
+
+    const isPhone = /^[0-9+\s\-()]{1,}$/.test(val) && val.replace(/\D/g,'').length >= 1 && !val.includes('@');
+    const isEmail = val.includes('@');
+
+    if (isEmail) {
+      hint.className = 'login-hint email';
+      hint.innerHTML = '✉️ Signing in with email';
+      wrap.style.borderColor = 'var(--green-600)';
+      iconSpan.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;opacity:0.6;color:var(--green-600)"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>`;
+    } else if (isPhone) {
+      hint.className = 'login-hint phone';
+      hint.innerHTML = '📱 Signing in with phone number';
+      wrap.style.borderColor = 'var(--orange)';
+      iconSpan.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;opacity:0.6;color:var(--orange)"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>`;
+    } else {
+      hint.className = 'login-hint';
+      hint.innerHTML = '';
+      wrap.style.borderColor = '';
+      iconSpan.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;opacity:0.5"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>`;
+    }
+  }
+
+  async function handleRegister(btn) {
+    const fullName = document.getElementById('regFullName').value;
+  const companyName = document.getElementById('regCompany').value;
+    const mobile = document.getElementById('regMobile').value;
+    const email = document.getElementById('regEmail').value;
+    const password = document.getElementById('pw1').value;
+    const confirm = document.getElementById('pw2').value;
+    const checked = document.getElementById('ckbox').classList.contains('checked');
+
+    if (!fullName || !password) return alert('Please fill in required fields');
+    if (password !== confirm) return alert('Passwords do not match');
+    if (!checked) return alert('Please agree to terms');
+
+    const originalText = btn.innerHTML;
+    btn.innerHTML = 'Creating Account...';
+    btn.disabled = true;
+
+    try {
+        const apiBase = (window.FLEETOS_API_BASE || '').trim();
+        console.log("🚀 Attempting signup at:", apiBase + '/api/auth/signup');
+
+        const res = await fetch(apiBase + '/api/auth/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fullName, companyName, mobile, email, password, role: currentRole })
+        }).catch(e => {
+            console.error("NETWORK ERROR:", e);
+            throw new Error(`CONNECTION ERROR: Make sure ${apiBase} is online. Details: ` + e.message);
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Registration failed');
+
+        localStorage.setItem('fleetToken', data.token);
+        localStorage.setItem('fleetUser', JSON.stringify(data.user));
+        btn.innerHTML = '✓ Account Created!';
+        btn.style.background = 'linear-gradient(135deg,#2d5240,#4d8a6a)';
+        setTimeout(() => window.location.href = 'dashboard.html', 1500);
+    } catch (err) {
+        alert("🚨 EXCEPTION: " + err.message);
+        console.error(err);
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+  }
+
+  async function handleLogin(btn) {
+    const identifier = document.getElementById('loginIdentifier').value;
+    const password = document.getElementById('lpw').value;
+
+    if (!identifier || !password) return alert('Credentials required');
+
+    const originalText = btn.innerHTML;
+    btn.innerHTML = 'Signing In...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch((window.FLEETOS_API_BASE || '') + '/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identifier, password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Login failed');
+
+        localStorage.setItem('fleetToken', data.token);
+        localStorage.setItem('fleetUser', JSON.stringify(data.user));
+        btn.innerHTML = '✓ Welcome back!';
+        btn.style.background = 'linear-gradient(135deg,#2d5240,#4d8a6a)';
+        
+        // Redirect to dashboard
+        setTimeout(() => {
+            window.location.href = 'dashboard.html';
+        }, 1200);
+    } catch (err) {
+        alert(err.message);
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+  }
+
+  (function tick() {
+    const now = new Date();
+    document.querySelector('.time').textContent =
+      String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    setTimeout(tick, 30000);
+  })();
+
+  window.addEventListener('load', () => {
+    clearLegacyMobileCaches().catch(() => {});
+  });
+</script>
+</body>
+</html>
