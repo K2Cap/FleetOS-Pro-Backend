@@ -1051,34 +1051,28 @@ app.post('/api/auth/signup', async (req, res) => {
     }
 });
 
-app.post('/api/auth/login', (req, res) => {
-    const identifier = cleanString(req.body.identifier || req.body.email || req.body.mobile);
-    const password = req.body.password;
-    if (!identifier || !password) return res.status(400).json({ error: 'Identifier and password required' });
-    
-    const sql = `SELECT * FROM users WHERE LOWER(email) = $1 OR mobile = $2 LIMIT 1`;
-    pool.query(sql, [identifier.toLowerCase(), identifier], async (err, results) => {
-        if (err) {
-            console.error('🔥 LOGIN DB ERROR:', err.message);
-            return res.status(500).json({ error: 'Authentication failed - database error' });
-        }
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        console.log('📬 LOGIN ATTEMPT:', req.body.identifier);
+        const identifier = (req.body.identifier || req.body.email || req.body.mobile || "").toString().trim();
+        const password = req.body.password;
         
+        if (!identifier || !password) return res.status(400).json({ error: 'Identifier and password required' });
+        
+        const sql = `SELECT * FROM users WHERE LOWER(email) = $1 OR mobile = $2 LIMIT 1`;
+        const results = await pool.query(sql, [identifier.toLowerCase(), identifier]);
         const user = results.rows[0];
+
         if (!user || !verifyPassword(String(password), user.password)) {
+            console.log('🚫 REJECTED: Invalid credentials');
             return res.status(401).json({ error: 'Invalid credentials. Please check your login ID and password.' });
         }
 
-        if (isLegacyPasswordHash(user.password)) {
-            const upgradedHash = hashPassword(String(password));
-            pool.query('UPDATE users SET password = $1 WHERE id = $2', [upgradedHash, user.id], (updateErr) => {
-                if (updateErr) console.error(`Failed to upgrade password hash: ${updateErr.message}`);
-            });
-        }
-
+        // Token generation
         const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
-        
-        // Return session-ready data
-        res.json({ 
+        console.log('✅ LOGIN SUCCESS:', user.mobile);
+
+        return res.json({ 
             message: 'Login successful', 
             token,
             user: { 
@@ -1090,7 +1084,10 @@ app.post('/api/auth/login', (req, res) => {
                 mobile: user.mobile
             } 
         });
-    });
+    } catch (err) {
+        console.error('🔥 CRITICAL LOGIN ERROR:', err.message);
+        return res.status(500).json({ error: 'A server error occurred during login.' });
+    }
 });
 
 // --- PROTECTED ROUTES ---
