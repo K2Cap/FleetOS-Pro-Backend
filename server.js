@@ -10,6 +10,11 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 console.log('🚀 Server process starting...');
 
+// --- DIAGNOSTIC HEARTBEAT ---
+setInterval(() => {
+    console.log(`💓 HEARTBEAT: I AM ALIVE (${new Date().toLocaleTimeString()})`);
+}, 10000);
+
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
