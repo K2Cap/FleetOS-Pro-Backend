@@ -14,28 +14,15 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_for_dev_only';
 
 const app = express();
-const port = 7331;
-const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || '').replace(/\/+$/, '');
-const MAX_UPLOAD_SIZE_MB = Number(process.env.MAX_UPLOAD_SIZE_MB || 15);
-const MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024;
-const PASSWORD_KEYLEN = 64;
-let dbReady = false;
-let databaseInitError = null;
+const port = process.env.PORT || 7331;
 
-// --- PRODUCTION HARDENING ---
-// Prevent the server from crashing on uncaught errors
-process.on('uncaughtException', (err) => {
-    console.error(`WATERTIGHT: Uncaught Exception - ${err.message}`);
-    console.error(err.stack);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-    console.error(`WATERTIGHT: Unhandled Rejection at: ${promise}, reason: ${reason}`);
-});
+// --- PRODUCTION CORS: Allow all origins and headers for mobile ---
+app.use(cors({ origin: true, credentials: true, methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json());
 
 app.set('trust proxy', 1);
-
-// --- POSTGRES CONFIG ---
 // Priority to DATABASE_URL for Railway/Heroku/Render cloud environments
 const poolConfig = process.env.DATABASE_URL 
     ? { 
