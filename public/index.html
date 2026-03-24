@@ -609,7 +609,7 @@ async function clearLegacyMobileCaches() {
 
         btn.innerHTML = '✓ Account Created!';
         btn.style.background = 'linear-gradient(135deg,#2d5240,#4d8a6a)';
-        setTimeout(() => window.location.href = 'mobile-simulator.html', 1000);
+        setTimeout(() => window.location.href = 'transporter_dashboard_APP.html', 1000);
     } catch (err) {
         alert("🚨 EXCEPTION: " + err.message);
         console.error(err);
@@ -649,7 +649,7 @@ async function clearLegacyMobileCaches() {
         
         // Redirect to simulator hub
         setTimeout(() => {
-            window.location.href = 'mobile-simulator.html';
+            window.location.href = 'transporter_dashboard_APP.html';
         }, 1000);
     } catch (err) {
         alert(err.message);

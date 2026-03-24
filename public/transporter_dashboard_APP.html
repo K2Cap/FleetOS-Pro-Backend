@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gravity Intelligence — Transporter Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,900;1,9..144,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="/config.js"></script>
+<style>
+:root {
+  --forest:#1a5c3a; --forest-d:#133f28; --forest-l:#236b47; --forest-xl:#e8f5ee;
+  --ember:#e8671a; --ember-l:#f07a30; --ember-xl:#fdf0e8;
+  --gold:#c9930a; --gold-xl:#fdf6e3;
+  --red:#dc2626; --red-xl:#fef2f2;
+  --blue:#2563eb; --blue-xl:#eff6ff;
+  --cream:#f5f2ec; --parchment:#edeae2; --sand:#ddd9d0; --sand-d:#b8b4ab;
+  --bark:#7a7570; --ink:#1a1814; --white:#ffffff;
+  --r:18px; --r-lg:22px;
+  --sh-sm:0 2px 8px rgba(26,24,20,.07);
+  --sh-md:0 6px 24px rgba(26,24,20,.11);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px}
+body{background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased}
+body{overflow-x:hidden}
+
+/* SHELL */
+.shell{max-width:420px;margin:0 auto;padding-bottom:100px}
+
+/* TOP NAV */
+.topnav{
+  position:sticky;top:0;z-index:220;
+  background:var(--forest);
+  padding:10px 12px 12px;
+  box-shadow:0 8px 20px rgba(26,92,58,.24);
+}
+.statusbar{display:flex;align-items:center;justify-content:space-between;color:#fff;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:0 6px 10px}
+.statusbar-center{width:72px;height:14px;border-radius:999px;background:#18462e;position:relative}
+.statusbar-center::after{content:'';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:8px;height:8px;border-radius:50%;background:#143824}
+.statusbar-right{display:flex;align-items:center;gap:4px}
+.signal{display:flex;align-items:flex-end;gap:2px;height:10px}
+.signal span{display:block;width:2px;background:#d9efe4;border-radius:1px}
+.signal span:nth-child(1){height:3px;opacity:.45}
+.signal span:nth-child(2){height:5px;opacity:.65}
+.signal span:nth-child(3){height:7px;opacity:.82}
+.signal span:nth-child(4){height:9px}
+.navmain{display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:28px;height:28px;border-radius:9px;background:#ef7b2d;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.28)}
+.brand-name{font-size:15px;font-weight:800;color:#fff;letter-spacing:-.2px}
+.nav-right{display:flex;align-items:center;gap:8px;position:relative}
+.live-pill{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 8px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.15);font-size:10px;font-weight:700;color:#fff}
+.live-pill::before{content:'';width:5px;height:5px;border-radius:50%;background:#fff;opacity:.92}
+.icon-btn{width:28px;height:28px;border:none;border-radius:50%;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;color:#fff}
+.icon-btn svg{width:15px;height:15px}
+.nbadge{position:absolute;top:-3px;right:-2px;width:15px;height:15px;border-radius:50%;background:var(--ember);color:#fff;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--forest)}
+.avatar-btn{width:30px;height:30px;border:none;border-radius:50%;background:#d58a2e;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.profile-menu{position:absolute;top:42px;right:0;width:188px;background:#f5f2ec;border:1px solid #dcd5cb;border-radius:18px;box-shadow:0 16px 36px rgba(26,24,20,.18);overflow:hidden;display:none}
+.profile-menu.open{display:block}
+.menu-head{display:flex;align-items:center;gap:10px;padding:12px;background:#ebe5db}
+.menu-avatar{width:34px;height:34px;border-radius:50%;background:var(--forest);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0}
+.menu-name{font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px}
+.menu-sub{font-size:10px;color:var(--bark);margin-top:2px}
+.menu-item{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;background:transparent;border:none;border-top:1px solid #e1dbd1;cursor:pointer;text-align:left;font-family:inherit;font-size:12px;font-weight:700;color:var(--ink)}
+.menu-item svg{width:16px;height:16px;flex-shrink:0}
+.menu-item.danger{color:#d65a2e}
+.menu-item:hover{background:#f0ebe2}
+
+/* SECTION LABELS */
+.sec{display:flex;align-items:center;justify-content:space-between;padding:0 18px;margin-bottom:12px}
+.sec-title{font-family:'Fraunces',serif;font-size:18px;font-weight:600;letter-spacing:-.2px}
+.sec-title em{font-style:italic;color:var(--forest)}
+.sec-link{font-size:12px;font-weight:600;color:var(--bark);cursor:pointer;display:flex;align-items:center;gap:4px;transition:color .15s}
+.sec-link:hover{color:var(--forest)}
+.sec-lbl{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--bark);padding:0 18px;margin-bottom:12px}
+
+/* STAT CARDS */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px;padding:0 16px}
+.scard{background:var(--white);border:1.5px solid var(--sand);border-radius:var(--r);padding:16px;box-shadow:var(--sh-sm);position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s;cursor:default;animation:fuA .5s ease both}
+.scard:hover{transform:translateY(-2px);box-shadow:var(--sh-md)}
+.scard.dk{background:var(--forest);border-color:var(--forest-l)}
+.scard::before{content:'';position:absolute;top:0;left:0;right:0;height:2.5px;background:linear-gradient(90deg,var(--forest),var(--ember));border-radius:2.5px 2.5px 0 0}
+.scard.dk::before{background:linear-gradient(90deg,rgba(255,255,255,.3),rgba(255,255,255,.06))}
+.sc-lbl{font-size:9.5px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--bark);margin-bottom:9px}
+.scard.dk .sc-lbl{color:rgba(255,255,255,.55)}
+.sc-val{font-family:'Fraunces',serif;font-size:30px;font-weight:900;letter-spacing:-1px;line-height:1;color:var(--ink)}
+.scard.dk .sc-val{color:#fff}
+.sc-cur{font-size:17px}
+.spark{height:34px;margin:9px 0 8px}
+.spark svg{width:100%;height:100%}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;padding:4px 9px;border-radius:8px}
+.b-dk{background:rgba(255,255,255,.14);color:rgba(255,255,255,.9)}
+.b-sync{background:var(--blue-xl);color:var(--blue)}
+.b-ok{background:var(--forest-xl);color:var(--forest)}
+.b-warn{background:var(--ember-xl);color:var(--ember)}
+.scard:nth-child(1){animation-delay:.04s}.scard:nth-child(2){animation-delay:.09s}
+.scard:nth-child(3){animation-delay:.14s}.scard:nth-child(4){animation-delay:.19s}
+
+/* QUICK ACTIONS */
+.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:0 16px}
+.act{background:var(--white);border:1.5px solid var(--sand);border-radius:var(--r);padding:13px 6px 11px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:all .2s;box-shadow:var(--sh-sm)}
+.act:hover{background:var(--forest);border-color:var(--forest-l);transform:translateY(-2px);box-shadow:0 8px 20px rgba(26,92,58,.25)}
+.act:hover .aic{background:rgba(255,255,255,.15)}
+.act:hover .albl{color:#fff}
+.aic{width:38px;height:38px;border-radius:11px;background:var(--parchment);display:flex;align-items:center;justify-content:center;transition:background .2s}
+.albl{font-size:10px;font-weight:600;color:var(--bark);transition:color .2s;text-align:center;line-height:1.3}
+
+/* WIDE CARD */
+.wcard{background:var(--white);border:1.5px solid var(--sand);border-radius:var(--r-lg);padding:20px 18px;margin:0 16px;box-shadow:var(--sh-sm);position:relative;overflow:hidden;animation:fuA .5s .22s ease both}
+.wcard::before{content:'';position:absolute;top:0;left:0;right:0;height:2.5px;background:linear-gradient(90deg,var(--forest),var(--ember))}
+.wcard-h{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px}
+.wcard-t{font-family:'Fraunces',serif;font-size:17px;font-weight:600;letter-spacing:-.2px}
+.wcard-s{font-size:11px;color:var(--bark);margin-top:2px}
+.leg-row{display:flex;gap:13px}
+.leg{display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;color:var(--bark)}
+.leg-sq{width:9px;height:9px;border-radius:2.5px}
+
+/* BAR CHART */
+.bchart{display:flex;align-items:flex-end;gap:7px;margin-top:16px;height:96px}
+.bgrp{display:flex;align-items:flex-end;gap:3px;flex:1}
+.bar{flex:1;border-radius:5px 5px 0 0;min-height:5px;cursor:pointer;transition:opacity .15s}
+.bar:hover{opacity:.72}
+.bg{background:var(--forest)}
+.bo{background:var(--ember);opacity:.7}
+.blabels{display:flex;gap:7px;margin-top:9px}
+.blab{flex:1;text-align:center;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--bark)}
+
+/* DONUT */
+.donut-row{display:flex;align-items:center;gap:22px;margin-top:16px}
+.dwrap{position:relative;width:92px;height:92px;flex-shrink:0}
+.dwrap svg{width:92px;height:92px;transform:rotate(-90deg)}
+.dcenter{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.dval{font-family:'Fraunces',serif;font-size:16px;font-weight:900;line-height:1}
+.dlbl{font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--bark);margin-top:2px}
+.clist{flex:1;display:flex;flex-direction:column;gap:10px}
+.crow{display:flex;flex-direction:column;gap:4px}
+.ctop{display:flex;justify-content:space-between;align-items:center}
+.cname{font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px}
+.cdot{width:8px;height:8px;border-radius:50%}
+.cpct{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--bark)}
+.ctrack{height:4px;background:var(--parchment);border-radius:4px;overflow:hidden}
+.cfill{height:100%;border-radius:4px}
+
+/* ── TRIP CARDS ── */
+.trips{display:flex;flex-direction:column;gap:11px;padding:0 16px}
+.tcard{background:var(--white);border:1.5px solid var(--sand);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-sm);transition:all .2s;animation:fuA .5s ease both}
+.tcard:hover{box-shadow:var(--sh-md);transform:translateY(-2px)}
+.tcard:nth-child(1){animation-delay:.05s}.tcard:nth-child(2){animation-delay:.12s}.tcard:nth-child(3){animation-delay:.19s}
+.tcard.tc-delay{border-left:3.5px solid var(--red)}
+.tcard.tc-route{border-left:3.5px solid var(--forest)}
+.tcard.tc-sched{border-left:3.5px solid var(--gold)}
+
+/* card top bar: plate + status + "DRIVER" label */
+.tc-top{display:flex;align-items:center;gap:10px;padding:13px 13px 0}
+.plate{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;background:var(--ink);color:var(--cream);padding:5px 10px;border-radius:7px;letter-spacing:1.8px;white-space:nowrap}
+.tc-status{flex:1}
+.chip{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:4px 10px;border-radius:7px;display:inline-flex;align-items:center;gap:4px}
+.ch-del{background:var(--red-xl);color:var(--red)}
+.ch-rte{background:var(--forest-xl);color:var(--forest)}
+.ch-sch{background:var(--gold-xl);color:var(--gold)}
+.driver-lbl-sm{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--bark)}
+
+/* route row */
+.tc-body{padding:10px 13px 13px}
+.route-row{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.rt-city{font-size:14px;font-weight:700;color:var(--ink);white-space:nowrap;flex-shrink:0}
+/* bar container – fills all space between the two city labels */
+.rt-prog{flex:1;position:relative;height:32px;min-width:0}
+/* the grey track, pinned to vertical centre */
+.rt-track{position:absolute;left:0;right:0;top:50%;margin-top:-3px;height:6px;background:var(--parchment);border-radius:6px;box-shadow:inset 0 1px 2px rgba(0,0,0,.07);overflow:hidden}
+/* coloured fill */
+.rt-fill{height:100%;border-radius:6px;min-width:4px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.rf-route{background:linear-gradient(90deg,var(--forest),var(--forest-l))}
+.rf-delay{background:linear-gradient(90deg,var(--red),#f87171)}
+.rf-sched{background:var(--sand-d);opacity:.4}
+/* truck emoji centred ON the bar at the progress point */
+.rt-truck-wrap{position:absolute;top:50%;transform:translate(-50%,-55%);font-size:16px;line-height:1;transition:left .8s cubic-bezier(.4,0,.2,1);pointer-events:none;z-index:2}
+/* % label just below the truck */
+.rt-pct-lbl{position:absolute;top:calc(50% + 8px);transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--bark);letter-spacing:.4px;white-space:nowrap;transition:left .8s cubic-bezier(.4,0,.2,1)}
+
+/* meta + driver row */
+.tc-meta{display:flex;align-items:center;gap:0;padding-top:10px;border-top:1px solid var(--parchment)}
+.tm{flex:1}
+.tm+.tm{border-left:1px solid var(--parchment);padding-left:12px}
+.tm-lbl{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--bark);margin-bottom:3px}
+.tm-val{font-size:12.5px;font-weight:700;color:var(--ink)}
+.tm-val.g{color:var(--forest)}.tm-val.r{color:var(--red)}.tm-val.au{color:var(--gold)}
+
+.dchip{display:inline-flex;align-items:center;gap:6px;background:var(--forest-xl);border:1px solid rgba(26,92,58,.18);border-radius:9px;padding:5px 10px 5px 6px;margin-left:auto}
+.dav{width:24px;height:24px;border-radius:7px;background:var(--forest);color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.dname{font-size:11.5px;font-weight:700;color:var(--forest);letter-spacing:.2px}
+
+/* ── FLEET LIVE MAP ── */
+.mcard{background:var(--white);border:1.5px solid var(--sand);border-radius:var(--r-lg);margin:0 16px;overflow:hidden;box-shadow:var(--sh-sm);animation:fuA .5s .28s ease both}
+.mhead{padding:14px 16px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--parchment)}
+.mhead-l .mt{font-size:13px;font-weight:700;color:var(--ink)}
+.mhead-l .ms{font-size:10.5px;color:var(--bark);margin-top:2px}
+.mleg{display:flex;gap:11px}
+.mleg-item{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:600;color:var(--bark)}
+.mleg-sq{width:8px;height:8px;border-radius:2px}
+
+/* map canvas */
+.mapbox{position:relative;height:195px;overflow:hidden;background:linear-gradient(160deg,#f0f4f1 0%,#e8eee9 55%,#edf2ed 100%)}
+/* grid lines */
+.mapbox::before{content:'';position:absolute;inset:0;background:linear-gradient(rgba(200,215,205,.5) 1px,transparent 1px) 0 0/26px 26px,linear-gradient(90deg,rgba(200,215,205,.5) 1px,transparent 1px) 0 0/26px 26px;pointer-events:none}
+
+.road-svg{position:absolute;inset:0;width:100%;height:100%}
+
+/* truck markers */
+.tmark{position:absolute;display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-50%);z-index:10}
+.tpin{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;border:2.5px solid #fff;box-shadow:0 4px 14px rgba(0,0,0,.22);position:relative}
+.tpin::after{content:'';position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);border-left:5px solid transparent;border-right:5px solid transparent}
+.tp-g{background:var(--forest)}.tp-g::after{border-top:7px solid var(--forest)}
+.tp-o{background:var(--ember)}.tp-o::after{border-top:7px solid var(--ember)}
+.tp-s{background:var(--sand-d)}.tp-s::after{border-top:7px solid var(--sand-d)}
+.tpulse{position:absolute;inset:-7px;border-radius:50%;border:2px solid var(--forest);animation:ripple 2.2s ease-out infinite}
+@keyframes ripple{0%{transform:scale(1);opacity:.55}100%{transform:scale(2.3);opacity:0}}
+.tlbl{background:rgba(26,24,20,.82);color:var(--cream);font-family:'JetBrains Mono',monospace;font-size:8px;padding:2px 7px;border-radius:4px;margin-top:7px;letter-spacing:.6px;white-space:nowrap}
+
+.city-pin{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;pointer-events:none}
+.city-dot{width:7px;height:7px;border-radius:50%;background:rgba(26,92,58,.55);border:1.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.city-name{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--bark);letter-spacing:.8px;text-transform:uppercase;font-weight:500;background:rgba(245,242,236,.82);padding:1px 5px;border-radius:3px}
+
+/* map footer */
+.mfoot{display:flex;align-items:center;justify-content:space-between;padding:12px 15px;border-top:1px solid var(--parchment)}
+.mfoot-l{display:flex;align-items:center;gap:9px}
+.mfoot-ico{font-size:18px}
+.mfoot-t{font-size:12px;font-weight:700;color:var(--ink)}
+.mfoot-s{font-size:10.5px;color:var(--bark);margin-top:1px}
+.exp-btn{background:var(--forest);color:#fff;font-size:11.5px;font-weight:700;letter-spacing:.4px;padding:9px 15px;border-radius:11px;border:none;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 4px 14px rgba(26,92,58,.32);transition:all .2s}
+.exp-btn:hover{background:var(--forest-l);transform:scale(1.04)}
+
+/* ── GAP ── */
+.gap{height:20px}.gap-sm{height:12px}
+
+/* ── BOTTOM NAV ── */
+.bnav{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:420px;max-width:100%;z-index:300;
+  background:rgba(245,242,236,.94);
+  backdrop-filter:blur(24px) saturate(1.5);
+  -webkit-backdrop-filter:blur(24px) saturate(1.5);
+  border-top:1.5px solid var(--sand);
+}
+
+.bnav-inner{display:flex;align-items:stretch;height:64px;padding:0 4px}
+
+.nt{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;position:relative;border:none;background:transparent;padding:0;-webkit-tap-highlight-color:transparent;transition:transform .15s}
+.nt:active{transform:scale(.9)}
+
+/* active indicator */
+.nt.on::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:26px;height:2.5px;border-radius:0 0 3px 3px;background:linear-gradient(90deg,var(--forest),var(--ember))}
+
+.ni{width:40px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;transition:background .2s}
+.nt.on .ni{background:rgba(26,92,58,.11)}
+
+.nsvg{width:22px;height:22px;stroke:var(--bark);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s}
+.nt.on .nsvg{stroke:var(--forest)}
+
+.nl{font-size:10px;font-weight:600;color:var(--bark);line-height:1;transition:color .2s;letter-spacing:.2px}
+.nt.on .nl{color:var(--forest)}
+
+/* FAB */
+.nfab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;border:none;background:transparent;margin-top:-16px;-webkit-tap-highlight-color:transparent}
+.fab-circle{width:52px;height:52px;border-radius:16px;background:linear-gradient(145deg,var(--forest-l),var(--forest-d));display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(26,92,58,.42),0 2px 6px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.14);transition:all .2s}
+.fab-circle:hover{transform:scale(1.08);box-shadow:0 8px 28px rgba(26,92,58,.52)}
+.fab-circle:active{transform:scale(.94)}
+.fab-lbl{font-size:10px;font-weight:700;color:var(--forest);letter-spacing:.3px}
+
+/* ANIMATIONS */
+@keyframes fuA{from{opacity:0;transform:translateY(13px)}to{opacity:1;transform:translateY(0)}}
+@keyframes growBar{from{transform:scaleY(0);transform-origin:bottom;opacity:0}to{transform:scaleY(1);transform-origin:bottom;opacity:1}}
+
+@media (max-width: 390px) {
+  .shell { max-width: 100%; }
+  .sec, .sec-lbl { padding-left: 14px; padding-right: 14px; }
+  .grid2, .actions, .trips { padding-left: 14px; padding-right: 14px; }
+  .grid2, .actions { gap: 9px; }
+  .wcard, .mcard { margin-left: 14px; margin-right: 14px; }
+  .wcard { padding: 18px 14px; }
+  .wcard-h { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .leg-row { flex-wrap: wrap; gap: 8px 12px; }
+  .donut-row { align-items: flex-start; gap: 14px; }
+  .clist { min-width: 0; }
+  .cname, .cpct { font-size: 11px; }
+  .mhead { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .mleg { flex-wrap: wrap; row-gap: 6px; }
+  .tc-top { flex-wrap: wrap; }
+  .driver-lbl-sm { margin-left: auto; }
+  .tc-meta { flex-wrap: wrap; gap: 10px; }
+  .tm { min-width: calc(50% - 5px); }
+  .tm + .tm { border-left: none; padding-left: 0; }
+  .dchip { width: 100%; margin-left: 0; justify-content: flex-start; }
+}
+
+@media (max-width: 350px) {
+  .grid2 { grid-template-columns: 1fr; }
+  .actions { grid-template-columns: repeat(2, 1fr); }
+  .donut-row { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- TOP NAV -->
+  <nav class="topnav">
+    <div class="statusbar">
+      <div id="statusClock">20:39</div>
+      <div class="statusbar-center"></div>
+      <div class="statusbar-right">
+        <div class="signal"><span></span><span></span><span></span><span></span></div>
+      </div>
+    </div>
+    <div class="navmain">
+      <div class="brand" id="brandHomeBtn" role="button" tabindex="0" aria-label="Go to dashboard home">
+        <div class="logo" aria-hidden="true">🚚</div>
+        <div class="brand-name">FleetOS</div>
+      </div>
+      <div class="nav-right">
+        <div class="live-pill" id="livePill">1 live</div>
+        <button class="icon-btn" id="bellBtn" type="button" aria-label="Notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 3a5 5 0 0 0-5 5v2.3c0 .7-.2 1.3-.6 1.9L5 14.5h14l-1.4-2.3c-.4-.6-.6-1.2-.6-1.9V8a5 5 0 0 0-5-5z"/>
+            <path d="M10 18a2 2 0 0 0 4 0"/>
+          </svg>
+          <div class="nbadge" id="headerAlertCount">5</div>
+        </button>
+        <button class="avatar-btn" id="avatarBtn" type="button" aria-label="Profile menu">YS</button>
+        <div class="profile-menu" id="profileMenu">
+          <div class="menu-head">
+            <div class="menu-avatar" id="menuAvatar">YS</div>
+            <div>
+              <div class="menu-name" id="menuName">yogender shekhawat</div>
+              <div class="menu-sub" id="menuCompany">unique logistics</div>
+            </div>
+          </div>
+          <button class="menu-item" id="menuFleetRegisterBtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18"/><path d="M7 3v8"/><path d="M17 3v8"/><rect x="4" y="5" width="16" height="15" rx="2"/></svg>
+            Fleet Register
+          </button>
+          <button class="menu-item" id="menuDriverRosterBtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>
+            Driver Roster
+          </button>
+          <button class="menu-item" id="menuLogTripBtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            Log New Trip
+          </button>
+          <button class="menu-item danger" id="signOutBtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+            Sign Out
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="gap"></div>
+  <div class="sec-lbl">Overview</div>
+
+  <!-- STAT GRID -->
+  <div class="grid2">
+    <div class="scard">
+      <div class="sc-lbl">Monthly Revenue</div>
+      <div class="sc-val" id="monthlyRevenueValue"><span class="sc-cur">₹</span>1.0L</div>
+      <div class="spark"><svg viewBox="0 0 80 34" preserveAspectRatio="none">
+        <polyline points="0,28 13,22 26,25 39,17 52,13 65,9 80,5" fill="none" stroke="var(--forest)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".4"/>
+        <circle cx="80" cy="5" r="3" fill="var(--forest)" opacity=".7"/>
+      </svg></div>
+      <span class="badge b-ok" id="monthlyRevenueBadge">↑ 12% vs last month</span>
+    </div>
+    <div class="scard">
+      <div class="sc-lbl">Active Trips</div>
+      <div class="sc-val" id="activeTripsValue">1</div>
+      <div class="spark"><svg viewBox="0 0 80 34" preserveAspectRatio="none">
+        <polyline points="0,26 13,20 26,24 39,15 52,19 65,13 80,17" fill="none" stroke="var(--forest)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".4"/>
+        <circle cx="80" cy="17" r="3" fill="var(--forest)" opacity=".7"/>
+      </svg></div>
+      <span class="badge b-sync" id="activeTripsBadge">⟳ Real-time</span>
+    </div>
+    <div class="scard">
+      <div class="sc-lbl">Fleet Utility</div>
+      <div class="sc-val" id="fleetUtilityValue">100<span style="font-size:17px">%</span></div>
+      <div class="spark"><svg viewBox="0 0 80 34" preserveAspectRatio="none">
+        <polyline points="0,30 13,25 26,21 39,17 52,15 65,13 80,10" fill="none" stroke="var(--ember)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".5"/>
+        <circle cx="80" cy="10" r="3" fill="var(--ember)" opacity=".8"/>
+      </svg></div>
+      <span class="badge b-ok" id="fleetUtilityBadge">✓ Healthy</span>
+    </div>
+    <div class="scard">
+      <div class="sc-lbl">Invoices</div>
+      <div class="sc-val" id="invoicesValue">1</div>
+      <div class="spark"><svg viewBox="0 0 80 34" preserveAspectRatio="none">
+        <polyline points="0,24 13,18 26,22 39,13 52,19 65,13 80,9" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".5"/>
+        <circle cx="80" cy="9" r="3" fill="var(--gold)" opacity=".8"/>
+      </svg></div>
+      <span class="badge b-warn" id="invoicesBadge">⚑ Pending</span>
+    </div>
+  </div>
+
+  <div class="gap"></div>
+
+  <!-- REVENUE VS COST -->
+  <div class="wcard" style="padding:20px 0 0">
+    <div class="wcard-h" style="padding:0 18px">
+      <div><div class="wcard-t">Revenue vs Cost</div><div class="wcard-s" id="chartSubtitle">6-month view · ₹ Lakhs</div></div>
+      <div class="leg-row">
+        <div class="leg"><div class="leg-sq" style="background:var(--forest)"></div>Revenue</div>
+        <div class="leg"><div class="leg-sq" style="background:var(--ember);opacity:.7"></div>Cost</div>
+      </div>
+    </div>
+
+    <!-- chart area with Y axis -->
+    <div style="display:flex;margin-top:16px;padding:0 18px 0 0">
+      <!-- Y axis labels -->
+      <div id="yAxis" style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;padding:0 8px 0 12px;width:44px;flex-shrink:0">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--bark);white-space:nowrap" id="yTop">12L</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--bark);white-space:nowrap" id="yMid">6L</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--bark);white-space:nowrap">0</div>
+      </div>
+      <!-- chart (fills full width, no scroll needed for 6 bars) -->
+      <div style="flex:1;position:relative">
+        <div id="chartInner" style="display:flex;align-items:flex-end;gap:6px;height:110px;width:100%"></div>
+        <!-- horizontal gridlines -->
+        <div style="position:absolute;inset:0;pointer-events:none;height:110px">
+          <div style="position:absolute;top:0;left:0;right:0;height:1px;background:var(--parchment)"></div>
+          <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:var(--parchment)"></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;height:1px;background:var(--parchment)"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- X axis month labels -->
+    <div style="display:flex;margin:0 0 0 44px;padding:0 18px 0 0">
+      <div id="chartLabels" style="display:flex;gap:6px;width:100%"></div>
+    </div>
+
+    <!-- year + nav -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:14px;padding:10px 0 6px">
+      <button id="prevBatch" style="background:none;border:none;cursor:pointer;color:var(--bark);font-size:16px;line-height:1;padding:4px 8px">‹</button>
+      <div id="batchYear" style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--bark);letter-spacing:1px"></div>
+      <button id="nextBatch" style="background:none;border:none;cursor:pointer;color:var(--bark);font-size:16px;line-height:1;padding:4px 8px">›</button>
+    </div>
+
+    <!-- profit boxes -->
+    <div style="border-top:1px solid var(--parchment);padding:14px 18px 18px">
+      <div style="font-size:9.5px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--bark);margin-bottom:10px">Monthly Profit</div>
+      <div id="profitBoxes" style="display:flex;gap:8px;width:100%"></div>
+    </div>
+  </div>
+
+  <div class="gap"></div>
+
+  <!-- COST BREAKDOWN -->
+  <div class="wcard">
+    <div class="wcard-h">
+      <div><div class="wcard-t">Cost Breakdown</div><div class="wcard-s" id="costBreakdownSubtitle">This month's expense split</div></div>
+    </div>
+    <div class="donut-row" id="costBreakdownSection">
+      <div class="dwrap">
+        <svg viewBox="0 0 92 92">
+          <circle cx="46" cy="46" r="36" fill="none" stroke="var(--parchment)" stroke-width="13"/>
+          <circle cx="46" cy="46" r="36" fill="none" stroke="var(--forest)" stroke-width="13" stroke-dasharray="154 72" stroke-linecap="round"/>
+          <circle cx="46" cy="46" r="36" fill="none" stroke="var(--ember)" stroke-width="13" stroke-dasharray="47 179" stroke-dashoffset="-154" stroke-linecap="round"/>
+          <circle cx="46" cy="46" r="36" fill="none" stroke="var(--gold)" stroke-width="13" stroke-dasharray="25 201" stroke-dashoffset="-201" stroke-linecap="round"/>
+        </svg>
+        <div class="dcenter"><div class="dval">₹2.1L</div><div class="dlbl">Total</div></div>
+      </div>
+      <div class="clist">
+        <div class="crow"><div class="ctop"><div class="cname"><span class="cdot" style="background:var(--forest)"></span>Fuel</div><div class="cpct">68%</div></div><div class="ctrack"><div class="cfill" style="width:68%;background:var(--forest)"></div></div></div>
+        <div class="crow"><div class="ctop"><div class="cname"><span class="cdot" style="background:var(--ember)"></span>Maintenance</div><div class="cpct">21%</div></div><div class="ctrack"><div class="cfill" style="width:21%;background:var(--ember)"></div></div></div>
+        <div class="crow"><div class="ctop"><div class="cname"><span class="cdot" style="background:var(--gold)"></span>Tolls</div><div class="cpct">11%</div></div><div class="ctrack"><div class="cfill" style="width:11%;background:var(--gold)"></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gap"></div>
+
+  <!-- RECENT TRIPS -->
+  <div class="sec">
+    <div class="sec-title">Recent <em>Trips</em></div>
+    <div class="sec-link" id="viewAllTripsLink">View All →</div>
+  </div>
+
+  <div class="trips" id="recentTripsList">
+
+    <!-- Delayed -->
+    <div class="tcard tc-delay">
+      <div class="tc-top">
+        <div class="plate">RJ 42 GB 2225</div>
+        <div class="tc-status"><div class="chip ch-del">● Delayed</div></div>
+        <div class="driver-lbl-sm">DRIVER</div>
+      </div>
+      <div class="tc-body">
+        <div class="route-row">
+          <div class="rt-city">Mumbai</div>
+          <div class="rt-prog">
+            <div class="rt-track"><div class="rt-fill rf-delay" style="width:68%"></div></div>
+            <div class="rt-truck-wrap" style="left:68%;transform:translate(-50%,-55%) scaleX(-1)">🚛</div>
+            <div class="rt-pct-lbl" style="left:68%">68%</div>
+          </div>
+          <div class="rt-city">Kishangarh</div>
+        </div>
+        <div class="tc-meta">
+          <div class="tm"><div class="tm-lbl">ETA</div><div class="tm-val r">+2h Late</div></div>
+          <div class="tm"><div class="tm-lbl">Distance</div><div class="tm-val">1,248 km</div></div>
+          <div class="dchip">
+            <div class="dav">SJ</div>
+            <div class="dname">Satish Jangid</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- En Route -->
+    <div class="tcard tc-route">
+      <div class="tc-top">
+        <div class="plate">MH 04 AX 7832</div>
+        <div class="tc-status"><div class="chip ch-rte">● En Route</div></div>
+        <div class="driver-lbl-sm">DRIVER</div>
+      </div>
+      <div class="tc-body">
+        <div class="route-row">
+          <div class="rt-city">Pune</div>
+          <div class="rt-prog">
+            <div class="rt-track"><div class="rt-fill rf-route" style="width:35%"></div></div>
+            <div class="rt-truck-wrap" style="left:35%;transform:translate(-50%,-55%) scaleX(-1)">🚛</div>
+            <div class="rt-pct-lbl" style="left:35%">35%</div>
+          </div>
+          <div class="rt-city">Delhi</div>
+        </div>
+        <div class="tc-meta">
+          <div class="tm"><div class="tm-lbl">ETA</div><div class="tm-val g">14h 30m</div></div>
+          <div class="tm"><div class="tm-lbl">Distance</div><div class="tm-val">1,412 km</div></div>
+          <div class="dchip">
+            <div class="dav">RK</div>
+            <div class="dname">Rahul Kumar</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scheduled -->
+    <div class="tcard tc-sched">
+      <div class="tc-top">
+        <div class="plate">KA 09 BZ 2211</div>
+        <div class="tc-status"><div class="chip ch-sch">◷ Scheduled</div></div>
+        <div class="driver-lbl-sm">DRIVER</div>
+      </div>
+      <div class="tc-body">
+        <div class="route-row">
+          <div class="rt-city">Bangalore</div>
+          <div class="rt-prog">
+            <div class="rt-track"><div class="rt-fill rf-sched" style="width:0%"></div></div>
+          </div>
+          <div class="rt-city">Pune</div>
+        </div>
+        <div class="tc-meta">
+          <div class="tm"><div class="tm-lbl">Departs</div><div class="tm-val au">Tomorrow 6AM</div></div>
+          <div class="tm"><div class="tm-lbl">Distance</div><div class="tm-val">838 km</div></div>
+          <div class="dchip" style="background:var(--gold-xl);border-color:rgba(201,147,10,.2)">
+            <div class="dav" style="background:var(--gold)">VP</div>
+            <div class="dname" style="color:var(--gold)">Vijay Patil</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="gap"></div>
+</div><!-- /shell -->
+
+<!-- ── BOTTOM NAV ── -->
+<nav class="bnav">
+  <div class="bnav-inner">
+
+    <button class="nt on" id="nt-home">
+      <div class="ni">
+        <svg class="nsvg" viewBox="0 0 24 24">
+          <path d="M3 10L12 3l9 7v11h-6v-5H9v5H3z"/>
+        </svg>
+      </div>
+      <span class="nl">Home</span>
+    </button>
+
+    <button class="nt" id="nt-trips">
+      <div class="ni">
+        <svg class="nsvg" viewBox="0 0 24 24">
+          <rect x="1" y="9" width="22" height="11" rx="2.5"/>
+          <path d="M6 9V7a3 3 0 016 0v2M16 9V6a2 2 0 014 0v3"/>
+          <circle cx="7" cy="20" r="2"/><circle cx="17" cy="20" r="2"/>
+        </svg>
+      </div>
+      <span class="nl">Trips</span>
+    </button>
+
+    <!-- FAB -->
+    <button class="nfab" id="newTripFab" type="button">
+      <div class="fab-circle">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </div>
+      <span class="fab-lbl">New Trip</span>
+    </button>
+
+    <button class="nt" id="nt-finance">
+      <div class="ni">
+        <svg class="nsvg" viewBox="0 0 24 24">
+          <rect x="2" y="5" width="20" height="15" rx="2"/>
+          <path d="M2 10h20"/>
+          <path d="M7 15h.01M11 15h4"/>
+        </svg>
+      </div>
+      <span class="nl">Finance</span>
+    </button>
+
+    <button class="nt" id="nt-insights">
+      <div class="ni">
+        <svg class="nsvg" viewBox="0 0 24 24">
+          <path d="M2 20h20M6 20V12M10 20V8M14 20V4M18 20v-6"/>
+        </svg>
+      </div>
+      <span class="nl">Insights</span>
+    </button>
+
+  </div>
+</nav>
+
+<script>
+const API_BASE = (window.FLEETOS_API_BASE || window.location.origin || '').replace(/\/+$/, '');
+const AUTH_KEYS = ['fleetToken', 'gravityToken', 'token'];
+const ROUTES = {
+  home: '/app/dashboard.html?page=dashboard',
+  logTrip: '/app/log-trip.html',
+  addTruck: '/app/Fleetos%20Add%20Truck.html',
+  addDriver: '/app/Fleetos%20Add%20Driver.html',
+  trips: '/app/dashboard.html?page=trips',
+  liveTracking: '/app/dashboard.html?page=dashboard&modal=map',
+  fleet: '/app/dashboard.html?page=fleet',
+  drivers: '/app/dashboard.html?page=drivers',
+  invoices: '/app/dashboard.html?page=finance&tab=invoices',
+  ledger: '/app/dashboard.html?page=finance&tab=ledger',
+  reports: '/app/dashboard.html?page=finance&tab=pl',
+  insights: '/app/dashboard.html?page=insights',
+  alerts: '/app/dashboard.html?page=alerts'
+};
+const MAP_BASE = `
+  <svg class="road-svg" viewBox="0 0 388 195" preserveAspectRatio="none">
+    <path id="r1" d="M50 160 Q130 130 200 105 Q270 82 345 55" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="7" stroke-linecap="round"/>
+    <path d="M50 160 Q130 130 200 105 Q270 82 345 55" fill="none" stroke="var(--forest)" stroke-width="1.5" stroke-dasharray="6 5" opacity=".3" stroke-linecap="round"/>
+    <path id="r1g" d="M50 160 Q130 130 200 105 Q270 82 345 55" fill="none" stroke="var(--forest)" stroke-width="2.5" opacity=".55"/>
+    <circle r="5" fill="var(--forest)" opacity=".85">
+      <animateMotion dur="4s" repeatCount="indefinite"><mpath href="#r1g"/></animateMotion>
+    </circle>
+    <circle r="9" fill="var(--forest)" opacity=".18">
+      <animateMotion dur="4s" repeatCount="indefinite"><mpath href="#r1g"/></animateMotion>
+    </circle>
+    <path d="M60 42 Q140 80 200 105 Q255 128 330 155" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="5" stroke-linecap="round"/>
+    <path d="M60 42 Q140 80 200 105 Q255 128 330 155" fill="none" stroke="var(--bark)" stroke-width="1" stroke-dasharray="4 6" opacity=".22"/>
+  </svg>
+  <div class="city-pin" style="left:13%;top:82%"><div class="city-dot"></div><div class="city-name">Kishangarh</div></div>
+  <div class="city-pin" style="right:8%;top:26%"><div class="city-dot"></div><div class="city-name">Mumbai</div></div>
+  <div class="city-pin" style="left:15%;top:20%"><div class="city-dot"></div><div class="city-name">Delhi</div></div>
+  <div class="city-pin" style="right:13%;top:78%"><div class="city-dot"></div><div class="city-name">Pune</div></div>
+`;
+
+function getStoredToken() {
+  for (const key of AUTH_KEYS) {
+    const value = localStorage.getItem(key);
+    if (value) return value;
+  }
+  return '';
+}
+
+function getStoredUser() {
+  const raw = localStorage.getItem('fleetUser') || localStorage.getItem('gravityUser');
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    return null;
+  }
+}
+
+function getInitials(name) {
+  return String(name || 'YS').split(/\s+/).filter(Boolean).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'YS';
+}
+
+function formatMoney(value) {
+  const amount = Number(value || 0);
+  return `₹${amount.toLocaleString('en-IN')}`;
+}
+
+function formatCompactMoney(value) {
+  const amount = Number(value || 0);
+  if (amount >= 10000000) return `${(amount / 10000000).toFixed(1)}Cr`;
+  if (amount >= 100000) return `${(amount / 100000).toFixed(1)}L`;
+  if (amount >= 1000) return `${(amount / 1000).toFixed(1)}K`;
+  return amount.toLocaleString('en-IN');
+}
+
+function formatGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning,';
+  if (hour < 17) return 'Good afternoon,';
+  return 'Good evening,';
+}
+
+function formatRelativeTime(value) {
+  if (!value) return 'Not synced yet';
+  const diffMs = Date.now() - new Date(value).getTime();
+  if (!Number.isFinite(diffMs)) return 'Not synced yet';
+  const mins = Math.max(0, Math.round(diffMs / 60000));
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  return `${days}d ago`;
+}
+
+function inferTripStatus(trip) {
+  const raw = String(trip.status || '').toLowerCase();
+  if (raw.includes('active')) return 'en_route';
+  if (raw.includes('completed')) return 'completed';
+  if (raw.includes('scheduled')) return 'scheduled';
+  const end = trip.endDateRaw || trip.end_date_raw || trip.endDate || trip.end_date;
+  return end ? 'scheduled' : 'en_route';
+}
+
+function estimateEta(trip) {
+  const distance = Number(trip.distanceKm || trip.distance_km || 0);
+  if (!distance) return 'ETA pending';
+  const totalMinutes = Math.max(30, Math.round((distance / 45) * 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours <= 0) return `${minutes}m`;
+  if (minutes === 0) return `${hours}h`;
+  return `${hours}h ${minutes}m`;
+}
+
+async function fetchJson(path, { authenticated = true } = {}) {
+  const headers = {};
+  if (authenticated) {
+    const token = getStoredToken();
+    if (!token) throw new Error('Authentication required');
+    headers.Authorization = `Bearer ${token}`;
+  }
+  const response = await fetch(`${API_BASE}${path}`, { headers });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error || `Request failed: ${response.status}`);
+  }
+  return payload;
+}
+
+function setText(id, value) {
+  const node = document.getElementById(id);
+  if (node) node.textContent = value;
+}
+
+function goTo(route) {
+  if (!route) return;
+  window.location.href = route.startsWith('http') ? route : `${window.location.origin}${route}`;
+}
+
+function renderNeedsAuth(message) {
+  setText('mapHeadline', 'Live map unlocks after transporter login');
+  setText('mapFooterTitle', 'No live fleet session');
+  setText('mapFooterSubtitle', 'Authenticate to fetch protected dashboard APIs');
+  setText('livePill', '0 live');
+  setText('headerAlertCount', '0');
+}
+
+function renderStats(stats) {
+  const kpis = stats?.kpis || {};
+  setText('monthlyRevenueValue', formatMoney(kpis.totalRevenue || 0));
+  setText('monthlyRevenueBadge', `${kpis.revenueGrowth ? kpis.revenueGrowth + ' vs last month' : '↑ Live'}`);
+  // ensure badge colour matches light card
+  const revBadge = document.getElementById('monthlyRevenueBadge');
+  if (revBadge) { revBadge.className = 'badge b-ok'; }
+  setText('activeTripsValue', String(kpis.activeTrips || 0));
+  setText('activeTripsBadge', kpis.activeTrips ? '⟳ Real-time' : 'No trips live');
+  document.getElementById('fleetUtilityValue').innerHTML = `${Number(kpis.fleetUtilization || 0)}<span style="font-size:17px">%</span>`;
+  setText('fleetUtilityBadge', Number(kpis.fleetUtilization || 0) >= 70 ? '✓ Healthy' : 'Needs attention');
+  setText('invoicesValue', String(kpis.pendingInvoices || 0));
+  setText('invoicesBadge', Number(kpis.pendingInvoices || 0) ? '⚑ Pending' : '✓ Clear');
+  setText('livePill', `${Number(kpis.activeTrips || 0)} live`);
+  renderRevenueChart(stats?.charts?.revenueVsCost || []);
+  renderCostBreakdown(stats?.charts?.costBreakdown || []);
+}
+
+/* ── CHART STATE ── */
+let chartAllData = [];
+let chartBatchIndex = 0; // 0 = first half (Jan-Jun), 1 = second half (Jul-Dec)
+
+function buildChartBatches(points) {
+  // Group by year then split into H1 (Jan-Jun) and H2 (Jul-Dec)
+  const byYear = {};
+  points.forEach(p => {
+    const year = p.year || new Date().getFullYear();
+    if (!byYear[year]) byYear[year] = [];
+    byYear[year].push(p);
+  });
+  const batches = [];
+  Object.keys(byYear).sort().forEach(year => {
+    const months = byYear[year];
+    const h1 = months.filter(p => ['Jan','Feb','Mar','Apr','May','Jun'].includes(p.m));
+    const h2 = months.filter(p => ['Jul','Aug','Sep','Oct','Nov','Dec'].includes(p.m));
+    if (h1.length) batches.push({ year, label: `Jan – Jun ${year}`, data: h1 });
+    if (h2.length) batches.push({ year, label: `Jul – Dec ${year}`, data: h2 });
+  });
+  return batches;
+}
+
+function renderChartBatch(batches, idx) {
+  const batch = batches[Math.max(0, Math.min(idx, batches.length - 1))];
+  if (!batch) return;
+
+  const inner = document.getElementById('chartInner');
+  const labelsEl = document.getElementById('chartLabels');
+  const profitBoxes = document.getElementById('profitBoxes');
+  const yTop = document.getElementById('yTop');
+  const yMid = document.getElementById('yMid');
+  const batchYear = document.getElementById('batchYear');
+  const prevBtn = document.getElementById('prevBatch');
+  const nextBtn = document.getElementById('nextBatch');
+  if (!inner || !labelsEl || !profitBoxes) return;
+
+  const series = batch.data;
+  const max = Math.max(1, ...series.map(p => Math.max(Number(p.r||0), Number(p.c||0))));
+  // Round up to a clean number for 2 Y-axis labels
+  const topVal = Math.ceil(max / 100000) * 100000;
+  const midVal = topVal / 2;
+  const fmt = v => v >= 100000 ? `${(v/100000).toFixed(0)}L` : v >= 1000 ? `${(v/1000).toFixed(0)}K` : String(v);
+  if (yTop) yTop.textContent = fmt(topVal);
+  if (yMid) yMid.textContent = fmt(midVal);
+  if (batchYear) batchYear.textContent = batch.label;
+  if (prevBtn) prevBtn.style.opacity = idx <= 0 ? '.3' : '1';
+  if (nextBtn) nextBtn.style.opacity = idx >= batches.length - 1 ? '.3' : '1';
+
+  inner.innerHTML = series.map((p, i) => {
+    const rh = Math.max(4, Math.round((Number(p.r||0) / topVal) * 106));
+    const ch = Math.max(4, Math.round((Number(p.c||0) / topVal) * 106));
+    return `<div style="display:flex;align-items:flex-end;gap:3px;flex:1">
+      <div style="flex:1;height:${rh}px;background:var(--forest);border-radius:5px 5px 0 0;cursor:pointer;transition:opacity .15s" onmouseenter="this.style.opacity='.7'" onmouseleave="this.style.opacity='1'"></div>
+      <div style="flex:1;height:${ch}px;background:var(--ember);opacity:.75;border-radius:5px 5px 0 0;cursor:pointer;transition:opacity .15s" onmouseenter="this.style.opacity='.45'" onmouseleave="this.style.opacity='.75'"></div>
+    </div>`;
+  }).join('');
+
+  labelsEl.innerHTML = series.map(p =>
+    `<div style="flex:1;text-align:center;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--bark);padding-top:6px">${p.m}</div>`
+  ).join('');
+
+  const profits = series.map(p => Number(p.r||0) - Number(p.c||0));
+  profitBoxes.innerHTML = series.map((p, i) => {
+    const profit = profits[i];
+    const isPos = profit >= 0;
+    const color = isPos ? 'var(--forest)' : 'var(--red)';
+    const bg = isPos ? 'var(--forest-xl)' : 'var(--red-xl)';
+    const sign = isPos ? '+' : '';
+    return `<div style="flex:1;background:${bg};border-radius:10px;padding:8px 4px;text-align:center;min-width:0">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;color:var(--bark);margin-bottom:4px">${p.m}</div>
+      <div style="font-size:10px;font-weight:700;color:${color};line-height:1.2">${sign}${fmt(Math.abs(profit))}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderRevenueChart(points) {
+  // Inject current year if year field missing
+  const now = new Date();
+  const monthOrder = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const enriched = points.length ? points.map(p => ({ ...p, year: p.year || now.getFullYear() })) : [
+    { m:'Jan', r:0, c:0, year:now.getFullYear() },
+    { m:'Feb', r:0, c:0, year:now.getFullYear() },
+    { m:'Mar', r:0, c:0, year:now.getFullYear() },
+    { m:'Apr', r:0, c:0, year:now.getFullYear() },
+    { m:'May', r:0, c:0, year:now.getFullYear() },
+    { m:'Jun', r:0, c:0, year:now.getFullYear() },
+  ];
+
+  chartAllData = enriched;
+  const batches = buildChartBatches(enriched);
+
+  // Default to most recent batch
+  chartBatchIndex = batches.length - 1;
+  renderChartBatch(batches, chartBatchIndex);
+
+  const prevBtn = document.getElementById('prevBatch');
+  const nextBtn = document.getElementById('nextBatch');
+  prevBtn?.addEventListener('click', () => {
+    if (chartBatchIndex > 0) { chartBatchIndex--; renderChartBatch(batches, chartBatchIndex); }
+  });
+  nextBtn?.addEventListener('click', () => {
+    if (chartBatchIndex < batches.length - 1) { chartBatchIndex++; renderChartBatch(batches, chartBatchIndex); }
+  });
+}
+
+function renderCostBreakdown(items) {
+  const root = document.getElementById('costBreakdownSection');
+  if (!root) return;
+  if (!items.length) {
+    root.innerHTML = '<div style="font-size:12px;color:var(--bark)">No approved expenses recorded yet.</div>';
+    return;
+  }
+  const colors = ['var(--forest)', 'var(--ember)', 'var(--gold)', 'var(--blue)', 'var(--sand-d)'];
+  const normalized = items.map((item, index) => ({ ...item, color: colors[index % colors.length] }));
+  const total = normalized.reduce((sum, item) => sum + Number(item.value || 0), 0);
+  let offset = 0;
+  const circles = normalized.map((item) => {
+    const pct = total ? Number(item.value || 0) / total : 0;
+    const dash = `${(pct * 226.2).toFixed(2)} 226.2`;
+    const node = `<circle cx="46" cy="46" r="36" fill="none" stroke="${item.color}" stroke-width="13" stroke-dasharray="${dash}" stroke-dashoffset="-${offset.toFixed(2)}" stroke-linecap="round"/>`;
+    offset += pct * 226.2;
+    return node;
+  }).join('');
+  const legend = normalized.map((item) => {
+    const pct = total ? Math.round((Number(item.value || 0) / total) * 100) : 0;
+    return `<div class="crow"><div class="ctop"><div class="cname"><span class="cdot" style="background:${item.color}"></span>${item.label}</div><div class="cpct">${pct}%</div></div><div class="ctrack"><div class="cfill" style="width:${pct}%;background:${item.color}"></div></div></div>`;
+  }).join('');
+  root.innerHTML = `<div class="dwrap">
+      <svg viewBox="0 0 92 92">
+        <circle cx="46" cy="46" r="36" fill="none" stroke="var(--parchment)" stroke-width="13"/>
+        ${circles}
+      </svg>
+      <div class="dcenter"><div class="dval">${formatMoney(total)}</div><div class="dlbl">Total</div></div>
+    </div>
+    <div class="clist">${legend}</div>`;
+}
+
+function renderTrips(trips) {
+  const container = document.getElementById('recentTripsList');
+  if (!container) return;
+  if (!Array.isArray(trips) || !trips.length) {
+    container.innerHTML = '<div class="tcard"><div class="tc-body"><div class="tm-val">No trips logged yet.</div></div></div>';
+    return;
+  }
+  const recent = trips.slice(0, 3);
+  container.innerHTML = recent.map((trip) => {
+    const state = inferTripStatus(trip);
+    const className = state === 'scheduled' ? 'tc-sched' : (String(trip.status || '').toLowerCase().includes('delay') ? 'tc-delay' : 'tc-route');
+    const chipClass = state === 'scheduled' ? 'ch-sch' : (String(trip.status || '').toLowerCase().includes('delay') ? 'ch-del' : 'ch-rte');
+    const chipLabel = state === 'scheduled' ? '◷ Scheduled' : (String(trip.status || '').toLowerCase().includes('delay') ? '● Delayed' : '● En Route');
+    const metaLabel = state === 'scheduled' ? 'Departs' : 'ETA';
+    const metaValue = state === 'scheduled'
+      ? (trip.startDateRaw || trip.startDate || 'TBD')
+      : estimateEta(trip);
+    const distance = Number(trip.distanceKm || 0);
+    const initials = String(trip.driverText || 'NA').split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'NA';
+    const isDelayed = String(trip.status || '').toLowerCase().includes('delay');
+    const rawPct = Number(trip.progress ?? trip.progressPct ?? trip.completionPercent ?? (trip.completedKm && distance ? (trip.completedKm / distance) * 100 : 0));
+    const pct = state === 'scheduled' ? 0 : Math.min(100, Math.max(0, rawPct));
+    const fillCls = state === 'scheduled' ? 'rf-sched' : (isDelayed ? 'rf-delay' : 'rf-route');
+    const truckLeft = Math.min(93, Math.max(5, pct));
+    const showTruck = state !== 'scheduled';
+    return `<div class="tcard ${className}" data-route="${ROUTES.trips}">
+        <div class="tc-top">
+          <div class="plate">${trip.truckText || 'UNASSIGNED'}</div>
+          <div class="tc-status"><div class="chip ${chipClass}">${chipLabel}</div></div>
+          <div class="driver-lbl-sm">DRIVER</div>
+        </div>
+        <div class="tc-body">
+          <div class="route-row">
+            <div class="rt-city">${trip.origin || 'Origin'}</div>
+            <div class="rt-prog">
+              <div class="rt-track"><div class="rt-fill ${fillCls}" style="width:${Math.max(pct, state === 'scheduled' ? 0 : 2)}%"></div></div>
+              ${showTruck ? `<div class="rt-truck-wrap" style="left:${truckLeft}%;transform:translate(-50%,-55%) scaleX(-1)">🚛</div>` : ''}
+              ${(showTruck && pct > 0) ? `<div class="rt-pct-lbl" style="left:${truckLeft}%">${Math.round(pct)}%</div>` : ''}
+            </div>
+            <div class="rt-city">${trip.destination || 'Destination'}</div>
+          </div>
+          <div class="tc-meta">
+            <div class="tm"><div class="tm-lbl">${metaLabel}</div><div class="tm-val">${metaValue}</div></div>
+            <div class="tm"><div class="tm-lbl">Distance</div><div class="tm-val">${distance ? `${distance.toLocaleString('en-IN')} km` : 'Pending'}</div></div>
+            <div class="dchip">
+              <div class="dav">${initials}</div>
+              <div class="dname">${trip.driverText || 'Driver pending'}</div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+  container.querySelectorAll('.tcard[data-route]').forEach((card) => {
+    card.style.cursor = 'pointer';
+    card.addEventListener('click', () => goTo(card.dataset.route));
+  });
+}
+
+function renderMap(locations, trips) {
+  const mapBox = document.getElementById('fleetMapBox');
+  if (!mapBox) return;
+  const rows = Array.isArray(locations) ? locations : [];
+  const active = rows.filter((item) => item.location_enabled && item.last_ping);
+  const delayed = rows.filter((item) => item.location_alert);
+  const idle = rows.filter((item) => !item.location_enabled || !item.last_ping);
+  mapBox.innerHTML = MAP_BASE + rows.map((item, index) => {
+    const left = 18 + ((index * 23) % 60);
+    const top = 28 + ((index * 17) % 48);
+    const mode = item.location_alert ? 'o' : (item.location_enabled ? 'g' : 's');
+    return `<div class="tmark" style="left:${left}%;top:${top}%">
+        <div style="position:relative">
+          <div class="tpin tp-${mode}">🚛</div>
+          ${item.location_enabled ? '<div class="tpulse"></div>' : ''}
+        </div>
+        <div class="tlbl">${item.assigned_truck || item.active_trip_id || 'UNASSIGNED'}</div>
+      </div>`;
+  }).join('');
+  setText('mapHeadline', `${active.length} truck${active.length === 1 ? '' : 's'} tracked live · ${Math.max(0, delayed.length + idle.length)} attention`);
+  setText('mapFooterTitle', `${active.length} truck${active.length === 1 ? '' : 's'} tracked live`);
+  const freshest = rows.map((item) => item.last_ping).filter(Boolean).sort().pop();
+  setText('mapFooterSubtitle', freshest ? `GPS updated ${formatRelativeTime(freshest)}` : 'No driver location ping received yet');
+  const recentTripCount = Array.isArray(trips) ? trips.filter((trip) => inferTripStatus(trip) !== 'completed').length : 0;
+  if (!rows.length && recentTripCount) {
+    setText('mapHeadline', `${recentTripCount} trip${recentTripCount === 1 ? '' : 's'} active · waiting for driver GPS`);
+  }
+}
+
+function renderHeaderUser() {
+  const user = getStoredUser();
+  const name = user?.fullName || user?.companyName || 'FleetOS User';
+  const company = user?.companyName || 'unique logistics';
+  const initials = getInitials(name);
+  setText('menuName', name);
+  setText('menuCompany', company);
+  setText('avatarBtn', initials);
+  setText('menuAvatar', initials);
+}
+
+function updateClock() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  setText('statusClock', `${hh}:${mm}`);
+}
+
+function bindNav() {
+  document.querySelectorAll('.nt').forEach((button) => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('.nt').forEach((node) => node.classList.remove('on'));
+      button.classList.add('on');
+    });
+  });
+}
+
+function bindHeaderMenu() {
+  const avatarBtn = document.getElementById('avatarBtn');
+  const profileMenu = document.getElementById('profileMenu');
+  const signOutBtn = document.getElementById('signOutBtn');
+  const bellBtn = document.getElementById('bellBtn');
+  avatarBtn?.addEventListener('click', (event) => {
+    event.stopPropagation();
+    profileMenu?.classList.toggle('open');
+  });
+  bellBtn?.addEventListener('click', () => goTo(ROUTES.alerts));
+  document.getElementById('brandHomeBtn')?.addEventListener('click', () => goTo(ROUTES.home));
+  document.getElementById('brandHomeBtn')?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      goTo(ROUTES.home);
+    }
+  });
+  document.getElementById('menuFleetRegisterBtn')?.addEventListener('click', () => goTo(ROUTES.fleet));
+  document.getElementById('menuDriverRosterBtn')?.addEventListener('click', () => goTo(ROUTES.drivers));
+  document.getElementById('menuLogTripBtn')?.addEventListener('click', () => goTo(ROUTES.logTrip));
+  document.addEventListener('click', (event) => {
+    if (!profileMenu?.contains(event.target) && event.target !== avatarBtn) {
+      profileMenu?.classList.remove('open');
+    }
+  });
+  signOutBtn?.addEventListener('click', () => {
+    ['fleetToken', 'gravityToken', 'token', 'fleetUser', 'gravityUser'].forEach((key) => localStorage.removeItem(key));
+    window.location.href = 'Index%20-%20Landing%20Page.html';
+  });
+}
+
+function bindActionRoutes() {
+  document.getElementById('quickNewTrip')?.addEventListener('click', () => goTo(ROUTES.logTrip));
+  document.getElementById('quickAddTruck')?.addEventListener('click', () => goTo(ROUTES.addTruck));
+  document.getElementById('quickTrack')?.addEventListener('click', () => goTo(ROUTES.liveTracking));
+  document.getElementById('quickReports')?.addEventListener('click', () => goTo(ROUTES.reports));
+  document.getElementById('viewAllTripsLink')?.addEventListener('click', () => goTo(ROUTES.trips));
+  document.getElementById('expandMapBtn')?.addEventListener('click', () => goTo(ROUTES.liveTracking));
+  document.getElementById('nt-home')?.addEventListener('click', () => goTo(ROUTES.home));
+  document.getElementById('nt-trips')?.addEventListener('click', () => goTo(ROUTES.trips));
+  document.getElementById('nt-finance')?.addEventListener('click', () => goTo(ROUTES.ledger));
+  document.getElementById('nt-insights')?.addEventListener('click', () => goTo(ROUTES.insights));
+  document.getElementById('newTripFab')?.addEventListener('click', () => goTo(ROUTES.logTrip));
+}
+
+async function loadDashboard() {
+  renderHeaderUser();
+  const token = getStoredToken();
+  if (!token) {
+    renderNeedsAuth('Sign in as a transporter first so this dashboard can call the protected backend.');
+    return;
+  }
+  try {
+    const [stats, alerts, trips, locations] = await Promise.all([
+      fetchJson('/api/dashboard/stats'),
+      fetchJson('/api/alerts'),
+      fetchJson('/api/fleet/trips'),
+      fetchJson('/api/fleet/locations')
+    ]);
+    renderStats(stats);
+    setText('headerAlertCount', String(Array.isArray(alerts) ? Math.min(alerts.length, 9) : 0));
+    renderTrips(trips);
+    renderMap(locations, trips);
+  } catch (error) {
+    renderNeedsAuth(error.message);
+    console.error('Transporter dashboard sync failed:', error);
+  }
+}
+
+bindNav();
+bindHeaderMenu();
+bindActionRoutes();
+updateClock();
+setInterval(updateClock, 30000);
+renderRevenueChart([]); // render placeholder chart immediately
+loadDashboard();
+setInterval(loadDashboard, 30000);
+</script>
+</body>
+</html>

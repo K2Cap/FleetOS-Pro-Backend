@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>FleetOS — Log New Trip</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,900;1,9..144,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent
+    }
+
+    :root {
+      --g: #1a5c3a;
+      --g2: #236b47;
+      --glt: #e8f5ee;
+      --glt2: #d1ead9;
+      --s: #e8671a;
+      --slt: #fdf0e8;
+      --slt2: #fcd9c0;
+      --cr: #c0392b;
+      --crlt: #fdecea;
+      --go: #c9930a;
+      --golt: #fdf6e3;
+      --bl: #1a4a8c;
+      --bllt: #e8eef8;
+      --bg: #f5f2ec;
+      --bg2: #edeae2;
+      --wh: #ffffff;
+      --ink: #1a1814;
+      --ink2: #3d3a34;
+      --mu: #7a7570;
+      --mu2: #b0aca4;
+      --bd: #ddd9d0;
+      --bd2: #c8c4bb;
+      --ff: 'DM Sans', sans-serif;
+      --fm: 'JetBrains Mono', monospace;
+      --r: 18px;
+      --r-lg: 22px;
+      --sh-sm: 0 2px 8px rgba(26,24,20,.07);
+      --sh-md: 0 6px 24px rgba(26,24,20,.11);
+    }
+
+    body {
+      background: var(--bg2);
+      font-family: var(--ff);
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 20px 0;
+    }
+
+    /* ── PHONE SHELL ── */
+    .phone {
+      width: 390px;
+      background: var(--bg);
+      border-radius: 44px;
+      overflow: hidden;
+      box-shadow: 0 32px 80px rgba(26, 24, 20, .35), 0 0 0 9px #181510;
+      border: 5px solid #232018;
+      display: flex;
+      flex-direction: column;
+      height: 820px;
+      position: relative;
+    }
+
+    /* status bar */
+    .sbar {
+      background: var(--g);
+      padding: 12px 22px 5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .sbar-time {
+      font-family: var(--fm);
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .sbar-pill {
+      width: 80px;
+      height: 16px;
+      background: #0d3626;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sbar-pill-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #0a2c1d;
+    }
+
+    .sbar-icons {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+
+    /* top nav */
+    .topnav {
+      background: var(--g);
+      padding: 0 16px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      box-shadow: 0 4px 16px rgba(26,92,58,.18);
+    }
+
+    .back-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      border: 1px solid rgba(255,255,255,.2);
+      background: rgba(255,255,255,.13);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      cursor: pointer;
+      flex-shrink: 0;
+      text-decoration: none;
+      color: #fff;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .brand-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 9px;
+      background: var(--s);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.28);
+    }
+
+    .brand-name {
+      font-weight: 800;
+      font-size: 15px;
+      color: #fff;
+      letter-spacing: -.2px;
+    }
+
+    .live-chip {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.18);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+
+    .live-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--g);
+      animation: blink 1.8s infinite;
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .25
+      }
+    }
+
+    /* form header */
+    .form-header {
+      background: var(--wh);
+      border-bottom: 1.5px solid var(--bd);
+      padding: 13px 16px;
+      flex-shrink: 0;
+      box-shadow: var(--sh-sm);
+    }
+
+    .fh-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .fh-title {
+      font-family: 'Fraunces', serif;
+      font-weight: 900;
+      font-size: 18px;
+      color: var(--ink);
+      letter-spacing: -.5px;
+    }
+
+    .fh-sub {
+      font-size: 10.5px;
+      color: var(--mu);
+      margin-top: 2px;
+    }
+
+    .draft-tag {
+      background: var(--slt);
+      border: 1px solid var(--slt2);
+      color: var(--s);
+      font-size: 9px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      letter-spacing: .5px;
+    }
+
+    .steps {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* scrollable body */
+    .form-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 14px 0;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .form-body::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* section card */
+    .section {
+      background: var(--wh);
+      border-radius: var(--r-lg);
+      border: 1.5px solid var(--bd);
+      box-shadow: var(--sh-sm);
+      overflow: visible;
+      margin-bottom: 14px;
+    }
+
+    .section-hd {
+      padding: 14px 18px 12px;
+      border-bottom: 1.5px solid var(--bg2);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      flex-shrink: 0;
+    }
+
+    .section-title {
+      font-family: 'Fraunces', serif;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: -.2px;
+    }
+
+    .section-note {
+      font-size: 9.5px;
+      color: var(--mu);
+      margin-top: 1px;
+    }
+
+    .section-body {
+      padding: 16px 18px;
+    }
+
+    /* labels */
+    .lbl {
+      display: block;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+      color: var(--mu);
+      margin-bottom: 7px;
+    }
+
+    .lbl-req {
+      color: var(--s);
+      margin-left: 3px;
+    }
+
+    .field-wrap {
+      margin-bottom: 0;
+    }
+
+    .err-tip {
+      font-size: 9.5px;
+      color: var(--cr);
+      margin-top: 5px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* inputs */
+    .finput {
+      display: flex;
+      align-items: center;
+      background: var(--bg);
+      border: 1.5px solid var(--bd);
+      border-radius: 12px;
+      padding: 0 13px;
+      transition: all .15s;
+      cursor: text;
+      height: 44px;
+      box-sizing: border-box;
+    }
+
+    .finput:focus-within {
+      background: var(--wh);
+      border-color: var(--g);
+      box-shadow: 0 0 0 4px var(--glt);
+    }
+
+    .finput.err {
+      border-color: var(--cr);
+      box-shadow: 0 0 0 4px var(--crlt);
+    }
+
+    .finput input {
+      border: none;
+      outline: none;
+      background: transparent;
+      flex: 1;
+      min-width: 0;
+      font-size: 13px;
+      color: var(--ink);
+      font-weight: 400;
+      font-family: var(--ff);
+      height: 100%;
+    }
+
+    .finput input::placeholder {
+      color: var(--mu2);
+    }
+
+    .finput .prefix {
+      font-size: 11.5px;
+      color: var(--mu);
+      margin-right: 6px;
+      font-family: var(--fm);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .finput .suffix {
+      font-size: 11px;
+      color: var(--mu2);
+      margin-left: 6px;
+      flex-shrink: 0;
+    }
+
+    .finput.mono input {
+      font-family: var(--fm);
+    }
+
+    textarea.ta {
+      width: 100%;
+      background: var(--bg);
+      border: 1.5px solid var(--bd);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 13px;
+      color: var(--ink);
+      resize: none;
+      line-height: 1.55;
+      font-family: var(--ff);
+      outline: none;
+      transition: border .15s;
+    }
+
+    textarea.ta:focus {
+      border-color: var(--g);
+    }
+
+    textarea.ta::placeholder {
+      color: var(--mu2);
+    }
+
+    /* grid */
+    .r2 {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 12px;
+    }
+
+    .fg {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* route widget */
+    .route-widget {
+      background: var(--bg2);
+      border-radius: var(--r);
+      padding: 14px;
+    }
+
+    .route-row {
+      display: flex;
+      align-items: stretch;
+      gap: 4px;
+    }
+
+    .route-col {
+      flex: 1;
+    }
+
+    .route-from-lbl {
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      color: var(--g);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .route-to-lbl {
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      color: var(--s);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      justify-content: flex-end;
+    }
+
+    .route-dot-g {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--g);
+    }
+
+    .route-dot-s {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--s);
+    }
+
+    .route-input {
+      width: 100%;
+      background: var(--wh);
+      border: 1.5px solid var(--bd);
+      border-radius: 10px;
+      padding: 11px 12px;
+      font-size: 13px;
+      color: var(--ink);
+      font-weight: 400;
+      box-sizing: border-box;
+      outline: none;
+      font-family: var(--ff);
+      transition: all .15s;
+    }
+
+    .route-input:focus {
+      border-color: var(--g);
+      box-shadow: 0 0 0 3px var(--glt);
+    }
+
+    .route-input.has-val {
+      font-weight: 600;
+      border-color: var(--g);
+      box-shadow: 0 0 0 3px var(--glt);
+    }
+
+    .route-input.err {
+      border-color: var(--cr);
+      box-shadow: 0 0 0 3px var(--crlt);
+    }
+
+    .route-input.right {
+      text-align: right;
+    }
+
+    .route-mid {
+      width: 32px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      flex-shrink: 0;
+      padding-bottom: 1px;
+    }
+
+    .route-mid-arrow {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--g);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(26, 92, 58, .4);
+    }
+
+    /* custom dropdown */
+    .drop-wrap {
+      position: relative;
+    }
+
+    .drop-trigger {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      cursor: pointer;
+      background: var(--bg);
+      border: 1.5px solid var(--bd);
+      border-radius: 12px;
+      padding: 0 13px;
+      transition: all .15s;
+      user-select: none;
+      height: 44px;
+      box-sizing: border-box;
+    }
+
+    .drop-trigger.open {
+      border-color: var(--g);
+      box-shadow: 0 0 0 4px var(--glt);
+    }
+
+    .drop-trigger.has-val .drop-text {
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .drop-text {
+      flex: 1;
+      font-size: 13px;
+      color: var(--mu2);
+      font-weight: 400;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .drop-chevron {
+      font-size: 10px;
+      color: var(--mu2);
+      transition: transform .2s;
+      flex-shrink: 0;
+    }
+
+    .drop-chevron.open {
+      transform: rotate(180deg);
+    }
+
+    .drop-menu {
+      position: absolute;
+      top: calc(100% + 5px);
+      left: 0;
+      right: 0;
+      background: var(--wh);
+      border: 1.5px solid var(--bd);
+      border-radius: var(--r);
+      box-shadow: var(--sh-md);
+      overflow: hidden;
+      max-height: 210px;
+      overflow-y: auto;
+      z-index: 9999;
+      display: none;
+    }
+
+    .drop-menu.open {
+      display: block;
+    }
+
+    .drop-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 11px 15px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink2);
+      background: var(--wh);
+      cursor: pointer;
+      border-bottom: 1px solid var(--bg2);
+      transition: background .1s;
+    }
+
+    .drop-item:hover {
+      background: var(--glt);
+    }
+
+    .drop-item.selected {
+      color: var(--g);
+      font-weight: 700;
+      background: var(--glt);
+    }
+
+    .drop-item:last-child {
+      border-bottom: none;
+    }
+
+    .drop-check {
+      font-size: 11px;
+      color: var(--g);
+    }
+
+    /* date trigger */
+    .date-trigger {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      cursor: pointer;
+      border: 1.5px solid var(--bd);
+      border-radius: 12px;
+      padding: 0 13px;
+      transition: all .15s;
+      background: var(--bg);
+      user-select: none;
+      height: 44px;
+      box-sizing: border-box;
+    }
+
+    .date-trigger.active {
+      background: var(--glt);
+      border-color: var(--glt2);
+    }
+
+    .date-trigger.open {
+      border-color: var(--g);
+      box-shadow: 0 0 0 4px var(--glt);
+    }
+
+    .date-icon {
+      font-size: 15px;
+    }
+
+    .date-text {
+      flex: 1;
+      font-size: 13px;
+      color: var(--mu2);
+      font-weight: 400;
+    }
+
+    .date-text.has-val {
+      color: var(--g);
+      font-weight: 700;
+    }
+
+    .date-clear {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(26, 92, 58, .15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: var(--g);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .date-chev {
+      font-size: 10px;
+      color: var(--mu2);
+      transition: transform .2s;
+    }
+
+    .date-chev.open {
+      transform: rotate(180deg);
+    }
+
+    .cal-wrap {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      z-index: 9999;
+      background: var(--wh);
+      border: 1.5px solid var(--bd);
+      border-radius: 16px;
+      box-shadow: 0 16px 48px rgba(26, 24, 20, .22);
+      overflow: hidden;
+      display: none;
+    }
+
+    .cal-wrap.open {
+      display: block;
+    }
+
+    .cal-header {
+      background: var(--g);
+      padding: 13px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .cal-nav {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, .2);
+      background: rgba(255, 255, 255, .12);
+      cursor: pointer;
+      color: #fff;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cal-month {
+      color: #fff;
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .cal-days-hd {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      padding: 8px 10px 4px;
+      background: var(--glt);
+    }
+
+    .cal-day-name {
+      text-align: center;
+      font-size: 9px;
+      font-weight: 800;
+      color: var(--g);
+    }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      padding: 4px 8px 10px;
+      gap: 1px;
+    }
+
+    .cal-cell {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 9px;
+      font-size: 12.5px;
+      font-weight: 400;
+      cursor: pointer;
+      user-select: none;
+      border: 1.5px solid transparent;
+      transition: all .1s;
+      color: var(--ink);
+    }
+
+    .cal-cell:hover {
+      background: var(--glt);
+    }
+
+    .cal-cell.other-month {
+      color: var(--mu2);
+      cursor: default;
+    }
+
+    .cal-cell.other-month:hover {
+      background: transparent;
+    }
+
+    .cal-cell.today {
+      font-weight: 700;
+      color: var(--g);
+      border-color: var(--g);
+    }
+
+    .cal-cell.selected {
+      background: var(--g) !important;
+      color: #fff !important;
+      font-weight: 800;
+      border-color: var(--g) !important;
+    }
+
+    .cal-footer {
+      border-top: 1px solid var(--bd);
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg);
+    }
+
+    .cal-sel-lbl {
+      font-size: 10.5px;
+      font-family: var(--fm);
+      color: var(--mu2);
+      font-weight: 600;
+    }
+
+    .cal-sel-lbl.has-val {
+      color: var(--g);
+    }
+
+    .cal-today-btn {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--g);
+      background: var(--glt);
+      border: 1px solid var(--glt2);
+      border-radius: 6px;
+      padding: 4px 10px;
+      cursor: pointer;
+    }
+
+    .cal-clear-btn {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--cr);
+      background: var(--crlt);
+      border: 1px solid var(--cr);
+      border-radius: 6px;
+      padding: 4px 10px;
+      cursor: pointer;
+    }
+
+    /* cost row */
+    .cost-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--bg2);
+    }
+
+    .cost-icon-box {
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+      background: var(--slt);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .cost-label {
+      flex: 1;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--ink2);
+    }
+
+    .cost-input-wrap {
+      display: flex;
+      align-items: center;
+      background: var(--bg);
+      border: 1.5px solid var(--bd);
+      border-radius: 10px;
+      padding: 8px 11px;
+      width: 118px;
+      transition: all .15s;
+    }
+
+    .cost-input-wrap:focus-within {
+      background: var(--wh);
+      border-color: var(--g);
+      box-shadow: 0 0 0 3px var(--glt);
+    }
+
+    .cost-prefix {
+      font-size: 11px;
+      color: var(--mu);
+      margin-right: 5px;
+      font-family: var(--fm);
+      font-weight: 700;
+    }
+
+    .cost-input-wrap input {
+      border: none;
+      outline: none;
+      background: transparent;
+      width: 100%;
+      font-size: 13px;
+      color: var(--ink);
+      font-weight: 400;
+      font-family: var(--fm);
+      text-align: right;
+    }
+
+    .cost-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 12px;
+      margin-top: 2px;
+    }
+
+    .cost-total-lbl {
+      font-size: 12.5px;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .cost-total-val {
+      font-family: var(--fm);
+      font-size: 15px;
+      font-weight: 900;
+      color: var(--cr);
+    }
+
+    /* upload slots */
+    .upload-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .upload-slot {
+      border: 2px dashed var(--bd2);
+      border-radius: 13px;
+      padding: 16px 10px;
+      text-align: center;
+      cursor: pointer;
+      background: var(--bg2);
+      transition: all .15s;
+    }
+
+    .upload-slot:hover {
+      border-color: var(--g);
+      background: var(--glt);
+    }
+
+    .upload-slot-icon {
+      font-size: 22px;
+      margin-bottom: 5px;
+    }
+
+    .upload-slot-title {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--ink2);
+      margin-bottom: 2px;
+    }
+
+    .upload-slot-sub {
+      font-size: 9px;
+      color: var(--mu2);
+    }
+
+    /* P&L bar */
+
+    /* footer */
+    .form-footer {
+      background: var(--wh);
+      border-top: 1px solid var(--bd);
+      padding: 12px 16px 14px;
+      flex-shrink: 0;
+      box-shadow: 0 -4px 16px rgba(26, 24, 20, .08);
+    }
+
+    .footer-btns {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      border-radius: 13px;
+      font-family: var(--ff);
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 13px;
+      transition: all .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-ghost {
+      flex: 1;
+      border: 1.5px solid var(--bd);
+      background: var(--bg);
+      color: var(--ink2);
+    }
+
+    .btn-primary {
+      flex: 2;
+      border: none;
+      background: var(--g);
+      color: #fff;
+      box-shadow: 0 4px 18px rgba(26, 92, 58, .38);
+    }
+
+    .btn-primary:hover {
+      background: var(--g2);
+    }
+
+    .btn-primary:active {
+      transform: scale(.98);
+    }
+
+    .btn-primary.loading {
+      background: var(--g2);
+      cursor: default;
+    }
+
+    /* spinner */
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, .35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+
+    /* success screen */
+    .success {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 20px;
+      background: var(--bg);
+      text-align: center;
+      overflow-y: auto;
+    }
+
+    .success-circle {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 3px solid var(--g);
+      background: var(--glt2);
+      font-size: 34px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .success-truck {
+      position: absolute;
+      bottom: -4px;
+      right: -4px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--s);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      border: 2px solid var(--bg);
+    }
+
+    .success-title {
+      font-weight: 900;
+      font-size: 22px;
+      color: var(--ink);
+      letter-spacing: -.5px;
+      margin-bottom: 4px;
+    }
+
+    .success-ref {
+      font-family: var(--fm);
+      font-size: 11.5px;
+      color: var(--mu2);
+      margin-bottom: 22px;
+      background: var(--bg2);
+      padding: 4px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--bd);
+      display: inline-block;
+    }
+
+    .success-card {
+      background: var(--wh);
+      border: 1px solid var(--bd);
+      border-radius: 18px;
+      padding: 18px;
+      width: 100%;
+      max-width: 340px;
+      margin-bottom: 18px;
+      box-shadow: 0 4px 20px rgba(26, 24, 20, .08);
+    }
+
+    .success-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--bg2);
+    }
+
+    .success-row:last-child {
+      border-bottom: none;
+    }
+
+    .success-row-lbl {
+      font-size: 11.5px;
+      color: var(--mu);
+      font-weight: 600;
+    }
+
+    .success-row-val {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .success-pnl {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 2px solid var(--ink);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .success-pnl-lbl {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .success-pnl-val {
+      font-size: 21px;
+      font-weight: 900;
+      letter-spacing: -.5px;
+    }
+
+    .truck-chip {
+      background: var(--ink);
+      color: #fff;
+      font-family: var(--fm);
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 5px;
+    }
+
+    .spacer {
+      height: 16px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="phone">
+
+    <!-- STATUS BAR -->
+    <div class="sbar">
+      <div class="sbar-time">9:41</div>
+      <div class="sbar-pill">
+        <div class="sbar-pill-dot"></div>
+      </div>
+      <div class="sbar-icons">
+        <svg width="14" height="10" viewBox="0 0 14 10">
+          <rect x="0" y="7.6" width="2.5" height="2.4" fill="#3d3a34" opacity=".8" rx=".5" />
+          <rect x="3.5" y="5.2" width="2.5" height="4.8" fill="#3d3a34" opacity=".8" rx=".5" />
+          <rect x="7" y="2.6" width="2.5" height="7.4" fill="#3d3a34" opacity=".8" rx=".5" />
+          <rect x="10.5" y="0" width="2.5" height="10" fill="#3d3a34" opacity=".25" rx=".5" />
+        </svg>
+        <svg width="16" height="10" viewBox="0 0 16 10">
+          <rect x="1" y="2.5" width="10.5" height="6.5" rx="1.5" fill="none" stroke="#3d3a34" stroke-width="1"
+            opacity=".7" />
+          <rect x="2" y="3.5" width="7.5" height="4.5" rx=".5" fill="#3d3a34" opacity=".7" />
+          <rect x="12" y="4.5" width="2" height="3" rx=".8" fill="#3d3a34" opacity=".35" />
+        </svg>
+      </div>
+    </div>
+
+    <!-- TOP NAV -->
+    <div class="topnav">
+      <a href="#" class="back-btn">←</a>
+      <div class="brand">
+        <div class="brand-icon">🚛</div>
+        <div class="brand-name">FleetOS</div>
+      </div>
+      <div class="live-chip">
+        <div class="live-dot"></div>72 live
+      </div>
+    </div>
+
+    <!-- FORM HEADER -->
+    <div class="form-header">
+      <div class="fh-top">
+        <div>
+          <div class="fh-title">Log New Trip</div>
+        </div>
+        <div class="draft-tag">DRAFT</div>
+      </div>
+    </div>
+
+    <!-- SCROLLABLE FORM BODY -->
+    <div class="form-body" id="form-body">
+
+      <!-- ═══ TRIP BASICS ═══ -->
+      <div class="section">
+        <div class="section-hd">
+          <div class="section-icon" style="background:rgba(26,92,58,.1)">🚛</div>
+          <div>
+            <div class="section-title" style="color:var(--g)">Trip Basics</div>
+            <div class="section-note">Truck, route &amp; schedule</div>
+          </div>
+        </div>
+        <div class="section-body">
+          <div class="fg">
+
+            <!-- Truck + Driver -->
+            <div class="r2">
+              <div>
+                <label class="lbl">Truck Number</label>
+                <div class="drop-wrap" id="drop-truck">
+                  <div class="drop-trigger" onclick="toggleDrop('truck')" id="truck-trigger">
+                    <span class="drop-text" id="truck-text">— Select Truck —</span>
+                    <span class="drop-chevron" id="truck-chev">▼</span>
+                  </div>
+                  <div class="drop-menu" id="truck-menu"></div>
+                </div>
+                <div class="err-tip" id="err-truck" style="display:none">⚠ Select a truck</div>
+              </div>
+              <div>
+                <label class="lbl">Driver</label>
+                <div class="drop-wrap" id="drop-driver">
+                  <div class="drop-trigger" onclick="toggleDrop('driver')" id="driver-trigger">
+                    <span class="drop-text" id="driver-text">— Select Driver —</span>
+                    <span class="drop-chevron" id="driver-chev">▼</span>
+                  </div>
+                  <div class="drop-menu" id="driver-menu"></div>
+                </div>
+                <div class="err-tip" id="err-driver" style="display:none">⚠ Select a driver</div>
+              </div>
+            </div>
+
+            <!-- Route widget -->
+            <div class="route-widget">
+              <div class="route-row">
+                <div class="route-col">
+                  <div class="route-from-lbl">
+                    <div class="route-dot-g"></div>FROM
+                  </div>
+                  <input class="route-input" id="origin" placeholder="Origin" oninput="updateRoute()"
+                    autocomplete="off">
+                  <div class="err-tip" id="err-origin" style="display:none">⚠ Enter origin</div>
+                </div>
+                <div class="route-mid">
+                  <div
+                    style="height:44px;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--mu2);font-weight:700;">
+                    →</div>
+                </div>
+                <div class="route-col">
+                  <div class="route-to-lbl">TO<div class="route-dot-s"></div>
+                  </div>
+                  <input class="route-input right" id="dest" placeholder="Destination" oninput="updateRoute()"
+                    autocomplete="off">
+                  <div class="err-tip" id="err-dest" style="display:none;text-align:right">⚠ Enter destination</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dates -->
+            <div class="r2">
+              <div>
+                <label class="lbl">Start Date</label>
+                <div class="drop-wrap" id="cal-wrap-sd" style="position:relative;">
+                  <div class="date-trigger" onclick="toggleCal('sd')" id="sd-trigger">
+                    <span class="date-icon">📅</span>
+                    <span class="date-text" id="sd-text">Select date</span>
+                    <span class="date-chev" id="sd-chev">▼</span>
+                  </div>
+                  <div class="cal-wrap" id="cal-sd"></div>
+                </div>
+              </div>
+              <div>
+                <label class="lbl">Expected Arrival</label>
+                <div class="drop-wrap" id="cal-wrap-ed" style="position:relative;">
+                  <div class="date-trigger" onclick="toggleCal('ed')" id="ed-trigger">
+                    <span class="date-icon">📅</span>
+                    <span class="date-text" id="ed-text">Select date</span>
+                    <span class="date-chev" id="ed-chev">▼</span>
+                  </div>
+                  <div class="cal-wrap" id="cal-ed"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Distance + Load type -->
+            <div class="r2">
+              <div>
+                <label class="lbl">Distance (km)</label>
+                <div class="finput">
+                  <input type="text" inputmode="numeric" placeholder="e.g. 150" id="distance"
+                    oninput="this.value=this.value.replace(/\D/g,'')">
+                  <span class="suffix">km</span>
+                </div>
+              </div>
+              <div>
+                <label class="lbl">Load Type</label>
+                <div class="drop-wrap" id="drop-loadtype">
+                  <div class="drop-trigger" onclick="toggleDrop('loadtype')" id="loadtype-trigger">
+                    <span class="drop-text" id="loadtype-text">Select type</span>
+                    <span class="drop-chevron" id="loadtype-chev">▼</span>
+                  </div>
+                  <div class="drop-menu" id="loadtype-menu"></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ REVENUE ═══ -->
+      <div class="section">
+        <div class="section-hd">
+          <div class="section-icon" style="background:rgba(201,147,10,.1)">💰</div>
+          <div>
+            <div class="section-title" style="color:var(--go)">Revenue</div>
+            <div class="section-note">Freight charges &amp; client info</div>
+          </div>
+        </div>
+        <div class="section-body">
+          <div class="fg">
+            <div>
+              <label class="lbl">Freight Amount (₹)</label>
+              <div class="finput mono" id="freight-wrap">
+                <span class="prefix">₹</span>
+                <input type="text" inputmode="numeric" placeholder="0" id="freight"
+                  oninput="this.value=this.value.replace(/\D/g,'');clearErr('freight')">
+              </div>
+              <div class="err-tip" id="err-freight" style="display:none">⚠ Enter freight amount</div>
+            </div>
+            <div>
+              <label class="lbl">Advance Received (₹)</label>
+              <div class="finput mono">
+                <span class="prefix">₹</span>
+                <input type="text" inputmode="numeric" placeholder="0" id="advance"
+                  oninput="this.value=this.value.replace(/\D/g,'')">
+              </div>
+            </div>
+            <div class="r2">
+              <div>
+                <label class="lbl">Client / Consignor</label>
+                <div class="finput"><input type="text" placeholder="Company name" id="client"></div>
+              </div>
+              <div>
+                <label class="lbl">LR Number</label>
+                <div class="finput mono"><input type="text" placeholder="Lorry Receipt No." id="lr"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ NOTES ═══ -->
+      <div class="section">
+        <div class="section-hd">
+          <div class="section-icon" style="background:rgba(26,74,140,.1)">📋</div>
+          <div>
+            <div class="section-title" style="color:var(--bl)">Notes &amp; Documents</div>
+            <div class="section-note">Optional extras</div>
+          </div>
+        </div>
+        <div class="section-body">
+          <div class="fg">
+            <div>
+              <label class="lbl">Trip Notes</label>
+              <textarea class="ta" placeholder="Special instructions, incidents, route notes, delays…" rows="3"
+                id="notes"></textarea>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <div class="spacer"></div>
+    </div><!-- end form-body -->
+
+
+    <!-- ═══ FOOTER BUTTONS ═══ -->
+    <div class="form-footer" id="form-footer">
+      <div class="footer-btns">
+        <button class="btn btn-ghost">Save Draft</button>
+        <button class="btn btn-primary" id="submit-btn" onclick="handleSubmit()">✔ Submit Trip Log</button>
+      </div>
+    </div>
+
+    <!-- ═══ SUCCESS SCREEN (hidden) ═══ -->
+    <div class="success" id="success-screen" style="display:none">
+      <div class="success-circle">
+        ✓
+        <div class="success-truck">🚛</div>
+      </div>
+      <div class="success-title">Trip Logged!</div>
+      <div class="success-ref">TR-2042 · 19 Feb 2026</div>
+      <div class="success-card">
+        <div class="success-row">
+          <span class="success-row-lbl">Truck</span>
+          <span class="success-row-val"><span class="truck-chip" id="s-truck">—</span></span>
+        </div>
+        <div class="success-row">
+          <span class="success-row-lbl">Driver</span>
+          <span class="success-row-val" id="s-driver">—</span>
+        </div>
+        <div class="success-row">
+          <span class="success-row-lbl">Route</span>
+          <span class="success-row-val" id="s-route">—</span>
+        </div>
+        <div class="success-row">
+          <span class="success-row-lbl">Freight</span>
+          <span class="success-row-val" id="s-freight">—</span>
+        </div>
+        <div class="success-row" style="border-bottom:none">
+          <span class="success-row-lbl">Total Costs</span>
+          <span class="success-row-val" id="s-costs">—</span>
+        </div>
+        <div class="success-pnl">
+          <span class="success-pnl-lbl">Net P&L</span>
+          <span class="success-pnl-val" id="s-pnl">—</span>
+        </div>
+      </div>
+      <button
+        style="width:100%;max-width:340px;padding:14px;border-radius:13px;border:none;background:var(--g);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;box-shadow:0 4px 20px rgba(26,92,58,.35);font-family:var(--ff)">View
+        Trip Details</button>
+      <button onclick="resetForm()"
+        style="width:100%;max-width:340px;padding:13px;border-radius:13px;border:1.5px solid var(--bd);background:var(--wh);color:var(--ink2);font-size:13.5px;font-weight:700;cursor:pointer;font-family:var(--ff)">✚
+        Log Another Trip</button>
+    </div>
+
+  </div><!-- end phone -->
+
+  <script>
+    /* ── Data ── */
+    const TRUCKS = ["MH 04 AB 1234", "KA 03 EF 7890", "MH 12 XY 9012", "GJ 01 AB 5432", "DL 04 CD 6789", "RJ 14 MN 4321", "TN 09 PQ 8765"];
+    const DRIVERS = ["Ramesh Kumar", "Vijay Singh", "Arun Patel", "Suresh Mehta", "Mohan Lal", "Pradeep Sharma", "Karthik Raja"];
+    const LOAD_TYPES = ["FMCG", "Steel", "Chemicals", "Electronics", "Textiles", "Cement", "Food Grains", "Machinery", "Auto Parts", "Pharma", "Furniture", "Perishables"];
+    const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const MS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    /* ── State ── */
+    const state = { truck: "", driver: "", origin: "", dest: "", loadtype: "", sd: "", ed: "" };
+    const calState = { sd: { yr: 0, mo: 0 }, ed: { yr: 0, mo: 0 } };
+    let plOpen = false;
+
+    /* ── Init dropdowns ── */
+    function buildDropMenu(id, options) {
+      const menu = document.getElementById(id + "-menu");
+      options.forEach(o => {
+        const d = document.createElement("div");
+        d.className = "drop-item"; d.textContent = o;
+        d.onclick = () => selectDrop(id, o);
+        menu.appendChild(d);
+      });
+    }
+    buildDropMenu("truck", TRUCKS);
+    buildDropMenu("driver", DRIVERS);
+    buildDropMenu("loadtype", LOAD_TYPES);
+
+    function toggleDrop(id) {
+      const menu = document.getElementById(id + "-menu");
+      const chev = document.getElementById(id + "-chev");
+      const trigger = document.getElementById(id + "-trigger");
+      const allMenus = document.querySelectorAll(".drop-menu");
+      allMenus.forEach(m => { if (m.id !== id + "-menu") m.classList.remove("open"); });
+      document.querySelectorAll(".drop-chevron").forEach(c => { if (c.id !== id + "-chev") c.classList.remove("open"); });
+      document.querySelectorAll(".drop-trigger").forEach(t => { if (t.id !== id + "-trigger") t.classList.remove("open"); });
+      menu.classList.toggle("open");
+      chev.classList.toggle("open");
+      trigger.classList.toggle("open");
+    }
+
+    function selectDrop(id, val) {
+      state[id] = val;
+      const text = document.getElementById(id + "-text");
+      const menu = document.getElementById(id + "-menu");
+      const chev = document.getElementById(id + "-chev");
+      const trigger = document.getElementById(id + "-trigger");
+      text.textContent = val;
+      trigger.classList.add("has-val");
+      trigger.classList.remove("open");
+      chev.classList.remove("open");
+      menu.classList.remove("open");
+      // update selected state in menu
+      menu.querySelectorAll(".drop-item").forEach(item => {
+        if (item.textContent === val) { item.classList.add("selected"); if (!item.querySelector(".drop-check")) { const c = document.createElement("span"); c.className = "drop-check"; c.textContent = "✓"; item.prepend(c); } }
+        else { item.classList.remove("selected"); const c = item.querySelector(".drop-check"); if (c) c.remove(); }
+      });
+      clearErr(id);
+
+    }
+
+    /* ── Route inputs ── */
+    function updateRoute() {
+      const o = document.getElementById("origin");
+      const d = document.getElementById("dest");
+      if (o.value) { o.classList.add("has-val"); o.classList.remove("err"); } else o.classList.remove("has-val");
+      if (d.value) { d.classList.add("has-val"); d.classList.remove("err"); } else d.classList.remove("has-val");
+
+    }
+
+    /* ── Calendar ── */
+    function initCal(id) {
+      const today = new Date();
+      calState[id] = { yr: today.getFullYear(), mo: today.getMonth() };
+      renderCal(id);
+    }
+    function renderCal(id) {
+      const { yr, mo } = calState[id];
+      const wrap = document.getElementById("cal-" + id);
+      const first = new Date(yr, mo, 1).getDay();
+      const daysIn = new Date(yr, mo + 1, 0).getDate();
+      const today = new Date();
+      const selVal = state[id];
+      let sY = null, sM = null, sD = null;
+      if (selVal) { const p = selVal.split("-"); sY = +p[0]; sM = +p[1] - 1; sD = +p[2]; }
+
+      let html = `<div class="cal-header">
+    <button class="cal-nav" onclick="calNav('${id}',-1)">‹</button>
+    <div class="cal-month">${MONTHS[mo]} ${yr}</div>
+    <button class="cal-nav" onclick="calNav('${id}',1)">›</button>
+  </div>
+  <div class="cal-days-hd">${["S", "M", "T", "W", "T", "F", "S"].map(d => `<div class="cal-day-name">${d}</div>`).join("")}</div>
+  <div class="cal-grid">`;
+
+      for (let i = 0; i < first; i++)html += `<div class="cal-cell other-month"></div>`;
+      for (let d = 1; d <= daysIn; d++) {
+        const isSel = sY === yr && sM === mo && sD === d;
+        const isTod = today.getFullYear() === yr && today.getMonth() === mo && today.getDate() === d;
+        let cls = "cal-cell";
+        if (isSel) cls += " selected";
+        else if (isTod) cls += " today";
+        html += `<div class="${cls}" onclick="pickDate('${id}',${yr},${mo + 1},${d})">${d}</div>`;
+      }
+      html += `</div><div class="cal-footer">
+    <span class="cal-sel-lbl${selVal ? ' has-val' : ''}">${selVal ? fmtDate(selVal) : "No date selected"}</span>
+    <div style="display:flex;gap:8px">
+      ${selVal ? `<button class="cal-clear-btn" onclick="clearDate('${id}')">Clear</button>` : ""}
+      <button class="cal-today-btn" onclick="pickToday('${id}')">Today</button>
+    </div>
+  </div>`;
+      wrap.innerHTML = html;
+    }
+    function calNav(id, dir) {
+      let { yr, mo } = calState[id];
+      mo += dir;
+      if (mo > 11) { mo = 0; yr++; } else if (mo < 0) { mo = 11; yr--; }
+      calState[id] = { yr, mo };
+      renderCal(id);
+    }
+    function pickDate(id, yr, mo, d) {
+      const ds = `${yr}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      state[id] = ds;
+      updateDateTrigger(id);
+      closeCal(id);
+    }
+    function pickToday(id) {
+      const t = new Date();
+      pickDate(id, t.getFullYear(), t.getMonth() + 1, t.getDate());
+    }
+    function clearDate(id) {
+      state[id] = "";
+      updateDateTrigger(id);
+      renderCal(id);
+    }
+    function updateDateTrigger(id) {
+      const val = state[id];
+      const trigger = document.getElementById(id + "-trigger");
+      const text = document.getElementById(id + "-text");
+      const chev = document.getElementById(id + "-chev");
+      if (val) {
+        text.textContent = fmtDate(val);
+        text.classList.add("has-val");
+        trigger.classList.add("active");
+        // replace chevron with clear x
+        const existing = trigger.querySelector(".date-clear");
+        if (!existing) {
+          chev.style.display = "none";
+          const clr = document.createElement("span");
+          clr.className = "date-clear"; clr.textContent = "×";
+          clr.onclick = e => { e.stopPropagation(); clearDate(id); };
+          trigger.appendChild(clr);
+        }
+      } else {
+        text.textContent = "Select date";
+        text.classList.remove("has-val");
+        trigger.classList.remove("active");
+        const clr = trigger.querySelector(".date-clear");
+        if (clr) clr.remove();
+        chev.style.display = "";
+      }
+      renderCal(id);
+    }
+    function toggleCal(id) {
+      const wrap = document.getElementById("cal-" + id);
+      const trigger = document.getElementById(id + "-trigger");
+      const chev = document.getElementById(id + "-chev");
+      const isOpen = wrap.classList.contains("open");
+      // close all cals
+      document.querySelectorAll(".cal-wrap").forEach(c => c.classList.remove("open"));
+      document.querySelectorAll(".drop-menu").forEach(m => m.classList.remove("open"));
+      document.querySelectorAll(".drop-trigger,.date-trigger").forEach(t => t.classList.remove("open"));
+      document.querySelectorAll(".drop-chevron,.date-chev").forEach(c => c.classList.remove("open"));
+      if (!isOpen) {
+        if (!calState[id].yr) initCal(id);
+        wrap.classList.add("open");
+        trigger.classList.add("open");
+        chev.classList.add("open");
+      }
+    }
+    function closeCal(id) {
+      document.getElementById("cal-" + id).classList.remove("open");
+      document.getElementById(id + "-trigger").classList.remove("open");
+      document.getElementById(id + "-chev").classList.remove("open");
+    }
+    function fmtDate(v) { if (!v) return ""; const [y, m, d] = v.split("-"); return `${d} ${MS[parseInt(m) - 1]} ${y}`; }
+
+    /* close dropdowns on outside click */
+    document.addEventListener("click", e => {
+      if (!e.target.closest(".drop-wrap") && !e.target.closest(".cal-wrap") && !e.target.closest(".date-trigger")) {
+        document.querySelectorAll(".drop-menu,.cal-wrap").forEach(m => m.classList.remove("open"));
+        document.querySelectorAll(".drop-chevron,.date-chev,.drop-trigger,.date-trigger").forEach(el => el.classList.remove("open"));
+      }
+    });
+
+    /* ── P&L ── */
+    function n(id) { return parseInt(document.getElementById(id)?.value) || 0; }
+    function fmtINR(v) { return v === 0 ? "₹0" : "₹" + v.toLocaleString("en-IN"); }
+
+
+
+
+    /* ── Errors ── */
+    function clearErr(id) { document.getElementById("err-" + id).style.display = "none"; }
+    function showErr(id) { document.getElementById("err-" + id).style.display = "flex"; }
+
+    /* ── Submit ── */
+    function handleSubmit() {
+      let valid = true;
+      if (!state.truck) { showErr("truck"); valid = false; }
+      if (!state.driver) { showErr("driver"); valid = false; }
+      if (!document.getElementById("origin").value) {
+        showErr("origin");
+        document.getElementById("origin").classList.add("err"); valid = false;
+      }
+      if (!document.getElementById("dest").value) {
+        showErr("dest");
+        document.getElementById("dest").classList.add("err"); valid = false;
+      }
+      if (!document.getElementById("freight").value) { showErr("freight"); valid = false; }
+      if (!valid) return;
+
+      const btn = document.getElementById("submit-btn");
+      btn.classList.add("loading");
+      btn.innerHTML = '<div class="spinner"></div>Saving…';
+      btn.disabled = true;
+
+      setTimeout(() => {
+        document.getElementById("s-truck").textContent = state.truck || "—";
+        document.getElementById("s-driver").textContent = state.driver || "—";
+        const o = document.getElementById("origin").value;
+        const d = document.getElementById("dest").value;
+        document.getElementById("s-route").textContent = o && d ? `${o} → ${d}` : "—";
+        const f = n("freight");
+        document.getElementById("s-freight").textContent = fmtINR(f);
+        document.getElementById("s-costs").textContent = "—";
+        const pnlEl = document.getElementById("s-pnl");
+        pnlEl.textContent = `₹${f.toLocaleString("en-IN")}`;
+        pnlEl.style.color = "var(--g)";
+
+        document.getElementById("form-body").style.display = "none";
+
+        document.getElementById("form-footer").style.display = "none";
+        document.getElementById("success-screen").style.display = "flex";
+      }, 1400);
+    }
+
+    function resetForm() {
+      document.getElementById("form-body").style.display = "block";
+
+      document.getElementById("form-footer").style.display = "block";
+      document.getElementById("success-screen").style.display = "none";
+      state.truck = ""; state.driver = ""; state.loadtype = ""; state.sd = ""; state.ed = "";
+      ["truck", "driver", "loadtype"].forEach(id => {
+        document.getElementById(id + "-text").textContent = id === "truck" ? "— Select Truck —" : id === "driver" ? "— Select Driver —" : "Select type";
+        document.getElementById(id + "-trigger").classList.remove("has-val", "open");
+        document.getElementById(id + "-chev").classList.remove("open");
+        document.getElementById(id + "-menu").classList.remove("open");
+        document.getElementById(id + "-menu").querySelectorAll(".selected").forEach(el => el.classList.remove("selected"));
+        document.getElementById(id + "-menu").querySelectorAll(".drop-check").forEach(el => el.remove());
+      });
+      ["origin", "dest", "freight", "advance", "client", "lr", "notes", "distance"].forEach(id => {
+        const el = document.getElementById(id); if (el) { el.value = ""; el.classList.remove("has-val", "err"); }
+      });
+      ["sd", "ed"].forEach(id => { state[id] = ""; updateDateTrigger(id); });
+      document.querySelectorAll(".err-tip").forEach(e => e.style.display = "none");
+      const btn = document.getElementById("submit-btn");
+      btn.classList.remove("loading"); btn.innerHTML = "✔ Submit Trip Log"; btn.disabled = false;
+
+    }
+  </script>
+</body>
+
+</html>

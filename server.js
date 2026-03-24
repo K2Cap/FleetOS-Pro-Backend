@@ -8,14 +8,6 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason, promise) => {
     console.error('🔥 UNHANDLED REJECTION:', reason);
 });
-console.log('🚀 Server process starting...');
-
-// --- DIAGNOSTIC HEARTBEAT ---
-setInterval(() => {
-    console.log(`💓 HEARTBEAT: I AM ALIVE (${new Date().toLocaleTimeString()})`);
-    console.log(`🌐 CLOUD GATEWAY ACTIVE on port ${port}`);
-}, 10000);
-
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
@@ -41,6 +33,18 @@ app.use((req, res, next) => {
 // --- TOP-PRIORITY HEALTH SIGNAL ---
 app.get('/health', (req, res) => res.status(200).json({ status: "healthy", heartbeat: true }));
 app.get('/', (req, res) => res.status(200).json({ status: "online", signal: "FleetOS PRO" }));
+
+// --- MOBILE CONNECTIVITY PATCH: Explicit OPTIONS Handling ---
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    next();
+});
 
 // --- TOP PRIORITY: Global Unlock ---
 app.use(cors()); 

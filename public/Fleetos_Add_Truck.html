@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>FleetOS — Add New Truck</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,900;1,9..144,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --g:#1a5c3a;--g2:#236b47;--glt:#e8f5ee;--glt2:#d1ead9;
+  --s:#e8671a;--slt:#fdf0e8;--slt2:#fcd9c0;
+  --cr:#c0392b;--crlt:#fdecea;
+  --go:#c9930a;--golt:#fdf6e3;
+  --bl:#1a4a8c;--bllt:#e8eef8;
+  --bg:#f5f2ec;--bg2:#edeae2;--wh:#ffffff;
+  --ink:#1a1814;--ink2:#3d3a34;--mu:#7a7570;--mu2:#b0aca4;--bd:#ddd9d0;--bd2:#c8c4bb;
+  --ff:'DM Sans',sans-serif;--fm:'JetBrains Mono',monospace;
+  --r:18px;--r-lg:22px;
+  --sh-sm:0 2px 8px rgba(26,24,20,.07);--sh-md:0 6px 24px rgba(26,24,20,.11);
+}
+body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:20px 0;}
+.phone{width:390px;background:var(--bg);border-radius:44px;overflow:hidden;box-shadow:0 32px 80px rgba(26,24,20,.35),0 0 0 9px #181510;border:5px solid #232018;display:flex;flex-direction:column;height:820px;}
+.sbar{background:var(--g);padding:12px 22px 5px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.sbar-time{font-family:var(--fm);font-size:11px;font-weight:700;color:#fff;}
+.sbar-pill{width:80px;height:16px;background:#0d3626;border-radius:18px;display:flex;align-items:center;justify-content:center;}
+.sbar-dot{width:7px;height:7px;border-radius:50%;background:#0a2c1d;}
+.modal-header{background:var(--g);padding:14px 18px 16px;flex-shrink:0;}
+.mh-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;}
+.mh-title{font-family:'Fraunces',serif;font-weight:900;font-size:22px;color:#fff;letter-spacing:-.5px;line-height:1;}
+.mh-title em{color:var(--s);font-style:italic;font-weight:400;}
+.mh-sub{font-size:10.5px;color:rgba(255,255,255,.6);font-weight:500;margin-top:3px;}
+.close-btn{width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:13px;color:rgba(255,255,255,.8);cursor:pointer;flex-shrink:0;}
+.mode-toggle{display:flex;background:rgba(0,0,0,.2);border-radius:11px;padding:4px;gap:3px;}
+.mode-btn{flex:1;padding:10px 0;border:none;border-radius:8px;cursor:pointer;font-family:var(--ff);font-size:12px;font-weight:700;transition:all .2s;background:transparent;color:rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;gap:6px;}
+.mode-btn.active{background:var(--s);color:#fff;box-shadow:0 3px 12px rgba(232,103,26,.45);}
+.tab-bar{background:var(--wh);border-bottom:1.5px solid var(--bd);display:flex;flex-shrink:0;}
+.tab{flex:1;padding:12px 4px 9px;text-align:center;font-size:10.5px;font-weight:700;color:var(--mu2);cursor:pointer;border-bottom:2.5px solid transparent;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:4px;}
+.tab.active{color:var(--g);border-bottom-color:var(--g);}
+.scroll-body{flex:1;overflow-y:auto;padding:16px 16px 0;-webkit-overflow-scrolling:touch;}
+.scroll-body::-webkit-scrollbar{display:none;}
+.lbl{display:block;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--mu);margin-bottom:6px;}
+.fg{display:flex;flex-direction:column;gap:14px;}
+.r2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;}
+.finput{display:flex;align-items:center;background:var(--bg);border:1.5px solid var(--bd);border-radius:12px;padding:0 13px;height:44px;box-sizing:border-box;transition:all .15s;}
+.finput:focus-within{background:var(--wh);border-color:var(--g);box-shadow:0 0 0 4px var(--glt);}
+.finput input{border:none;outline:none;background:transparent;flex:1;min-width:0;font-size:13px;color:var(--ink);font-weight:400;font-family:var(--ff);height:100%;}
+.finput input::placeholder{color:var(--mu2);}
+.finput .pfx{font-size:11px;color:var(--mu);margin-right:6px;font-family:var(--fm);font-weight:700;flex-shrink:0;}
+.fsel{width:100%;height:44px;background:var(--bg);border:1.5px solid var(--bd);border-radius:12px;padding:0 36px 0 13px;font-size:13px;color:var(--ink);font-family:var(--ff);font-weight:400;-webkit-appearance:none;appearance:none;outline:none;transition:all .15s;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23b0aca4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;cursor:pointer;}
+.fsel:focus{border-color:var(--g);box-shadow:0 0 0 4px var(--glt);}
+.fdate{width:100%;height:44px;background:var(--bg);border:1.5px solid var(--bd);border-radius:12px;padding:0 13px;font-size:13px;color:var(--ink);font-family:var(--ff);-webkit-appearance:none;outline:none;transition:all .15s;box-sizing:border-box;}
+.fdate:focus{border-color:var(--g);box-shadow:0 0 0 4px var(--glt);}
+.sub-hd{font-size:10px;font-weight:700;color:var(--mu);letter-spacing:1.4px;text-transform:uppercase;border-bottom:1px solid var(--bd);padding-bottom:8px;margin-bottom:4px;}
+/* scan docs */
+.ocr-banner{background:var(--glt);border:1px solid var(--glt2);border-radius:12px;padding:11px 14px;display:flex;align-items:center;gap:9px;margin-bottom:14px;}
+.ocr-dot{width:8px;height:8px;border-radius:50%;background:var(--g);animation:blink 1.8s infinite;flex-shrink:0;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.ocr-txt{font-size:11.5px;font-weight:700;color:var(--g);}
+.docs-lbl{font-size:11px;font-weight:700;color:var(--mu);margin-bottom:10px;letter-spacing:.3px;}
+.docs-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.doc-card{background:var(--wh);border:1px solid var(--bd);border-radius:13px;padding:12px 11px;display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;box-shadow:var(--sh-sm);transition:all .2s;}
+.doc-card.scanned{border-color:var(--glt2);background:var(--glt);}
+.doc-card-icon{font-size:26px;}
+.doc-card-name{font-size:11px;font-weight:700;color:var(--ink);line-height:1.3;}
+.doc-card-stat{font-size:9.5px;color:var(--mu2);}
+.doc-card-stat.ok{color:var(--g);font-weight:700;}
+.upload-btn{padding:7px 0;border-radius:9px;border:none;background:var(--s);width:100%;color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--ff);transition:all .15s;width:100%;}
+.upload-btn.scanned{background:var(--g);}
+/* doc list */
+.doc-li{background:var(--wh);border:1.5px solid var(--bd);border-radius:var(--r);padding:13px 15px;display:flex;align-items:center;gap:12px;margin-bottom:9px;transition:border-color .2s;}
+.doc-li.uploaded{border-color:var(--glt2);}
+.doc-li-icon{font-size:20px;flex-shrink:0;}
+.doc-li-info{flex:1;}
+.doc-li-name{font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:2px;}
+.doc-li-sub{font-size:10px;color:var(--mu2);}
+.doc-li-sub.ok{color:var(--g);font-weight:600;}
+.pill{padding:4px 11px;border-radius:20px;font-size:9.5px;font-weight:700;flex-shrink:0;}
+.pill-p{background:var(--bg2);color:var(--mu2);}
+.pill-u{background:var(--glt2);color:var(--g);}
+.tip-box{background:var(--golt);border:1px solid #e8d48a;border-radius:12px;padding:12px 14px;display:flex;gap:9px;margin-top:4px;}
+.tip-icon{font-size:14px;flex-shrink:0;margin-top:1px;}
+.tip-txt{font-size:11px;color:var(--go);font-weight:600;line-height:1.55;}
+.tip-lnk{font-weight:800;text-decoration:underline;cursor:pointer;}
+/* footer */
+.footer{background:var(--wh);border-top:1px solid var(--bd);padding:11px 16px 13px;flex-shrink:0;box-shadow:0 -4px 16px rgba(26,24,20,.07);}
+.footer-inner{display:flex;align-items:center;justify-content:space-between;}
+.f-count{font-size:11.5px;color:var(--mu);font-weight:600;}
+.f-btns{display:flex;gap:9px;}
+.btn{padding:11px 16px;border-radius:12px;font-family:var(--ff);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;border:none;}
+.btn-g{border:1.5px solid var(--bd);background:var(--bg);color:var(--ink2);}
+.btn-p{background:var(--s);color:#fff;box-shadow:0 3px 14px rgba(232,103,26,.35);}
+.btn-p:active{transform:scale(.98);}
+/* success */
+.success{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 22px;text-align:center;overflow-y:auto;background:var(--bg);}
+.s-ring{width:76px;height:76px;border-radius:50%;background:var(--glt2);border:3px solid var(--g);display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:16px;position:relative;}
+.s-badge{position:absolute;bottom:-4px;right:-4px;width:26px;height:26px;border-radius:50%;background:var(--s);display:flex;align-items:center;justify-content:center;font-size:12px;border:2px solid var(--bg);color:#fff;font-weight:800;}
+.s-title{font-family:'Fraunces',serif;font-weight:900;font-size:22px;color:var(--ink);letter-spacing:-.5px;margin-bottom:5px;}
+.s-reg{font-family:var(--fm);font-size:13px;color:#fff;background:var(--ink);padding:5px 14px;border-radius:8px;margin-bottom:22px;display:inline-block;}
+.s-card{background:var(--wh);border:1.5px solid var(--bd);border-radius:var(--r-lg);padding:18px;width:100%;max-width:320px;margin-bottom:18px;box-shadow:0 4px 20px rgba(26,24,20,.08);text-align:left;}
+.s-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--bg2);font-size:12.5px;}
+.s-row:last-child{border-bottom:none;}
+.s-lbl{color:var(--mu);font-weight:600;}
+.s-val{color:var(--ink);font-weight:700;}
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- STATUS BAR -->
+  <div class="sbar">
+    <span class="sbar-time">9:41</span>
+    <div class="sbar-pill"><div class="sbar-dot"></div></div>
+    <div style="display:flex;gap:5px;align-items:center">
+      <svg width="14" height="10" viewBox="0 0 14 10"><rect x="0" y="7.6" width="2.5" height="2.4" fill="white" opacity=".8" rx=".5"/><rect x="3.5" y="5.2" width="2.5" height="4.8" fill="white" opacity=".8" rx=".5"/><rect x="7" y="2.6" width="2.5" height="7.4" fill="white" opacity=".8" rx=".5"/><rect x="10.5" y="0" width="2.5" height="10" fill="white" opacity=".3" rx=".5"/></svg>
+      <svg width="16" height="10" viewBox="0 0 16 10"><rect x="1" y="2.5" width="10.5" height="6.5" rx="1.5" fill="none" stroke="white" stroke-width="1" opacity=".8"/><rect x="2" y="3.5" width="7.5" height="4.5" rx=".5" fill="white" opacity=".8"/><rect x="12" y="4.5" width="2" height="3" rx=".8" fill="white" opacity=".45"/></svg>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <div class="modal-header">
+    <div class="mh-row">
+      <div>
+        <div class="mh-title">Add New <em>Truck</em></div>
+        <div class="mh-sub" id="mh-sub">Gravity Vision Engine active — auto-extracting details</div>
+      </div>
+      <div class="close-btn">✕</div>
+    </div>
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="btn-scan" onclick="setMode('scan')">📄 Scan Documents</button>
+      <button class="mode-btn" id="btn-manual" onclick="setMode('manual')">✏️ Add Manually</button>
+    </div>
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="tab-bar" id="tab-bar" style="display:none">
+    <div class="tab active" id="tab-basic" onclick="setTab('basic')"><span>🚛</span> Basic Info</div>
+    <div class="tab" id="tab-compliance" onclick="setTab('compliance')"><span>📋</span> Compliance</div>
+    <div class="tab" id="tab-documents" onclick="setTab('documents')"><span>🗂️</span> Documents</div>
+  </div>
+
+  <!-- SCAN VIEW -->
+  <div id="view-scan" class="scroll-body">
+    <div class="ocr-banner"><div class="ocr-dot"></div><div class="ocr-txt">✓ Gravity Vision OCR Engine Active</div></div>
+    <div class="docs-lbl">Upload Documents to Scan</div>
+    <div class="docs-grid">
+      <div class="doc-card" id="dc-rc">
+        <div class="doc-card-icon">📋</div>
+        <div class="doc-card-name">RC Book</div>
+        <div class="doc-card-stat" id="ds-rc">Not scanned yet</div>
+        <button class="upload-btn" id="ub-rc" onclick="scanDoc('rc')">Upload</button>
+      </div>
+      <div class="doc-card" id="dc-ins">
+        <div class="doc-card-icon">🛡️</div>
+        <div class="doc-card-name">Insurance Certificate</div>
+        <div class="doc-card-stat" id="ds-ins">Not scanned yet</div>
+        <button class="upload-btn" id="ub-ins" onclick="scanDoc('ins')">Upload</button>
+      </div>
+      <div class="doc-card" id="dc-fit">
+        <div class="doc-card-icon">✅</div>
+        <div class="doc-card-name">Fitness Certificate</div>
+        <div class="doc-card-stat" id="ds-fit">Not scanned yet</div>
+        <button class="upload-btn" id="ub-fit" onclick="scanDoc('fit')">Upload</button>
+      </div>
+      <div class="doc-card" id="dc-puc">
+        <div class="doc-card-icon">🌿</div>
+        <div class="doc-card-name">PUC Certificate</div>
+        <div class="doc-card-stat" id="ds-puc">Not scanned yet</div>
+        <button class="upload-btn" id="ub-puc" onclick="scanDoc('puc')">Upload</button>
+      </div>
+      <div class="doc-card" id="dc-permit">
+        <div class="doc-card-icon">🗺️</div>
+        <div class="doc-card-name">Route Permit</div>
+        <div class="doc-card-stat" id="ds-permit">Not scanned yet</div>
+        <button class="upload-btn" id="ub-permit" onclick="scanDoc('permit')">Upload</button>
+      </div>
+      <div class="doc-card" id="dc-tax">
+        <div class="doc-card-icon">💰</div>
+        <div class="doc-card-name">Road Tax Receipt</div>
+        <div class="doc-card-stat" id="ds-tax">Not scanned yet</div>
+        <button class="upload-btn" id="ub-tax" onclick="scanDoc('tax')">Upload</button>
+      </div>
+    </div>
+    <div style="height:16px"></div>
+  </div>
+
+  <!-- BASIC INFO -->
+  <div id="view-basic" class="scroll-body" style="display:none">
+    <div style="font-family:'Fraunces',serif;font-weight:700;font-size:16px;color:var(--ink);margin-bottom:16px;">Vehicle Identity</div>
+    <div class="fg">
+      <div class="r2">
+        <div><label class="lbl">Registration No.</label><div class="finput"><input type="text" placeholder="e.g. MH 04 DB 0075" id="reg-no"></div></div>
+        <div><label class="lbl">VIN / Chassis No.</label><div class="finput"><input type="text" placeholder="Chassis No." id="vin"></div></div>
+      </div>
+      <div class="r2">
+        <div><label class="lbl">Engine Number</label><div class="finput"><input type="text" placeholder="Engine No." id="eng-no"></div></div>
+        <div><label class="lbl">Current Status</label><select class="fsel" id="status"><option value="">Select…</option><option>Active</option><option>Idle</option><option>In Maintenance</option><option>Decommissioned</option></select></div>
+      </div>
+      <div class="r2">
+        <div><label class="lbl">Make / Brand</label><div class="finput"><input type="text" placeholder="e.g. Tata" id="make"></div></div>
+        <div><label class="lbl">Model</label><div class="finput"><input type="text" placeholder="e.g. Prima 4928" id="model"></div></div>
+      </div>
+      <div class="r2">
+        <div><label class="lbl">Purchase Date</label><input class="fdate" type="date" id="purchase-date"></div>
+        <div><label class="lbl">Purchase Price (₹)</label><div class="finput"><span class="pfx">₹</span><input type="text" inputmode="numeric" placeholder="0" id="purchase-price" oninput="this.value=this.value.replace(/\D/g,'')"></div></div>
+      </div>
+      <div class="r2">
+        <div><label class="lbl">Axle Configuration</label><select class="fsel" id="axle"><option value="">Select…</option><option>2-Axle (4×2)</option><option>3-Axle (6×2)</option><option>4-Axle (8×2)</option><option>Multi-Axle</option></select></div>
+        <div><label class="lbl">No. of Tyres</label><div class="finput"><input type="text" inputmode="numeric" placeholder="e.g. 10" id="tyres" oninput="this.value=this.value.replace(/\D/g,'')"></div></div>
+      </div>
+      <div class="r2">
+        <div><label class="lbl">Load Capacity (T)</label><div class="finput"><input type="text" inputmode="numeric" placeholder="e.g. 32" id="capacity"></div></div>
+        <div><label class="lbl">Fuel Type</label><select class="fsel" id="fuel"><option value="">Select…</option><option>Diesel</option><option>CNG</option><option>Electric</option><option>LNG</option></select></div>
+      </div>
+      <div style="height:16px"></div>
+    </div>
+  </div>
+
+  <!-- COMPLIANCE -->
+  <div id="view-compliance" class="scroll-body" style="display:none">
+    <div class="fg">
+      <div class="sub-hd">Insurance</div>
+      <div class="r2">
+        <div><label class="lbl">Insurance Provider</label><div class="finput"><input type="text" placeholder="e.g. New India" id="ins-prov"></div></div>
+        <div><label class="lbl">Policy Number</label><div class="finput"><input type="text" placeholder="Policy No." id="ins-pol"></div></div>
+      </div>
+      <div class="r2">
+        <div><label class="lbl">Expiry Date</label><input class="fdate" type="date" id="ins-exp"></div>
+        <div><label class="lbl">Coverage Type</label><select class="fsel" id="ins-cov"><option value="">Select…</option><option>Third Party</option><option>Comprehensive</option><option>Own Damage</option></select></div>
+      </div>
+      <div class="sub-hd" style="margin-top:4px">Fitness &amp; PUC</div>
+      <div class="r2">
+        <div><label class="lbl">Fitness Cert No.</label><div class="finput"><input type="text" placeholder="Cert No." id="fit-no"></div></div>
+        <div><label class="lbl">Fitness Expiry</label><input class="fdate" type="date" id="fit-exp"></div>
+      </div>
+      <div class="r2">
+        <div><label class="lbl">PUC Cert No.</label><div class="finput"><input type="text" placeholder="PUC No." id="puc-no"></div></div>
+        <div><label class="lbl">PUC Expiry</label><input class="fdate" type="date" id="puc-exp"></div>
+      </div>
+      <div class="sub-hd" style="margin-top:4px">Permits &amp; Tax</div>
+      <div class="r2">
+        <div><label class="lbl">Route Permit No.</label><div class="finput"><input type="text" placeholder="Permit No." id="permit-no"></div></div>
+        <div><label class="lbl">Permit Expiry</label><input class="fdate" type="date" id="permit-exp"></div>
+      </div>
+      <div class="r2">
+        <div><label class="lbl">Road Tax Amount (₹)</label><div class="finput"><span class="pfx">₹</span><input type="text" inputmode="numeric" placeholder="0" id="tax-amt" oninput="this.value=this.value.replace(/\D/g,'')"></div></div>
+        <div><label class="lbl">Tax Validity Until</label><input class="fdate" type="date" id="tax-val"></div>
+      </div>
+      <div style="height:16px"></div>
+    </div>
+  </div>
+
+  <!-- DOCUMENTS LIST -->
+  <div id="view-documents" class="scroll-body" style="display:none">
+    <div style="font-family:'Fraunces',serif;font-weight:700;font-size:16px;color:var(--ink);margin-bottom:14px;">Scanned Documents <span style="font-family:var(--ff);font-size:13px;font-weight:600;color:var(--mu)" id="doc-count-lbl">(0/6)</span></div>
+    <div class="doc-li" id="li-rc"><div class="doc-li-icon">📋</div><div class="doc-li-info"><div class="doc-li-name">RC Book</div><div class="doc-li-sub" id="lsub-rc">Missing</div></div><span class="pill pill-p" id="lpill-rc">Pending</span></div>
+    <div class="doc-li" id="li-ins"><div class="doc-li-icon">🛡️</div><div class="doc-li-info"><div class="doc-li-name">Insurance Certificate</div><div class="doc-li-sub" id="lsub-ins">Missing</div></div><span class="pill pill-p" id="lpill-ins">Pending</span></div>
+    <div class="doc-li" id="li-fit"><div class="doc-li-icon">✅</div><div class="doc-li-info"><div class="doc-li-name">Fitness Certificate</div><div class="doc-li-sub" id="lsub-fit">Missing</div></div><span class="pill pill-p" id="lpill-fit">Pending</span></div>
+    <div class="doc-li" id="li-puc"><div class="doc-li-icon">🌿</div><div class="doc-li-info"><div class="doc-li-name">PUC Certificate</div><div class="doc-li-sub" id="lsub-puc">Missing</div></div><span class="pill pill-p" id="lpill-puc">Pending</span></div>
+    <div class="doc-li" id="li-permit"><div class="doc-li-icon">🗺️</div><div class="doc-li-info"><div class="doc-li-name">Route Permit</div><div class="doc-li-sub" id="lsub-permit">Missing</div></div><span class="pill pill-p" id="lpill-permit">Pending</span></div>
+    <div class="doc-li" id="li-tax"><div class="doc-li-icon">💰</div><div class="doc-li-info"><div class="doc-li-name">Road Tax Receipt</div><div class="doc-li-sub" id="lsub-tax">Missing</div></div><span class="pill pill-p" id="lpill-tax">Pending</span></div>
+    <div class="tip-box"><div class="tip-icon">💡</div><div class="tip-txt">Tip: You can still go back and scan more documents to auto-fill missing fields. <span class="tip-lnk" onclick="setMode('scan')">← Go back to scan</span></div></div>
+    <div style="height:16px"></div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div id="view-success" class="success" style="display:none">
+    <div class="s-ring">🚛<div class="s-badge">✓</div></div>
+    <div class="s-title">Truck Added!</div>
+    <div class="s-reg" id="s-reg">MH 04 DB 0075</div>
+    <div class="s-card">
+      <div class="s-row"><span class="s-lbl">Make / Model</span><span class="s-val" id="s-make">—</span></div>
+      <div class="s-row"><span class="s-lbl">Status</span><span class="s-val" id="s-status">—</span></div>
+      <div class="s-row"><span class="s-lbl">Fuel Type</span><span class="s-val" id="s-fuel">—</span></div>
+      <div class="s-row"><span class="s-lbl">Load Capacity</span><span class="s-val" id="s-cap">—</span></div>
+      <div class="s-row"><span class="s-lbl">Documents</span><span class="s-val" id="s-docs">0 / 6 scanned</span></div>
+    </div>
+    <button onclick="location.reload()" style="width:100%;max-width:320px;padding:14px;border-radius:13px;border:none;background:var(--g);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;box-shadow:0 4px 20px rgba(26,92,58,.35);font-family:var(--ff)">Go to Fleet Register</button>
+    <button onclick="location.reload()" style="width:100%;max-width:320px;padding:12px;border-radius:13px;border:1.5px solid var(--bd);background:var(--wh);color:var(--ink2);font-size:13.5px;font-weight:700;cursor:pointer;font-family:var(--ff)">✚ Add Another Truck</button>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer" id="footer">
+    <div class="footer-inner">
+      <div class="f-count" id="f-count">0 of 6 documents scanned</div>
+      <div class="f-btns">
+        <button class="btn btn-g" id="btn-back" onclick="goBack()" style="display:none">← Back</button>
+        <button class="btn btn-g" id="btn-cancel" onclick="location.reload()">Cancel</button>
+        <button class="btn btn-p" id="btn-next" onclick="goNext()">Next →</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let mode='scan',mTab='basic';
+const docs={rc:false,ins:false,fit:false,puc:false,permit:false,tax:false};
+const dkeys=Object.keys(docs);
+const cnt=()=>dkeys.filter(k=>docs[k]).length;
+
+function setMode(m){
+  mode=m;
+  document.getElementById('btn-scan').classList.toggle('active',m==='scan');
+  document.getElementById('btn-manual').classList.toggle('active',m==='manual');
+  document.getElementById('tab-bar').style.display=m==='manual'?'flex':'none';
+  document.getElementById('mh-sub').textContent=m==='scan'
+    ?'Gravity Vision Engine active — auto-extracting details'
+    :'Enter truck details manually';
+  if(m==='scan'){showView('view-scan');updFooterScan();}
+  else{setTab('basic');}
+}
+
+function setTab(t){
+  mTab=t;
+  ['basic','compliance','documents'].forEach(id=>{
+    document.getElementById('tab-'+id).classList.toggle('active',id===t);
+  });
+  showView('view-'+t);
+  updFooterManual(t);
+  updDocCount();
+}
+
+function showView(id){
+  ['view-scan','view-basic','view-compliance','view-documents','view-success'].forEach(v=>{
+    document.getElementById(v).style.display=v===id?'block':'none';
+  });
+}
+
+function updFooterScan(){
+  document.getElementById('f-count').textContent=cnt()+' of 6 documents scanned';
+  document.getElementById('btn-back').style.display='none';
+  document.getElementById('btn-cancel').style.display='';
+  document.getElementById('btn-next').textContent='Next →';
+}
+
+function filledCount(){
+  return['reg-no','vin','eng-no','make','model'].filter(id=>{const e=document.getElementById(id);return e&&e.value.trim();}).length;
+}
+
+function updFooterManual(t){
+  document.getElementById('f-count').textContent=filledCount()+' fields filled';
+  document.getElementById('btn-cancel').style.display='none';
+  document.getElementById('btn-back').style.display='inline-flex';
+  document.getElementById('btn-next').textContent=t==='documents'?'Add Truck ✓':'Next →';
+}
+
+function updDocCount(){
+  document.getElementById('doc-count-lbl').textContent='('+cnt()+'/6)';
+}
+
+function scanDoc(k){
+  docs[k]=true;
+  const dc=document.getElementById('dc-'+k);
+  dc.classList.add('scanned');
+  const ds=document.getElementById('ds-'+k);
+  ds.textContent='✓ Scanned';ds.className='doc-card-stat ok';
+  const ub=document.getElementById('ub-'+k);
+  ub.textContent='✓ Scanned';ub.classList.add('scanned');
+  document.getElementById('lpill-'+k).textContent='Uploaded';
+  document.getElementById('lpill-'+k).className='pill pill-u';
+  const ls=document.getElementById('lsub-'+k);
+  ls.textContent='Scanned via OCR';ls.className='doc-li-sub ok';
+  document.getElementById('li-'+k).classList.add('uploaded');
+  updDocCount();updFooterScan();
+}
+
+function goNext(){
+  if(mode==='scan'){setMode('manual');setTab('basic');}
+  else if(mTab==='basic'){setTab('compliance');}
+  else if(mTab==='compliance'){setTab('documents');}
+  else{submitTruck();}
+}
+
+function goBack(){
+  if(mTab==='basic')setMode('scan');
+  else if(mTab==='compliance')setTab('basic');
+  else if(mTab==='documents')setTab('compliance');
+}
+
+function submitTruck(){
+  const btn=document.getElementById('btn-next');
+  btn.textContent='Saving…';btn.disabled=true;
+  setTimeout(()=>{
+    const reg=document.getElementById('reg-no').value||'MH 04 DB 0075';
+    const mk=document.getElementById('make').value||'—';
+    const md=document.getElementById('model').value;
+    document.getElementById('s-reg').textContent=reg;
+    document.getElementById('s-make').textContent=mk+(md?' / '+md:'');
+    document.getElementById('s-status').textContent=document.getElementById('status').value||'—';
+    document.getElementById('s-fuel').textContent=document.getElementById('fuel').value||'—';
+    const cap=document.getElementById('capacity').value;
+    document.getElementById('s-cap').textContent=cap?cap+' T':'—';
+    document.getElementById('s-docs').textContent=cnt()+' / 6 scanned';
+    document.getElementById('tab-bar').style.display='none';
+    showView('view-success');
+    document.getElementById('footer').style.display='none';
+  },1200);
+}
+
+updFooterScan();
+</script>
+</body>
+</html>
