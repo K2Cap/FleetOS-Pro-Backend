@@ -37,10 +37,14 @@ app.use((req, res, next) => {
     next();
 });
 
+// --- TOP-PRIORITY HEALTH SIGNAL ---
+app.get('/health', (req, res) => res.status(200).json({ status: "healthy", heartbeat: true }));
+app.get('/', (req, res) => res.status(200).json({ status: "online", signal: "FleetOS PRO" }));
+
 // --- TOP PRIORITY: Global Unlock ---
 app.use(cors()); 
 
-const port = process.env.PORT || 7331;
+const port = process.env.PORT || 3000;
 const MAX_UPLOAD_SIZE_MB = Number(process.env.MAX_UPLOAD_SIZE_MB || 15);
 const MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024;
 const PASSWORD_KEYLEN = 64;
