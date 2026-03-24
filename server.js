@@ -1056,19 +1056,22 @@ app.post('/api/auth/login', (req, res) => {
     const password = req.body.password;
     if (!identifier || !password) return res.status(400).json({ error: 'Identifier and password required' });
     
-    const sql = `SELECT * FROM users WHERE email = ? OR mobile = ? LIMIT 1`;
-    db.get(sql, [identifier.toLowerCase(), identifier], async (err, user) => {
-        if (err) return res.status(500).json({ error: 'Authentication failed' });
+    const sql = `SELECT * FROM users WHERE LOWER(email) = $1 OR mobile = $2 LIMIT 1`;
+    pool.query(sql, [identifier.toLowerCase(), identifier], async (err, results) => {
+        if (err) {
+            console.error('🔥 LOGIN DB ERROR:', err.message);
+            return res.status(500).json({ error: 'Authentication failed - database error' });
+        }
+        
+        const user = results.rows[0];
         if (!user || !verifyPassword(String(password), user.password)) {
             return res.status(401).json({ error: 'Invalid credentials. Please check your login ID and password.' });
         }
 
         if (isLegacyPasswordHash(user.password)) {
             const upgradedHash = hashPassword(String(password));
-            db.run('UPDATE users SET password = ? WHERE id = ?', [upgradedHash, user.id], (updateErr) => {
-                if (updateErr) {
-                    console.error(`WATERTIGHT: Failed to upgrade password hash for user ${user.id}: ${updateErr.message}`);
-                }
+            pool.query('UPDATE users SET password = $1 WHERE id = $2', [upgradedHash, user.id], (updateErr) => {
+                if (updateErr) console.error(`Failed to upgrade password hash: ${updateErr.message}`);
             });
         }
 
