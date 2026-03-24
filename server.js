@@ -457,11 +457,7 @@ const upload = multer({
     }
 });
 
-app.use(cors());
-app.use(bodyParser.json({ limit: '50mb' }));
-app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
-
-// --- HIGH-ASSURANCE AUDIT LOGGING ---
+// --- AUDIT SYSTEM ---
 const AUDIT_LOG = path.join(__dirname, 'audit_log.txt');
 const auditStream = fs.createWriteStream(AUDIT_LOG, { flags: 'a' });
 function logAudit(msg) {
