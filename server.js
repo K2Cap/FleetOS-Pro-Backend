@@ -21,7 +21,6 @@ const PASSWORD_KEYLEN = 64;
 
 // --- PRODUCTION CORS: Extremely permissive for initial cloud deployment ---
 app.use(cors({ origin: '*', credentials: true, methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
-app.options('*', cors());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.json());
