@@ -36,13 +36,22 @@ process.on('unhandledRejection', (reason, promise) => {
 app.set('trust proxy', 1);
 
 // --- POSTGRES CONFIG ---
-// Update these with your Postgres credentials
+// Priority to DATABASE_URL for Railway/Heroku/Render cloud environments
+const poolConfig = process.env.DATABASE_URL 
+    ? { 
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false } 
+      }
+    : {
+        user: process.env.PGUSER || 'postgres',
+        host: process.env.PGHOST || 'localhost',
+        database: process.env.PGDATABASE || 'fleetos',
+        password: process.env.PGPASSWORD || 'postgres',
+        port: Number(process.env.PGPORT) || 5432,
+    };
+
 const pool = new Pool({
-    user: process.env.PGUSER || 'postgres',
-    host: process.env.PGHOST || 'localhost',
-    database: process.env.PGDATABASE || 'fleetos',
-    password: process.env.PGPASSWORD || 'postgres',
-    port: Number(process.env.PGPORT) || 5432,
+    ...poolConfig,
     max: Number(process.env.PGPOOL_MAX || 20),
     idleTimeoutMillis: Number(process.env.PG_IDLE_TIMEOUT_MS || 30000),
     connectionTimeoutMillis: Number(process.env.PG_CONNECT_TIMEOUT_MS || 10000),
