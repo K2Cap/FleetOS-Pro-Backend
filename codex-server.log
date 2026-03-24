@@ -1,0 +1,8 @@
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+✅ Postgres Database Initialized & Synced.
+🚀 GRAVITY BACKEND (PRODUCTION READY) READY: http://localhost:7331
+📡 Health Check: http://localhost:7331/health
+GET /api/driver-data?userId=1 - Waiting...
+GET /api/driver-data?userId=1 - 200 (15ms)
+GET /api/driver-data - Waiting...
+GET /api/driver-data - 200 (157ms)

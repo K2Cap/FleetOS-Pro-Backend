@@ -1,0 +1,77 @@
+­ƒÜÇ GRAVITY BACKEND READY: http://localhost:3001
+Connected to the SQLite database.
+Trucks table ready.
+Drivers table ready.
+[DRIVER REG] Columns: 30, Params: 30
+[FLEET REG] Columns: 43, Params: 43
+Gemini Engine: Received image/jpeg for parsing...
+Gemini Engine: Received image/jpeg for parsing...
+Gemini Engine: Raw Output Length: 418
+Gemini Engine: Successfully parsed JSON.
+Gemini Engine: Raw Output Length: 313
+Gemini Engine: Successfully parsed JSON.
+[PURGE EVENT] Attempting to decommission Truck ID: 3
+[PURGE SUCCESS] Decommissioned 1 fleet record(s).
+Gemini Engine: Received application/pdf for parsing...
+Gemini Engine: Received application/pdf for parsing...
+Gemini Engine: Received image/jpeg for parsing...
+Gemini Engine: Raw Output Length: 276
+Gemini Engine: Successfully parsed JSON.
+Gemini Engine: Received image/jpeg for parsing...
+Gemini Engine Error: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [503 Service Unavailable] This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
+    at handleResponseNotOk (C:\Users\ADMIN\.gemini\antigravity\scratch\GRAVITY\backend\node_modules\@google\generative-ai\dist\index.js:434:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async makeRequest (C:\Users\ADMIN\.gemini\antigravity\scratch\GRAVITY\backend\node_modules\@google\generative-ai\dist\index.js:403:9)
+    at async generateContent (C:\Users\ADMIN\.gemini\antigravity\scratch\GRAVITY\backend\node_modules\@google\generative-ai\dist\index.js:867:22)
+    at async parseDocumentWithGemini (C:\Users\ADMIN\.gemini\antigravity\scratch\GRAVITY\backend\vision-service.js:40:24)
+    at async C:\Users\ADMIN\.gemini\antigravity\scratch\GRAVITY\backend\server.js:330:24 {
+  status: 503,
+  statusText: 'Service Unavailable',
+  errorDetails: undefined
+}
+Gemini Engine Error: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [503 Service Unavailable] This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
+    at handleResponseNotOk (C:\Users\ADMIN\.gemini\antigravity\scratch\GRAVITY\backend\node_modules\@google\generative-ai\dist\index.js:434:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async makeRequest (C:\Users\ADMIN\.gemini\antigravity\scratch\GRAVITY\backend\node_modules\@google\generative-ai\dist\index.js:403:9)
+    at async generateContent (C:\Users\ADMIN\.gemini\antigravity\scratch\GRAVITY\backend\node_modules\@google\generative-ai\dist\index.js:867:22)
+    at async parseDocumentWithGemini (C:\Users\ADMIN\.gemini\antigravity\scratch\GRAVITY\backend\vision-service.js:40:24)
+    at async C:\Users\ADMIN\.gemini\antigravity\scratch\GRAVITY\backend\server.js:330:24 {
+  status: 503,
+  statusText: 'Service Unavailable',
+  errorDetails: undefined
+}
+Gemini Engine: Raw Output Length: 226
+Gemini Engine: Successfully parsed JSON.
+Gemini Engine: Received image/jpeg for parsing...
+Gemini Engine: Received application/pdf for parsing...
+Gemini Engine: Raw Output Length: 500
+Gemini Engine: Successfully parsed JSON.
+Gemini Engine: Raw Output Length: 283
+Gemini Engine: Successfully parsed JSON.
+Gemini Engine: Received image/jpeg for parsing...
+Gemini Engine: Raw Output Length: 198
+Gemini Engine: Successfully parsed JSON.
+[FLEET REG] Columns: 43, Params: 43
+Gemini Engine: Received image/jpeg for parsing...
+Gemini Engine: Received image/jpeg for parsing...
+Gemini Engine: Raw Output Length: 413
+Gemini Engine: Successfully parsed JSON.
+Gemini Engine: Raw Output Length: 313
+Gemini Engine: Successfully parsed JSON.
+[DRIVER REG] Columns: 30, Params: 30
+Gemini Engine: Received image/jpeg for parsing...
+Gemini Engine: Received image/jpeg for parsing...
+Gemini Engine: Raw Output Length: 313
+Gemini Engine: Successfully parsed JSON.
+Gemini Engine: Raw Output Length: 411
+Gemini Engine: Successfully parsed JSON.
+[DRIVER REG] Columns: 30, Params: 30
+Database INSERT error: SQLITE_CONSTRAINT: UNIQUE constraint failed: drivers.dl_no
+Gemini Engine: Received image/jpeg for parsing...
+Gemini Engine: Received image/jpeg for parsing...
+Gemini Engine: Raw Output Length: 313
+Gemini Engine: Successfully parsed JSON.
+Gemini Engine: Raw Output Length: 418
+Gemini Engine: Successfully parsed JSON.
+[DRIVER REG] Columns: 30, Params: 30
+Database INSERT error: SQLITE_CONSTRAINT: UNIQUE constraint failed: drivers.dl_no

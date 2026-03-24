@@ -1,0 +1,4 @@
+[dotenv@17.3.1] injecting env (6) from .env -- tip: ­ƒöÉ prevent committing .env to code: https://dotenvx.com/precommit
+­ƒÜÇ GRAVITY BACKEND (PRODUCTION READY) READY: http://localhost:3001
+­ƒôí Health Check: http://localhost:3001/health
+Ô£à Postgres Database Initialized & Synced.
