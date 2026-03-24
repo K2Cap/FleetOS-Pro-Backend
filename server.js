@@ -31,6 +31,12 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_for_dev_only';
 
 const app = express();
 
+// --- DIAGNOSTIC TRAFFIC LOGGER ---
+app.use((req, res, next) => {
+    console.log(`📥 INCOMING REQUEST: ${req.method} ${req.url} from ${req.ip}`);
+    next();
+});
+
 // --- TOP PRIORITY: Global Unlock ---
 app.use(cors()); 
 
