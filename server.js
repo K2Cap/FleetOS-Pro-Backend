@@ -2534,16 +2534,23 @@ app.use((err, req, res, next) => {
 
 let server;
 
-// Initialize Database then Start Server
-initializeDatabase().then(() => {
+// Start Server IMMEDIATELY to prevent hanging on Railway startup
+const startProductionServer = () => {
     server = app.listen(port, () => {
-        console.log(`🚀 GRAVITY BACKEND (PRODUCTION READY) READY: http://localhost:${port}`);
+        console.log(`🚀 FLEETOS PRO API LIVE: http://localhost:${port}`);
         console.log(`📡 Health Check: http://localhost:${port}/health`);
+        
+        // Background DB Initialization
+        console.log("🐘 Initializing Database in Background...");
+        initializeDatabase().then(() => {
+            console.log("✅ Database Synced Successfully");
+        }).catch(err => {
+            console.error("❌ Database Background Init Failed:", err.message);
+        });
     });
-}).catch(err => {
-    console.error("CRITICAL: Failed to initialize database:", err);
-    process.exit(1);
-});
+};
+
+startProductionServer();
 
 // Graceful Shutdown
 process.on('SIGTERM', () => {
