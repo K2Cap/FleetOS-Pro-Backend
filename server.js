@@ -611,10 +611,18 @@ function getMimeType(fn) {
     return 'image/jpeg';
 }
 
+// --- SERVER CONFIG ---
+const IS_PRODUCTION = !!process.env.RAILWAY_STATIC_URL || !!process.env.PORT;
 
 app.get('/', (req, res) => {
+    if (IS_PRODUCTION) {
+        return res.status(200).json({ status: "online", service: "FleetOS Pro API", region: "Cloud" });
+    }
     res.sendFile(path.join(DASHBOARD_DIR, 'Index - Landing Page.html'));
 });
+
+// health-check
+app.get('/health', (req, res) => res.json({ status: "healthy" }));
 
 // Database Initialization
 async function initializeDatabase() {
