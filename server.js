@@ -985,43 +985,39 @@ async function generateDriversExcel() {
 }
 
 // --- AUTH API (ENHANCED) ---
-app.post('/api/auth/signup', (req, res) => {
+app.post('/api/auth/signup', async (req, res) => {
     const fullName = cleanString(req.body.fullName);
     const companyName = cleanString(req.body.companyName);
     const mobile = cleanString(req.body.mobile);
     const email = cleanString(req.body.email)?.toLowerCase() || null;
-    const password = req.body.password;
+    const password = String(req.body.password || '');
     const role = cleanString(req.body.role);
-    if (!fullName || (!email && !mobile) || !password || !role) {
-        return res.status(400).json({ error: 'Full Name, Login ID (Email/Phone), Password and Role are required' });
-    }
-    if (String(password).length < 8) {
-        return res.status(400).json({ error: 'Password must be at least 8 characters long' });
+    if (!fullName || (!email && !mobile) || password.length < 8 || !role) {
+        return res.status(400).json({ error: 'Full registration details (Name, Login ID, 8+ Char Password) are required' });
     }
 
-    const hashedPassword = hashPassword(String(password));
-    db.run(
-        `INSERT INTO users (full_name, company_name, mobile, email, password, role) VALUES (?, ?, ?, ?, ?, ?)`,
-        [fullName, companyName, mobile, email, hashedPassword, role],
-        function (err) {
-            if (err) {
-                let msg = err.message;
-                if (err.code === '23505' || msg.includes('unique')) {
-                    msg = msg.toLowerCase().includes('email') ? 'Email already registered' : 'Mobile number already registered';
-                }
-                return res.status(400).json({ error: msg });
-            }
-            
-            const userId = this.lastID;
-            const token = jwt.sign({ id: userId, role }, JWT_SECRET, { expiresIn: '7d' });
+    try {
+        const hashedPassword = hashPassword(password);
+        const result = await pool.query(
+            `INSERT INTO users (full_name, company_name, mobile, email, password, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+            [fullName, companyName, mobile, email, hashedPassword, role]
+        );
+        
+        const userId = result.rows[0].id;
+        const token = jwt.sign({ id: userId, role }, JWT_SECRET, { expiresIn: '7d' });
 
-            res.status(201).json({ 
-                message: 'Account created successfully', 
-                token,
-                user: { id: userId, fullName, role, companyName } 
-            });
+        res.status(201).json({ 
+            message: 'Account created successfully', 
+            token,
+            user: { id: userId, fullName, role, companyName } 
+        });
+    } catch (err) {
+        let msg = err.message;
+        if (msg.includes('unique')) {
+            msg = msg.toLowerCase().includes('email') ? 'Email already registered' : 'Mobile number already registered';
         }
-    );
+        res.status(400).json({ error: msg });
+    }
 });
 
 app.post('/api/auth/login', (req, res) => {
