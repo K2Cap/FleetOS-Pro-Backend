@@ -1017,17 +1017,19 @@ async function generateDriversExcel() {
 
 // --- AUTH API (ENHANCED) ---
 app.post('/api/auth/signup', async (req, res) => {
-    const fullName = cleanString(req.body.fullName);
-    const companyName = cleanString(req.body.companyName);
-    const mobile = cleanString(req.body.mobile);
-    const email = cleanString(req.body.email)?.toLowerCase() || null;
-    const password = String(req.body.password || '');
-    const role = cleanString(req.body.role);
-    if (!fullName || (!email && !mobile) || password.length < 8 || !role) {
-        return res.status(400).json({ error: 'Full registration details (Name, Login ID, 8+ Char Password) are required' });
-    }
-
     try {
+        console.log('📝 SIGNUP ATTEMPT:', req.body.mobile);
+        const fullName = (req.body.fullName || "").toString().trim();
+        const companyName = (req.body.companyName || "").toString().trim();
+        const mobile = (req.body.mobile || "").toString().trim();
+        const email = (req.body.email || "").toString().trim().toLowerCase() || null;
+        const password = String(req.body.password || '');
+        const role = (req.body.role || "").toString().trim();
+        
+        if (!fullName || (!email && !mobile) || password.length < 8 || !role) {
+            return res.status(400).json({ error: 'Full registration details (Name, Login ID, 8+ Char Password) are required' });
+        }
+
         const hashedPassword = hashPassword(password);
         const result = await pool.query(
             `INSERT INTO users (full_name, company_name, mobile, email, password, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
