@@ -19,8 +19,8 @@ const MAX_UPLOAD_SIZE_MB = Number(process.env.MAX_UPLOAD_SIZE_MB || 15);
 const MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024;
 const PASSWORD_KEYLEN = 64;
 
-// --- PRODUCTION CORS: Extremely permissive for initial cloud deployment ---
-app.use(cors({ origin: '*', credentials: false, methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
+// --- PRODUCTION CORS: All-Permissive Global Unlock ---
+app.use(cors()); 
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.json());
@@ -2531,8 +2531,8 @@ let server;
 
 // Start Server IMMEDIATELY to prevent hanging on Railway startup
 const startProductionServer = () => {
-    server = app.listen(port, () => {
-        console.log(`🚀 FLEETOS PRO API LIVE: http://localhost:${port}`);
+    server = app.listen(port, '0.0.0.0', () => {
+        console.log(`🚀 FLEETOS PRO API LIVE: http://0.0.0.0:${port}`);
         console.log(`📡 Health Check: http://localhost:${port}/health`);
         
         // Background DB Initialization
