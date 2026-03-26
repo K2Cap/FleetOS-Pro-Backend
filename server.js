@@ -1,5 +1,7 @@
 require('dotenv').config();
 
+const { PDFDocument } = require('pdf-lib');
+
 // --- CRITICAL DEPLOYMENT SAFETY SHIELD ---
 process.on('uncaughtException', (err) => {
     console.error('🔥 FATAL UNCAUGHT EXCEPTION:', err.message);
