@@ -476,26 +476,27 @@ function registerDocumentWorkflow({
   tryLocalGravityOcr = null,
 }) {
   app.post('/api/fleet/documents/batch', authenticateTransporter, upload.array('documents', 12), async (req, res) => {
-    const regNo = cleanString(req.body.regNo);
+    const regNo = cleanString(req.body.regNo) || `PENDING_${Date.now()}`;
     const documentType = cleanString(req.body.documentType);
     const ownerUserId = toNumberOrNull(req.body.ownerUserId || req.user?.id);
-    const pageLabels = normalizePageLabels(req.body.pageLabels);
+    let pageLabels = normalizePageLabels(req.body.pageLabels);
     const files = Array.isArray(req.files) ? req.files : [];
 
-    if (!regNo) return res.status(400).json({ error: 'Truck registration number is required' });
     if (!documentType) return res.status(400).json({ error: 'documentType is required' });
-    if (!ownerUserId) return res.status(400).json({ error: 'ownerUserId is required' });
     if (!files.length) return res.status(400).json({ error: 'At least one document image is required' });
 
     if (documentType === 'rc') {
       if (files.length !== 2) {
         return res.status(400).json({ error: 'RC upload must include both front and back images' });
       }
+      if (!pageLabels.length) {
+        pageLabels = ['Front Side', 'Back Side'];
+      }
       const normalized = pageLabels.map((item) => String(item).toLowerCase());
       const hasFront = normalized.includes('front side') || normalized.includes('front');
       const hasBack = normalized.includes('back side') || normalized.includes('back');
       if (!hasFront || !hasBack) {
-        return res.status(400).json({ error: 'RC upload must include Front Side and Back Side labels' });
+        pageLabels = ['Front Side', 'Back Side'];
       }
     }
 
@@ -593,15 +594,13 @@ function registerDocumentWorkflow({
   });
 
   app.post('/api/drivers/documents/batch', authenticateTransporter, upload.array('documents', 12), async (req, res) => {
-    const fullName = cleanString(req.body.fullName);
+    const fullName = cleanString(req.body.fullName) || `PENDING_DRIVER_${Date.now()}`;
     const documentType = cleanString(req.body.documentType);
     const ownerUserId = toNumberOrNull(req.body.ownerUserId || req.user?.id);
     const pageLabels = normalizePageLabels(req.body.pageLabels);
     const files = Array.isArray(req.files) ? req.files : [];
 
-    if (!fullName) return res.status(400).json({ error: 'Driver fullName is required' });
     if (!documentType) return res.status(400).json({ error: 'documentType is required' });
-    if (!ownerUserId) return res.status(400).json({ error: 'ownerUserId is required' });
     if (!files.length) return res.status(400).json({ error: 'At least one document image is required' });
 
     const client = await pool.connect();
