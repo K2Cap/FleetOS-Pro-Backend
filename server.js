@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const { registerDocumentWorkflow, ensureDocumentTables, createTempMulterStorage } = require('./railwayDocumentWorkflow');
 const { PDFDocument } = require('pdf-lib');
 
 // --- CRITICAL DEPLOYMENT SAFETY SHIELD ---
@@ -454,31 +455,8 @@ const db = {
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR);
 
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, UPLOADS_DIR),
-    filename: (req, file, cb) => {
-        const body = req.body;
-        let identifier = 'unnamed';
-        let suffix = file.fieldname;
+const storage = createTempMulterStorage(UPLOADS_DIR);
 
-        if (body.fullName) {
-            identifier = body.fullName.replace(/[^a-z0-9]/gi, '_');
-            const map = { 'file_dl': 'DL', 'file_aadhar': 'Aadhar', 'file_pan': 'PAN', 'file_photo': 'Photo' };
-            suffix = map[file.fieldname] || file.fieldname;
-        } else if (body.regNo) {
-            identifier = body.regNo.replace(/[^a-z0-9]/gi, '_');
-            const map = { 'file_rc': 'RC', 'file_insurance': 'Insurance', 'file_fitness': 'Fitness', 'file_puc': 'PUC', 'file_permit': 'Permit', 'file_roadtax': 'RoadTax' };
-            suffix = map[file.fieldname] || file.fieldname;
-        } else {
-            // Fallback to timestamp to prevent collisions
-            identifier = `doc_${Date.now()}`;
-        }
-
-        const ext = path.extname(file.originalname) || '.jpg';
-        const fileName = `${identifier}_${suffix}${ext}`;
-        cb(null, fileName);
-    }
-});
 const upload = multer({
     storage,
     limits: {
@@ -953,6 +931,8 @@ async function initializeDatabase() {
             await pool.query(statement);
         }
 
+        await ensureDocumentTables(pool);
+        
         console.log('✅ Postgres Database Initialized & Synced.');
 
         dbReady = true;
@@ -1104,6 +1084,17 @@ app.post('/api/auth/login', async (req, res) => {
 app.use(['/api/drivers', '/api/dashboard', '/api/export'], authenticateTransporter);
 app.use('/api/fleet', authenticateTransporter);
 app.use('/api/expenses', authenticateTransporter);
+
+registerDocumentWorkflow({
+    app,
+    pool,
+    upload,
+    authenticateTransporter,
+    UPLOADS_DIR,
+    parseDocumentWithGemini,
+    tryLocalGravityOcr
+});
+
 
 // --- TRIPS API ---
 app.post('/api/fleet/trips', async (req, res) => {
