@@ -1477,67 +1477,6 @@ app.delete('/api/fleet/:id', async (req, res) => {
     }
 });
 
-// --- OCR TRUCK GATEWAY (High Resilience) ---
-app.post('/api/ocr-truck', async (req, res) => {
-    const { image, mimeType } = req.body;
-    if (!image) return res.status(400).json({ error: 'Image data is required' });
-
-    console.log(`[OCR Gateway] Processing logistics scan...`);
-
-    // Tier 1: GravityOCR (Port 5001)
-    try {
-        const response = await fetch('http://localhost:5001/api/ocr', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                images: [{ data: image.split(',')[1] || image, mimeType: mimeType || 'image/jpeg' }] 
-            })
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            console.log(`[OCR Gateway] GravityOCR Success: ${data.type}`);
-            return res.json(data);
-        }
-    } catch (err) {
-        console.warn(`[OCR Gateway] GravityOCR (5001) unavailable. Falling back to native engine.`, err.message);
-    }
-
-    // Tier 2: Native Backend Gemini Fallback
-    try {
-        const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent';
-        const apiKey = process.env.GEMINI_API_KEY;
-        if (!apiKey) throw new Error("No Gemini API key configured");
-
-        const prompt = `You are a Universal Logistics OCR Expert. Analyze this logistics document (RC, Insurance, etc). Return STRICT JSON: { 'type': ..., 'data': { 'Reg No': ..., 'Expiry': ... }, 'summary': ... }`;
-        const body = {
-            contents: [{
-                parts: [
-                    { text: prompt },
-                    { inline_data: { mime_type: mimeType || 'image/jpeg', data: image.split(',')[1] || image } }
-                ]
-            }]
-        };
-
-        const resFallback = await fetch(`${geminiUrl}?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-
-        const json = await resFallback.json();
-        const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
-        const match = text.match(/\{[\s\S]*\}/);
-        if (match) {
-            return res.json(JSON.parse(match[0].replace(/```json|```/g, '')));
-        }
-        throw new Error("Could not parse fallback result");
-    } catch (e) {
-        console.error(`[OCR Gateway] Critical Failure: ${e.message}`);
-        res.status(500).json({ error: 'All OCR attempts failed', details: e.message });
-    }
-});
-
 // --- DRIVERS API ---
 app.get('/api/drivers', (req, res) => {
     db.all('SELECT * FROM drivers ORDER BY created_at DESC', (err, rows) => {
