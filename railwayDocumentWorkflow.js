@@ -694,9 +694,28 @@ function registerDocumentWorkflow({
       await client.query('BEGIN');
       await ensureDocumentTables(client);
 
-      const docRes = await client.query('SELECT * FROM documents WHERE id = $1 AND entity_type = $2 LIMIT 1', [documentId, 'truck']);
+      const docRes = await client.query(
+        'SELECT * FROM documents WHERE id = $1 AND entity_type = $2 LIMIT 1 FOR UPDATE',
+        [documentId, 'truck']
+      );
       const document = docRes.rows[0];
       if (!document) return res.status(404).json({ error: 'Truck document not found' });
+      if (document.status === 'scanned') {
+        await client.query('COMMIT');
+        return res.json({
+          message: 'Truck document already scanned',
+          documentId,
+          truckId: document.entity_id,
+          extracted: document.extracted_data || null,
+        });
+      }
+
+      await client.query(
+        `UPDATE documents
+         SET status = 'scanning', updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1`,
+        [documentId]
+      );
 
       const pageRes = await client.query('SELECT * FROM document_pages WHERE document_id = $1 ORDER BY page_number ASC', [documentId]);
       const pages = pageRes.rows;
@@ -757,9 +776,28 @@ function registerDocumentWorkflow({
       await client.query('BEGIN');
       await ensureDocumentTables(client);
 
-      const docRes = await client.query('SELECT * FROM documents WHERE id = $1 AND entity_type = $2 LIMIT 1', [documentId, 'driver']);
+      const docRes = await client.query(
+        'SELECT * FROM documents WHERE id = $1 AND entity_type = $2 LIMIT 1 FOR UPDATE',
+        [documentId, 'driver']
+      );
       const document = docRes.rows[0];
       if (!document) return res.status(404).json({ error: 'Driver document not found' });
+      if (document.status === 'scanned') {
+        await client.query('COMMIT');
+        return res.json({
+          message: 'Driver document already scanned',
+          documentId,
+          driverId: document.entity_id,
+          extracted: document.extracted_data || null,
+        });
+      }
+
+      await client.query(
+        `UPDATE documents
+         SET status = 'scanning', updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1`,
+        [documentId]
+      );
 
       const pageRes = await client.query('SELECT * FROM document_pages WHERE document_id = $1 ORDER BY page_number ASC', [documentId]);
       const pages = pageRes.rows;
