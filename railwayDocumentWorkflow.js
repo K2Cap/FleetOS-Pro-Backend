@@ -360,6 +360,16 @@ async function runStoredFileOcr(absolutePath, mimeType, documentType, deps) {
   return { engine: 'gemini', payload: flattenOcrPayload(geminiResult) };
 }
 
+function classifyOcrError(err) {
+  const message = String(err?.message || '');
+  const quota = /quota exceeded|too many requests|\b429\b/i.test(message);
+  return {
+    message,
+    code: quota ? 'AI_QUOTA_EXCEEDED' : 'SCAN_FAILED',
+    status: quota ? 429 : 500,
+  };
+}
+
 async function upsertTruckFromDocument(client, mergedPayload, documentType, mergedStoredPath, regNoHint = null) {
   const regNo = firstNonEmpty(mergedPayload.regNo, regNoHint);
   if (!regNo) throw new Error('Truck registration number could not be resolved from OCR');
@@ -757,8 +767,28 @@ function registerDocumentWorkflow({
         extracted: mergedPayload,
       });
     } catch (err) {
-      await client.query('ROLLBACK');
-      res.status(500).json({ error: err.message });
+      const classified = classifyOcrError(err);
+      try {
+        await client.query('ROLLBACK');
+        await client.query(
+          `UPDATE documents
+           SET status = 'scan_failed', extracted_data = jsonb_build_object('error', $1, 'code', $2), updated_at = CURRENT_TIMESTAMP
+           WHERE id = $3`,
+          [classified.message, classified.code, documentId]
+        );
+        await client.query(
+          `UPDATE document_pages
+           SET ocr_status = 'failed'
+           WHERE document_id = $1 AND ocr_status != 'completed'`,
+          [documentId]
+        );
+        await client.query(
+          `INSERT INTO ocr_scans (doc_type, reg_no, owner_name, raw_data, status, error_msg)
+           VALUES ($1, $2, $3, NULL, 'FAILED', $4)`,
+          ['Unknown', req.body.regNo || null, null, classified.message]
+        );
+      } catch (_innerErr) {}
+      res.status(classified.status).json({ error: classified.message, code: classified.code });
     } finally {
       client.release();
     }
@@ -838,8 +868,28 @@ function registerDocumentWorkflow({
         extracted: mergedPayload,
       });
     } catch (err) {
-      await client.query('ROLLBACK');
-      res.status(500).json({ error: err.message });
+      const classified = classifyOcrError(err);
+      try {
+        await client.query('ROLLBACK');
+        await client.query(
+          `UPDATE documents
+           SET status = 'scan_failed', extracted_data = jsonb_build_object('error', $1, 'code', $2), updated_at = CURRENT_TIMESTAMP
+           WHERE id = $3`,
+          [classified.message, classified.code, documentId]
+        );
+        await client.query(
+          `UPDATE document_pages
+           SET ocr_status = 'failed'
+           WHERE document_id = $1 AND ocr_status != 'completed'`,
+          [documentId]
+        );
+        await client.query(
+          `INSERT INTO ocr_scans (doc_type, reg_no, owner_name, raw_data, status, error_msg)
+           VALUES ($1, NULL, $2, NULL, 'FAILED', $3)`,
+          ['Unknown', req.body.fullName || null, classified.message]
+        );
+      } catch (_innerErr) {}
+      res.status(classified.status).json({ error: classified.message, code: classified.code });
     } finally {
       client.release();
     }
