@@ -215,8 +215,8 @@ const DRIVER_DOCUMENT_LABELS = {
   photo: 'Photo',
 };
 
-async function ensureDocumentTables(pool) {
-  await pool.query(`CREATE TABLE IF NOT EXISTS documents (
+async function ensureDocumentTables(db) {
+  await db.query(`CREATE TABLE IF NOT EXISTS documents (
       id SERIAL PRIMARY KEY,
       owner_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
       entity_type TEXT NOT NULL CHECK (entity_type IN ('truck', 'driver')),
@@ -231,7 +231,7 @@ async function ensureDocumentTables(pool) {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  await pool.query(`CREATE TABLE IF NOT EXISTS document_pages (
+  await db.query(`CREATE TABLE IF NOT EXISTS document_pages (
       id SERIAL PRIMARY KEY,
       document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
       page_number INTEGER NOT NULL,
@@ -247,8 +247,8 @@ async function ensureDocumentTables(pool) {
       UNIQUE (document_id, page_number)
   )`);
 
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_documents_entity ON documents (entity_type, entity_id, document_type)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_document_pages_document ON document_pages (document_id, page_number)`);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_documents_entity ON documents (entity_type, entity_id, document_type)`);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_document_pages_document ON document_pages (document_id, page_number)`);
 }
 
 async function createDocumentRecord(client, payload) {
@@ -503,7 +503,7 @@ function registerDocumentWorkflow({
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      await ensureDocumentTables(pool);
+      await ensureDocumentTables(client);
 
       const displayName = TRUCK_DOCUMENT_LABELS[documentType] || sanitizeStorageToken(documentType, 'Truck Document');
       const documentId = await createDocumentRecord(client, {
@@ -606,7 +606,7 @@ function registerDocumentWorkflow({
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      await ensureDocumentTables(pool);
+      await ensureDocumentTables(client);
 
       const displayName = DRIVER_DOCUMENT_LABELS[documentType] || sanitizeStorageToken(documentType, 'Driver Document');
       const documentId = await createDocumentRecord(client, {
@@ -692,7 +692,7 @@ function registerDocumentWorkflow({
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      await ensureDocumentTables(pool);
+      await ensureDocumentTables(client);
 
       const docRes = await client.query('SELECT * FROM documents WHERE id = $1 AND entity_type = $2 LIMIT 1', [documentId, 'truck']);
       const document = docRes.rows[0];
@@ -755,7 +755,7 @@ function registerDocumentWorkflow({
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      await ensureDocumentTables(pool);
+      await ensureDocumentTables(client);
 
       const docRes = await client.query('SELECT * FROM documents WHERE id = $1 AND entity_type = $2 LIMIT 1', [documentId, 'driver']);
       const document = docRes.rows[0];
