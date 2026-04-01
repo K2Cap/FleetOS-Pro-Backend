@@ -503,7 +503,6 @@ function registerDocumentWorkflow({
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      await ensureDocumentTables(client);
 
       const displayName = TRUCK_DOCUMENT_LABELS[documentType] || sanitizeStorageToken(documentType, 'Truck Document');
       const documentId = await createDocumentRecord(client, {
@@ -606,7 +605,6 @@ function registerDocumentWorkflow({
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      await ensureDocumentTables(client);
 
       const displayName = DRIVER_DOCUMENT_LABELS[documentType] || sanitizeStorageToken(documentType, 'Driver Document');
       const documentId = await createDocumentRecord(client, {
@@ -692,7 +690,6 @@ function registerDocumentWorkflow({
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      await ensureDocumentTables(client);
 
       const docRes = await client.query(
         'SELECT * FROM documents WHERE id = $1 AND entity_type = $2 LIMIT 1 FOR UPDATE',
@@ -774,7 +771,6 @@ function registerDocumentWorkflow({
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      await ensureDocumentTables(client);
 
       const docRes = await client.query(
         'SELECT * FROM documents WHERE id = $1 AND entity_type = $2 LIMIT 1 FOR UPDATE',
@@ -855,7 +851,6 @@ function registerDocumentWorkflow({
     const truck = truckRes.rows[0];
     if (!truck) return res.status(404).json({ error: 'Truck not found' });
 
-    await ensureDocumentTables(pool);
     const docsRes = await pool.query(
       `SELECT d.*, dp.stored_path, dp.page_number
        FROM documents d
@@ -892,7 +887,6 @@ function registerDocumentWorkflow({
     const driver = driverRes.rows[0];
     if (!driver) return res.status(404).json({ error: 'Driver not found' });
 
-    await ensureDocumentTables(pool);
     const docsRes = await pool.query(
       `SELECT d.*, dp.stored_path, dp.page_number
        FROM documents d
