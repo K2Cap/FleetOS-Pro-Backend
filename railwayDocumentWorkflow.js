@@ -352,6 +352,16 @@ async function runStoredFileOcr(absolutePath, mimeType, documentType, deps) {
       return { engine: 'gravityocr', payload: flattenOcrPayload(localResult) };
     } catch (_err) {}
   }
+  if (deps.tryTesseractDocumentOcr) {
+    try {
+      const tesseractResult = await deps.tryTesseractDocumentOcr(
+        base64,
+        mimeType || 'image/jpeg',
+        documentType || 'logistics'
+      );
+      return { engine: 'tesseract', payload: flattenOcrPayload(tesseractResult) };
+    } catch (_err) {}
+  }
   const geminiResult = await deps.parseDocumentWithGemini(
     base64,
     mimeType || 'image/jpeg',
@@ -484,6 +494,7 @@ function registerDocumentWorkflow({
   UPLOADS_DIR,
   parseDocumentWithGemini,
   tryLocalGravityOcr = null,
+  tryTesseractDocumentOcr = null,
 }) {
   app.post('/api/fleet/documents/batch', authenticateTransporter, upload.array('documents', 12), async (req, res) => {
     const regNo = cleanString(req.body.regNo) || `PENDING_${Date.now()}`;
@@ -734,6 +745,7 @@ function registerDocumentWorkflow({
         const ocr = await runStoredFileOcr(absolutePath, page.mime_type, document.document_type, {
           parseDocumentWithGemini,
           tryLocalGravityOcr,
+          tryTesseractDocumentOcr,
         });
         ocrResults.push(ocr);
         await client.query(
@@ -835,6 +847,7 @@ function registerDocumentWorkflow({
         const ocr = await runStoredFileOcr(absolutePath, page.mime_type, document.document_type, {
           parseDocumentWithGemini,
           tryLocalGravityOcr,
+          tryTesseractDocumentOcr,
         });
         ocrResults.push(ocr);
         await client.query(

@@ -19,6 +19,7 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const { parseDocumentWithGemini } = require('./vision-service');
+const { tryTesseractDocumentOcr } = require('./local-ocr');
 const ExcelJS = require('exceljs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
@@ -1092,7 +1093,8 @@ registerDocumentWorkflow({
     authenticateTransporter,
     UPLOADS_DIR,
     parseDocumentWithGemini,
-    tryLocalGravityOcr
+    tryLocalGravityOcr,
+    tryTesseractDocumentOcr
 });
 
 
@@ -1971,12 +1973,21 @@ app.post('/api/ocr-truck', authenticateToken, async (req, res) => {
             engine = 'gravityocr';
             console.log(`[OCR] Local GravityOCR success. Extracted keys: ${Object.keys(result).join(', ')}`);
         } catch (localErr) {
-            console.warn(`[OCR] Local GravityOCR unavailable, falling back to Gemini: ${localErr.message}`);
-            result = await parseDocumentWithGemini(image, mimeType || 'image/jpeg', normalizedDocumentType);
-            result = flattenOcrPayload(result);
-            result._source = 'GeminiFallback';
-            engine = 'gemini';
-            console.log(`[OCR] Gemini fallback success. Extracted keys: ${Object.keys(result).join(', ')}`);
+            console.warn(`[OCR] Local GravityOCR unavailable, trying Tesseract fallback: ${localErr.message}`);
+            try {
+                result = await tryTesseractDocumentOcr(image, mimeType || 'image/jpeg', normalizedDocumentType);
+                result = flattenOcrPayload(result);
+                result._source = result._source || 'TesseractFallback';
+                engine = 'tesseract';
+                console.log(`[OCR] Tesseract fallback success. Extracted keys: ${Object.keys(result).join(', ')}`);
+            } catch (tesseractErr) {
+                console.warn(`[OCR] Tesseract fallback unavailable, falling back to Gemini: ${tesseractErr.message}`);
+                result = await parseDocumentWithGemini(image, mimeType || 'image/jpeg', normalizedDocumentType);
+                result = flattenOcrPayload(result);
+                result._source = 'GeminiFallback';
+                engine = 'gemini';
+                console.log(`[OCR] Gemini fallback success. Extracted keys: ${Object.keys(result).join(', ')}`);
+            }
         }
 
         res.json({
