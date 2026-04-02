@@ -496,6 +496,48 @@ function registerDocumentWorkflow({
   tryLocalGravityOcr = null,
   tryTesseractDocumentOcr = null,
 }) {
+  async function getDocumentsForEntity(entityType, entityId) {
+    const docsRes = await pool.query(
+      `SELECT d.*, dp.id AS page_id, dp.stored_path, dp.stored_name, dp.page_number, dp.page_label, dp.ocr_status, dp.ocr_payload
+       FROM documents d
+       LEFT JOIN document_pages dp ON dp.document_id = d.id
+       WHERE d.entity_type = $1 AND d.entity_id = $2
+       ORDER BY d.id DESC, dp.page_number ASC`,
+      [entityType, entityId]
+    );
+
+    const documents = [];
+    const byId = new Map();
+    for (const row of docsRes.rows) {
+      if (!byId.has(row.id)) {
+        const doc = {
+          documentId: row.id,
+          documentType: row.document_type,
+          displayName: row.display_name,
+          status: row.status,
+          pageCount: row.page_count,
+          extractedData: row.extracted_data || null,
+          mergedFile: row.storage_key ? `/uploads/${row.storage_key}` : null,
+          storedPages: [],
+        };
+        byId.set(row.id, doc);
+        documents.push(doc);
+      }
+      if (row.stored_path) {
+        byId.get(row.id).storedPages.push({
+          pageId: row.page_id,
+          pageNumber: row.page_number,
+          pageLabel: row.page_label,
+          storedName: row.stored_name,
+          storedPath: row.stored_path,
+          ocrStatus: row.ocr_status,
+          ocrPayload: row.ocr_payload || null,
+        });
+      }
+    }
+    return documents;
+  }
+
   app.post('/api/fleet/documents/batch', authenticateTransporter, upload.array('documents', 12), async (req, res) => {
     const regNo = cleanString(req.body.regNo) || `PENDING_${Date.now()}`;
     const documentType = cleanString(req.body.documentType);
@@ -914,33 +956,18 @@ function registerDocumentWorkflow({
     const truck = truckRes.rows[0];
     if (!truck) return res.status(404).json({ error: 'Truck not found' });
 
-    const docsRes = await pool.query(
-      `SELECT d.*, dp.stored_path, dp.page_number
-       FROM documents d
-       LEFT JOIN document_pages dp ON dp.document_id = d.id
-       WHERE d.entity_type = 'truck' AND d.entity_id = $1
-       ORDER BY d.id DESC, dp.page_number ASC`,
-      [truck.id]
-    );
+    const documents = await getDocumentsForEntity('truck', truck.id);
 
-    const documents = [];
-    const byId = new Map();
-    for (const row of docsRes.rows) {
-      if (!byId.has(row.id)) {
-        const doc = {
-          documentId: row.id,
-          documentType: row.document_type,
-          displayName: row.display_name,
-          mergedFile: row.storage_key ? `/uploads/${row.storage_key}` : null,
-          pageCount: row.page_count,
-          storedPages: [],
-        };
-        byId.set(row.id, doc);
-        documents.push(doc);
-      }
-      if (row.stored_path) byId.get(row.id).storedPages.push(row.stored_path);
-    }
+    res.json({ truck, documents });
+  });
 
+  app.get('/api/fleet/:id/documents', authenticateTransporter, async (req, res) => {
+    const id = toNumberOrNull(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Valid truck id is required' });
+    const truckRes = await pool.query('SELECT * FROM trucks WHERE id = $1 LIMIT 1', [id]);
+    const truck = truckRes.rows[0];
+    if (!truck) return res.status(404).json({ error: 'Truck not found' });
+    const documents = await getDocumentsForEntity('truck', truck.id);
     res.json({ truck, documents });
   });
 
@@ -950,33 +977,18 @@ function registerDocumentWorkflow({
     const driver = driverRes.rows[0];
     if (!driver) return res.status(404).json({ error: 'Driver not found' });
 
-    const docsRes = await pool.query(
-      `SELECT d.*, dp.stored_path, dp.page_number
-       FROM documents d
-       LEFT JOIN document_pages dp ON dp.document_id = d.id
-       WHERE d.entity_type = 'driver' AND d.entity_id = $1
-       ORDER BY d.id DESC, dp.page_number ASC`,
-      [driver.id]
-    );
+    const documents = await getDocumentsForEntity('driver', driver.id);
 
-    const documents = [];
-    const byId = new Map();
-    for (const row of docsRes.rows) {
-      if (!byId.has(row.id)) {
-        const doc = {
-          documentId: row.id,
-          documentType: row.document_type,
-          displayName: row.display_name,
-          mergedFile: row.storage_key ? `/uploads/${row.storage_key}` : null,
-          pageCount: row.page_count,
-          storedPages: [],
-        };
-        byId.set(row.id, doc);
-        documents.push(doc);
-      }
-      if (row.stored_path) byId.get(row.id).storedPages.push(row.stored_path);
-    }
+    res.json({ driver, documents });
+  });
 
+  app.get('/api/drivers/:id/documents', authenticateTransporter, async (req, res) => {
+    const id = toNumberOrNull(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Valid driver id is required' });
+    const driverRes = await pool.query('SELECT * FROM drivers WHERE id = $1 LIMIT 1', [id]);
+    const driver = driverRes.rows[0];
+    if (!driver) return res.status(404).json({ error: 'Driver not found' });
+    const documents = await getDocumentsForEntity('driver', driver.id);
     res.json({ driver, documents });
   });
 }
