@@ -474,7 +474,15 @@ const upload = multer({
         files: 8,
     },
     fileFilter: (req, file, cb) => {
-        const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
+        const allowed = [
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
+            'image/webp',
+            'image/heic',
+            'image/heif',
+            'application/pdf'
+        ];
         if (!allowed.includes(file.mimetype)) {
             return cb(new Error(`Unsupported file type: ${file.mimetype}`));
         }
