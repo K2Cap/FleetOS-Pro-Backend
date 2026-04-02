@@ -20,6 +20,7 @@ const fs = require('fs');
 const multer = require('multer');
 const { parseDocumentWithGemini } = require('./vision-service');
 const { tryTesseractDocumentOcr } = require('./local-ocr');
+const { flattenOcrPayload, normalizeTruckOcrPayload } = require('./ocr-normalizers');
 const ExcelJS = require('exceljs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
@@ -1871,22 +1872,6 @@ app.get('/api/alerts', (req, res) => {
     });
 });
 
-function flattenOcrPayload(value) {
-    const flat = {};
-    const walk = (input) => {
-        if (!input || typeof input !== 'object' || Array.isArray(input)) return;
-        Object.entries(input).forEach(([key, nestedValue]) => {
-            if (nestedValue && typeof nestedValue === 'object' && !Array.isArray(nestedValue)) {
-                walk(nestedValue);
-            } else {
-                flat[key] = nestedValue;
-            }
-        });
-    };
-    walk(value);
-    return flat;
-}
-
 async function tryLocalGravityOcr(base64Image, mimeType = 'image/jpeg') {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
@@ -1970,6 +1955,7 @@ app.post('/api/ocr-truck', authenticateToken, async (req, res) => {
 
         try {
             result = await tryLocalGravityOcr(image, mimeType || 'image/jpeg');
+            result = flattenOcrPayload(result);
             engine = 'gravityocr';
             console.log(`[OCR] Local GravityOCR success. Extracted keys: ${Object.keys(result).join(', ')}`);
         } catch (localErr) {
@@ -1988,6 +1974,17 @@ app.post('/api/ocr-truck', authenticateToken, async (req, res) => {
                 engine = 'gemini';
                 console.log(`[OCR] Gemini fallback success. Extracted keys: ${Object.keys(result).join(', ')}`);
             }
+        }
+
+        if (normalizedDocumentType === 'rc' || normalizedDocumentType === 'logistics') {
+            const normalizedTruck = normalizeTruckOcrPayload(result);
+            result = {
+                ...result,
+                'Reg No': normalizedTruck.regNo || result['Reg No'] || result.regNo || null,
+                'Owner Name': normalizedTruck.ownerName || result['Owner Name'] || result.ownerName || null,
+                'Chassis No': normalizedTruck.chassisNo,
+                'Engine No': normalizedTruck.engineNo,
+            };
         }
 
         res.json({

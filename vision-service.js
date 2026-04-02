@@ -43,6 +43,8 @@ async function parseDocumentWithGemini(base64Image, mimeType = "image/jpeg", mod
             - For fitness certificates, always capture the certificate or FC number as "Fitness Cert No".
             - "Fitness Expiry" must mean the certificate expiry date, especially values labeled "Certificate will expire on".
             - Do not map "Next Inspection Due Date" as "Fitness Expiry". Keep it separate if present.
+            - For "Chassis No" and "Engine No", return only the exact identifier characters. Never include labels like "Chassis No", "Motor No", punctuation, spaces, or explanatory words.
+            - If the chassis or engine identifier is unclear or partially unreadable, return null instead of guessing.
             - If both Own Damage and Third Party are present on an insurance document, set "Coverage Type" to "Comprehensive".
             - If only Third Party is present, set "Coverage Type" to "Third Party".
             - If only Own Damage is present, set "Coverage Type" to "Own Damage".

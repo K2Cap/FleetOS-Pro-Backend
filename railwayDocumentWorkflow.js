@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { PDFDocument } = require('pdf-lib');
+const { flattenOcrPayload, normalizeTruckOcrPayload } = require('./ocr-normalizers');
 
 function cleanString(value) {
   if (value === undefined || value === null) return null;
@@ -107,37 +108,22 @@ function parseDateToText(value) {
   return parsed.toISOString().split('T')[0];
 }
 
-function flattenOcrPayload(value) {
-  const flat = {};
-  const walk = (input) => {
-    if (!input || typeof input !== 'object' || Array.isArray(input)) return;
-    Object.entries(input).forEach(([key, nestedValue]) => {
-      if (nestedValue && typeof nestedValue === 'object' && !Array.isArray(nestedValue)) {
-        walk(nestedValue);
-      } else {
-        flat[key] = nestedValue;
-      }
-    });
-  };
-  walk(value);
-  return flat;
-}
-
 function normalizeTruckPayload(payload) {
   const flat = flattenOcrPayload(payload || {});
+  const normalized = normalizeTruckOcrPayload(flat);
   return {
-    regNo: firstNonEmpty(flat['Reg No'], flat.regNo, flat.registration_no, flat.registrationNumber),
-    ownerName: firstNonEmpty(flat['Owner Name'], flat.ownerName, flat.owner_name),
-    chassisNo: firstNonEmpty(flat['Chassis No'], flat.chassisNo, flat.chassis_number),
-    engineNo: firstNonEmpty(flat['Engine No'], flat.engineNo, flat.engine_number),
-    insuranceProvider: firstNonEmpty(flat['Insurer'], flat.insurer, flat.insuranceProvider),
-    policyNo: firstNonEmpty(flat['Policy No'], flat.policyNo, flat.policy_number),
+    regNo: normalized.regNo || firstNonEmpty(flat['Reg No'], flat.regNo, flat.registration_no, flat.registrationNumber),
+    ownerName: normalized.ownerName || firstNonEmpty(flat['Owner Name'], flat.ownerName, flat.owner_name),
+    chassisNo: normalized.chassisNo,
+    engineNo: normalized.engineNo,
+    insuranceProvider: normalized.insuranceProvider || firstNonEmpty(flat['Insurer'], flat.insurer, flat.insuranceProvider),
+    policyNo: normalized.policyNo || firstNonEmpty(flat['Policy No'], flat.policyNo, flat.policy_number),
     insuranceExpiry: parseDateToText(firstNonEmpty(flat['Insurance Expiry'], flat.insExpiry, flat.expiry, flat.expiryDate)),
-    fitnessCertNo: firstNonEmpty(flat['Fitness Certificate No'], flat.fitnessCertNo, flat.certificateNo),
+    fitnessCertNo: normalized.fitnessCertNo || firstNonEmpty(flat['Fitness Certificate No'], flat.fitnessCertNo, flat.certificateNo),
     fitnessExpiry: parseDateToText(firstNonEmpty(flat['Fitness Expiry'], flat.fitnessExpiry, flat.expiry, flat.expiryDate)),
-    pucCertNo: firstNonEmpty(flat['PUC Certificate No'], flat.pucCertNo, flat.certificateNo),
+    pucCertNo: normalized.pucCertNo || firstNonEmpty(flat['PUC Certificate No'], flat.pucCertNo, flat.certificateNo),
     pucExpiry: parseDateToText(firstNonEmpty(flat['PUC Expiry'], flat.pucExpiry, flat.expiry, flat.expiryDate)),
-    permitNo: firstNonEmpty(flat['Permit No'], flat.permitNo),
+    permitNo: normalized.permitNo || firstNonEmpty(flat['Permit No'], flat.permitNo),
     permitExpiry: parseDateToText(firstNonEmpty(flat['Permit Expiry'], flat.permitExpiry, flat.expiry, flat.expiryDate)),
     roadTaxExpiry: parseDateToText(firstNonEmpty(flat['Road Tax Expiry'], flat.roadTaxExpiry, flat.expiry, flat.expiryDate)),
     raw: flat,
