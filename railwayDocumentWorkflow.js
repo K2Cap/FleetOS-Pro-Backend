@@ -332,6 +332,16 @@ async function fileToBase64(absolutePath) {
 
 async function runStoredFileOcr(absolutePath, mimeType, documentType, deps) {
   const base64 = await fileToBase64(absolutePath);
+  if (deps.tryDocumentAiOcr) {
+    try {
+      const documentAiResult = await deps.tryDocumentAiOcr(
+        base64,
+        mimeType || 'image/jpeg',
+        documentType || 'logistics'
+      );
+      return { engine: 'documentai', payload: flattenOcrPayload(documentAiResult) };
+    } catch (_err) {}
+  }
   if (deps.tryLocalGravityOcr) {
     try {
       const localResult = await deps.tryLocalGravityOcr(base64, mimeType || 'image/jpeg');
@@ -479,6 +489,7 @@ function registerDocumentWorkflow({
   authenticateTransporter,
   UPLOADS_DIR,
   parseDocumentWithGemini,
+  tryDocumentAiOcr = null,
   tryLocalGravityOcr = null,
   tryTesseractDocumentOcr = null,
 }) {
@@ -772,6 +783,7 @@ function registerDocumentWorkflow({
         const absolutePath = path.join(UPLOADS_DIR, page.stored_name);
         const ocr = await runStoredFileOcr(absolutePath, page.mime_type, document.document_type, {
           parseDocumentWithGemini,
+          tryDocumentAiOcr,
           tryLocalGravityOcr,
           tryTesseractDocumentOcr,
         });
@@ -874,6 +886,7 @@ function registerDocumentWorkflow({
         const absolutePath = path.join(UPLOADS_DIR, page.stored_name);
         const ocr = await runStoredFileOcr(absolutePath, page.mime_type, document.document_type, {
           parseDocumentWithGemini,
+          tryDocumentAiOcr,
           tryLocalGravityOcr,
           tryTesseractDocumentOcr,
         });

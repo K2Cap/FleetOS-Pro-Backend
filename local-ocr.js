@@ -164,5 +164,6 @@ async function tryTesseractDocumentOcr(base64Image, mimeType = 'image/jpeg', doc
 }
 
 module.exports = {
+  buildPayloadFromText,
   tryTesseractDocumentOcr,
 };
