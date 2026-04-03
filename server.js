@@ -126,6 +126,8 @@ function cleanString(value) {
     return trimmed === '' ? null : trimmed;
 }
 
+const OWNER_EXPORT_KEY = cleanString(process.env.OWNER_EXPORT_KEY || process.env.ADMIN_EXPORT_KEY);
+
 function extractExpenseSearchText(...values) {
     return values
         .flatMap((value) => {
@@ -543,6 +545,24 @@ const authenticateTransporter = (req, res, next) => {
     });
 };
 
+const authenticateOwnerExport = (req, res, next) => {
+    const providedKey = cleanString(
+        req.headers['x-owner-export-key'] ||
+        req.query.ownerKey ||
+        req.query.adminKey
+    );
+
+    if (!OWNER_EXPORT_KEY) {
+        return res.status(503).json({ error: 'Owner export is not configured' });
+    }
+
+    if (!providedKey || providedKey !== OWNER_EXPORT_KEY) {
+        return res.status(403).json({ error: 'Owner export key required' });
+    }
+
+    next();
+};
+
 function getOptionalAuthUser(req) {
     const authHeader = req.headers['authorization'];
     const token = (authHeader && authHeader.split(' ')[1]) || cleanString(req.query.token);
@@ -797,6 +817,7 @@ async function initializeDatabase() {
         )`);
 
         const migrations = [
+            `ALTER TABLE trucks ADD COLUMN IF NOT EXISTS owner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`,
             `ALTER TABLE trucks ADD COLUMN IF NOT EXISTS chassis_no TEXT`,
             `ALTER TABLE trucks ADD COLUMN IF NOT EXISTS engine_no TEXT`,
             `ALTER TABLE trucks ADD COLUMN IF NOT EXISTS truck_type TEXT`,
@@ -981,6 +1002,162 @@ async function generateFleetExcel() {
             resolve(workbook);
         });
     });
+}
+
+function parseRegisterJson(value) {
+    if (!value) return null;
+    if (typeof value === 'object') return value;
+    try {
+        return JSON.parse(value);
+    } catch (err) {
+        return null;
+    }
+}
+
+function registerFieldValue(registerDoc, preferredLabels = []) {
+    const parsed = parseRegisterJson(registerDoc);
+    const fields = Array.isArray(parsed?.fields) ? parsed.fields : [];
+    for (const label of preferredLabels) {
+        const hit = fields.find((item) => String(item?.field || '').toLowerCase() === String(label).toLowerCase());
+        if (hit && hit.value) return String(hit.value);
+    }
+    return null;
+}
+
+function registerSummary(registerDoc) {
+    const parsed = parseRegisterJson(registerDoc);
+    if (!parsed) return '';
+    const status = parsed.status ? `Status: ${parsed.status}` : null;
+    const fields = Array.isArray(parsed.fields)
+        ? parsed.fields
+            .filter((item) => item && item.field && item.value)
+            .slice(0, 8)
+            .map((item) => `${item.field}: ${item.value}`)
+        : [];
+    return [status, ...fields].filter(Boolean).join(' | ');
+}
+
+async function generateMasterFleetExcel() {
+    const workbook = new ExcelJS.Workbook();
+    const fleetSheet = workbook.addWorksheet('Master Fleet');
+    const docsSheet = workbook.addWorksheet('Truck Documents');
+
+    fleetSheet.columns = [
+        { header: 'Truck ID', key: 'truck_id', width: 10 },
+        { header: 'Registration No', key: 'reg_no', width: 18 },
+        { header: 'Truck Status', key: 'truck_status', width: 14 },
+        { header: 'Transporter User ID', key: 'owner_user_id', width: 18 },
+        { header: 'Transporter Name', key: 'transporter_name', width: 24 },
+        { header: 'Company Name', key: 'company_name', width: 26 },
+        { header: 'Mobile', key: 'mobile', width: 16 },
+        { header: 'Email', key: 'email', width: 28 },
+        { header: 'Owner Name', key: 'owner_name', width: 24 },
+        { header: 'Chassis No', key: 'chassis_no', width: 24 },
+        { header: 'Engine No', key: 'engine_no', width: 22 },
+        { header: 'Make', key: 'make', width: 16 },
+        { header: 'Model', key: 'model', width: 18 },
+        { header: 'Insurance Provider', key: 'insurance_provider', width: 24 },
+        { header: 'Policy No', key: 'policy_no', width: 24 },
+        { header: 'Insurance Expiry', key: 'ins_expiry_date', width: 18 },
+        { header: 'Fitness Cert No', key: 'fitness_cert_no', width: 22 },
+        { header: 'Fitness Expiry', key: 'fitness_expiry_date', width: 18 },
+        { header: 'PUC Cert No', key: 'puc_cert_no', width: 22 },
+        { header: 'PUC Expiry', key: 'puc_expiry_date', width: 18 },
+        { header: 'Permit No', key: 'permit_no', width: 22 },
+        { header: 'Permit Expiry', key: 'permit_expiry_date', width: 18 },
+        { header: 'Road Tax Expiry', key: 'road_tax_expiry_date', width: 18 },
+        { header: 'Created At', key: 'created_at', width: 22 },
+    ];
+
+    docsSheet.columns = [
+        { header: 'Truck ID', key: 'truck_id', width: 10 },
+        { header: 'Registration No', key: 'reg_no', width: 18 },
+        { header: 'Transporter Name', key: 'transporter_name', width: 24 },
+        { header: 'Company Name', key: 'company_name', width: 26 },
+        { header: 'RC Summary', key: 'rc_document', width: 60 },
+        { header: 'Insurance Summary', key: 'insurance_document', width: 60 },
+        { header: 'Fitness Summary', key: 'fitness_document', width: 60 },
+        { header: 'PUC Summary', key: 'puc_document', width: 60 },
+        { header: 'Permit Summary', key: 'permit_document', width: 60 },
+        { header: 'Road Tax Summary', key: 'roadtax_document', width: 60 },
+        { header: 'Updated At', key: 'updated_at', width: 22 },
+    ];
+
+    const result = await pool.query(
+        `SELECT
+            t.id AS truck_id,
+            t.reg_no,
+            t.status AS truck_status,
+            t.owner_user_id,
+            u.full_name AS transporter_name,
+            u.company_name,
+            u.mobile,
+            u.email,
+            t.owner_name,
+            t.chassis_no,
+            t.engine_no,
+            t.make,
+            t.model,
+            t.insurance_provider,
+            t.policy_no,
+            t.ins_expiry_date,
+            t.fitness_cert_no,
+            t.fitness_expiry_date,
+            t.puc_cert_no,
+            t.puc_expiry_date,
+            t.permit_no,
+            t.permit_expiry_date,
+            t.road_tax_expiry_date,
+            t.created_at,
+            r.rc_document,
+            r.insurance_document,
+            r.fitness_document,
+            r.puc_document,
+            r.permit_document,
+            r.roadtax_document,
+            r.updated_at
+         FROM trucks t
+         LEFT JOIN users u ON u.id = t.owner_user_id
+         LEFT JOIN truck_document_registers r ON r.truck_id = t.id
+         ORDER BY COALESCE(u.company_name, ''), COALESCE(u.full_name, ''), t.created_at DESC, t.id DESC`
+    );
+
+    result.rows.forEach((row) => {
+        fleetSheet.addRow({
+            ...row,
+            insurance_provider: row.insurance_provider || registerFieldValue(row.insurance_document, ['Insurance Provider']),
+            policy_no: row.policy_no || registerFieldValue(row.insurance_document, ['Policy Number']),
+            ins_expiry_date: row.ins_expiry_date || registerFieldValue(row.insurance_document, ['Insurance Expiry']),
+            fitness_cert_no: row.fitness_cert_no || registerFieldValue(row.fitness_document, ['Fitness Cert No.','Fitness Cert No']),
+            fitness_expiry_date: row.fitness_expiry_date || registerFieldValue(row.fitness_document, ['Certificate expiry','Fitness Expiry']),
+            puc_cert_no: row.puc_cert_no || registerFieldValue(row.puc_document, ['Certificate SL. No.','PUC Code']),
+            puc_expiry_date: row.puc_expiry_date || registerFieldValue(row.puc_document, ['Validity Upto','PUC Expiry']),
+            permit_no: row.permit_no || registerFieldValue(row.permit_document, ['Permit No','Route Permit No']),
+            permit_expiry_date: row.permit_expiry_date || registerFieldValue(row.permit_document, ['Permit Expiry','Validity Upto']),
+        });
+
+        docsSheet.addRow({
+            truck_id: row.truck_id,
+            reg_no: row.reg_no,
+            transporter_name: row.transporter_name,
+            company_name: row.company_name,
+            rc_document: registerSummary(row.rc_document),
+            insurance_document: registerSummary(row.insurance_document),
+            fitness_document: registerSummary(row.fitness_document),
+            puc_document: registerSummary(row.puc_document),
+            permit_document: registerSummary(row.permit_document),
+            roadtax_document: registerSummary(row.roadtax_document),
+            updated_at: row.updated_at,
+        });
+    });
+
+    [fleetSheet, docsSheet].forEach((sheet) => {
+        sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A5C3A' } };
+        sheet.views = [{ state: 'frozen', ySplit: 1 }];
+      });
+
+    return workbook;
 }
 
 async function generateDriversExcel() {
@@ -1368,8 +1545,8 @@ app.post('/api/fleet', upload.fields([{ name: 'file_rc' }, { name: 'file_insuran
     const f = req.files || {};
     const getPath = (k) => f[k] ? `/uploads/${f[k][0].filename}` : null;
 
-    const cols = ['reg_no', 'chassis_no', 'engine_no', 'truck_type', 'make', 'model', 'owner_name', 'year', 'fuel_type', 'gvw', 'axle_config', 'tyres_count', 'status', 'driver_assigned', 'odometer', 'purchase_date', 'purchase_price', 'insurance_provider', 'policy_no', 'ins_start_date', 'ins_expiry_date', 'ins_value', 'coverage_type', 'fitness_cert_no', 'fitness_expiry_date', 'puc_cert_no', 'puc_expiry_date', 'permit_no', 'permit_expiry_date', 'road_tax_paid_date', 'road_tax_expiry_date', 'road_tax_amount', 'doc_rc_path', 'doc_insurance_path', 'doc_fitness_path', 'doc_puc_path', 'doc_permit_path', 'doc_roadtax_path'];
-    const p = [d.regNo, d.chassis, d.engine, d.truckType, d.make, d.model, d.ownerName, d.year || null, d.fuel, d.gvw || 0, d.axle, d.tyres || 0, d.status, d.driver, d.odometer || 0, d.purchaseDate, d.price || 0, d.insurer, d.policyNo, d.insStartDate, d.insExpiry, d.insValue || 0, d.coverage, d.fitnessCertNo, d.fitnessExpiry, d.pucCertNo, d.pucExpiry, d.permitNo, d.permitExpiry, d.taxPaidDate, d.taxExpiry, d.taxAmount || 0, getPath('file_rc'), getPath('file_insurance'), getPath('file_fitness'), getPath('file_puc'), getPath('file_permit'), getPath('file_roadtax')];
+    const cols = ['owner_user_id', 'reg_no', 'chassis_no', 'engine_no', 'truck_type', 'make', 'model', 'owner_name', 'year', 'fuel_type', 'gvw', 'axle_config', 'tyres_count', 'status', 'driver_assigned', 'odometer', 'purchase_date', 'purchase_price', 'insurance_provider', 'policy_no', 'ins_start_date', 'ins_expiry_date', 'ins_value', 'coverage_type', 'fitness_cert_no', 'fitness_expiry_date', 'puc_cert_no', 'puc_expiry_date', 'permit_no', 'permit_expiry_date', 'road_tax_paid_date', 'road_tax_expiry_date', 'road_tax_amount', 'doc_rc_path', 'doc_insurance_path', 'doc_fitness_path', 'doc_puc_path', 'doc_permit_path', 'doc_roadtax_path'];
+    const p = [req.user?.id || null, d.regNo, d.chassis, d.engine, d.truckType, d.make, d.model, d.ownerName, d.year || null, d.fuel, d.gvw || 0, d.axle, d.tyres || 0, d.status, d.driver, d.odometer || 0, d.purchaseDate, d.price || 0, d.insurer, d.policyNo, d.insStartDate, d.insExpiry, d.insValue || 0, d.coverage, d.fitnessCertNo, d.fitnessExpiry, d.pucCertNo, d.pucExpiry, d.permitNo, d.permitExpiry, d.taxPaidDate, d.taxExpiry, d.taxAmount || 0, getPath('file_rc'), getPath('file_insurance'), getPath('file_fitness'), getPath('file_puc'), getPath('file_permit'), getPath('file_roadtax')];
 
     db.run(`INSERT INTO trucks (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`, p, function(err) {
         if (err) return res.status(400).json({ error: err.message.includes('unique') ? 'Truck exists' : err.message });
@@ -1386,8 +1563,9 @@ app.put('/api/fleet/:id', upload.fields([{ name: 'file_rc' }, { name: 'file_insu
         if (findErr) return res.status(500).json({ error: findErr.message });
         if (!existing) return res.status(404).json({ error: 'Truck not found' });
 
-        const sql = `UPDATE trucks SET reg_no=?, chassis_no=?, engine_no=?, owner_name=?, make=?, model=?, year=?, fuel_type=?, gvw=?, axle_config=?, tyres_count=?, status=?, driver_assigned=?, odometer=?, purchase_date=?, purchase_price=?, insurance_provider=?, policy_no=?, ins_start_date=?, ins_expiry_date=?, ins_value=?, coverage_type=?, fitness_cert_no=?, fitness_expiry_date=?, puc_cert_no=?, puc_expiry_date=?, permit_no=?, permit_expiry_date=?, road_tax_paid_date=?, road_tax_expiry_date=?, road_tax_amount=?, truck_type=?, doc_rc_path=?, doc_insurance_path=?, doc_fitness_path=?, doc_puc_path=?, doc_permit_path=?, doc_roadtax_path=? WHERE id=?`;
+        const sql = `UPDATE trucks SET owner_user_id=?, reg_no=?, chassis_no=?, engine_no=?, owner_name=?, make=?, model=?, year=?, fuel_type=?, gvw=?, axle_config=?, tyres_count=?, status=?, driver_assigned=?, odometer=?, purchase_date=?, purchase_price=?, insurance_provider=?, policy_no=?, ins_start_date=?, ins_expiry_date=?, ins_value=?, coverage_type=?, fitness_cert_no=?, fitness_expiry_date=?, puc_cert_no=?, puc_expiry_date=?, permit_no=?, permit_expiry_date=?, road_tax_paid_date=?, road_tax_expiry_date=?, road_tax_amount=?, truck_type=?, doc_rc_path=?, doc_insurance_path=?, doc_fitness_path=?, doc_puc_path=?, doc_permit_path=?, doc_roadtax_path=? WHERE id=?`;
         const p = [
+            existing.owner_user_id || req.user?.id || null,
             d.regNo,
             d.chassis,
             d.engine,
@@ -1844,6 +2022,19 @@ app.get('/api/export/drivers', async (req, res) => {
         res.end();
     } catch (err) {
         res.status(500).json({ error: 'Export failed' });
+    }
+});
+
+app.get('/api/owner/master-fleet-register', authenticateOwnerExport, async (req, res) => {
+    try {
+        const wb = await generateMasterFleetExcel();
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename=Master_Fleet_Register.xlsx');
+        await wb.xlsx.write(res);
+        res.end();
+    } catch (err) {
+        console.error('Master fleet export failed:', err.message);
+        res.status(500).json({ error: 'Master fleet export failed' });
     }
 });
 

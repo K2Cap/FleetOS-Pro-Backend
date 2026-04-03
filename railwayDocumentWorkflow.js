@@ -701,7 +701,7 @@ function classifyOcrError(err) {
   };
 }
 
-async function upsertTruckFromDocument(client, mergedPayload, documentType, mergedStoredPath, regNoHint = null) {
+async function upsertTruckFromDocument(client, mergedPayload, documentType, mergedStoredPath, regNoHint = null, ownerUserId = null) {
   const rawRegNo = firstNonEmpty(mergedPayload.regNo, regNoHint);
   const regNo = normalizeTruckRegNo(rawRegNo);
   if (!regNo) throw new Error('Truck registration number could not be resolved from OCR');
@@ -716,6 +716,7 @@ async function upsertTruckFromDocument(client, mergedPayload, documentType, merg
   const row = existing.rows[0];
 
   const patch = {
+    owner_user_id: ownerUserId,
     reg_no: regNo,
     owner_name: mergedPayload.ownerName,
     chassis_no: mergedPayload.chassisNo,
@@ -731,6 +732,10 @@ async function upsertTruckFromDocument(client, mergedPayload, documentType, merg
     permit_expiry_date: mergedPayload.permitExpiry,
     road_tax_expiry_date: mergedPayload.roadTaxExpiry,
   };
+
+  if (row?.owner_user_id && !patch.owner_user_id) {
+    patch.owner_user_id = row.owner_user_id;
+  }
 
   if (documentType === 'rc') patch.doc_rc_path = mergedStoredPath;
   if (documentType === 'insurance') patch.doc_insurance_path = mergedStoredPath;
@@ -1223,7 +1228,7 @@ function registerDocumentWorkflow({
 
       const mergedPayload = mergeTruckPayloads(document.document_type, ocrResults.map((item) => item.payload));
       const mergedStoredPath = document.storage_key ? `/uploads/${document.storage_key}` : null;
-      const truckId = await upsertTruckFromDocument(client, mergedPayload, document.document_type, mergedStoredPath, req.body.regNo);
+  const truckId = await upsertTruckFromDocument(client, mergedPayload, document.document_type, mergedStoredPath, req.body.regNo, document.owner_user_id);
       const sourceEngine = ocrResults.map((item) => item.engine).filter(Boolean).join(', ');
       const fieldRows = buildFieldRowsFromPayload(mergedPayload, document.document_type, sourceEngine);
 
