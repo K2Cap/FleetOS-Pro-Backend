@@ -124,6 +124,11 @@ function normalizeTruckPayload(payload) {
     ownerName: normalized.ownerName || firstNonEmpty(flat['Owner Name'], flat.ownerName, flat.owner_name),
     chassisNo: normalized.chassisNo,
     engineNo: normalized.engineNo,
+    make: normalized.make || firstNonEmpty(flat['Make'], flat.make, flat["Maker's Name"], flat.manufacturer, flat.brand),
+    model: normalized.model || firstNonEmpty(flat['Model'], flat.model, flat["Maker's Model Name"], flat.variant, flat.vehicleModel),
+    fuelType: normalized.fuelType || firstNonEmpty(flat['Fuel Type'], flat.fuelType, flat.fuel),
+    purchaseDate: parseDateToText(firstNonEmpty(flat['Purchase Date'], flat.purchaseDate, flat['Invoice Date'], flat.invoiceDate)),
+    purchasePrice: firstNonEmpty(flat['Purchase Price'], flat.purchasePrice, flat['Invoice Value'], flat.invoiceValue, flat['Ex Showroom Price'], flat['Sale Amount'], flat.saleAmount),
     insuranceProvider: normalized.insuranceProvider || firstNonEmpty(flat['Insurer'], flat.insurer, flat.insuranceProvider),
     policyNo: normalized.policyNo || firstNonEmpty(flat['Policy No'], flat.policyNo, flat.policy_number),
     insuranceExpiry: parseDateToText(firstNonEmpty(flat['Insurance Expiry'], flat.insExpiry, flat.expiry, flat.expiryDate)),
@@ -160,6 +165,11 @@ function mergeTruckPayloads(documentType, payloads) {
     ownerName: firstNonEmpty(...normalized.map((p) => p.ownerName)),
     chassisNo: firstNonEmpty(...normalized.map((p) => p.chassisNo)),
     engineNo: firstNonEmpty(...normalized.map((p) => p.engineNo)),
+    make: firstNonEmpty(...normalized.map((p) => p.make)),
+    model: firstNonEmpty(...normalized.map((p) => p.model)),
+    fuelType: firstNonEmpty(...normalized.map((p) => p.fuelType)),
+    purchaseDate: firstNonEmpty(...normalized.map((p) => p.purchaseDate)),
+    purchasePrice: firstNonEmpty(...normalized.map((p) => p.purchasePrice)),
     insuranceProvider: firstNonEmpty(...normalized.map((p) => p.insuranceProvider)),
     policyNo: firstNonEmpty(...normalized.map((p) => p.policyNo)),
     insuranceExpiry: firstNonEmpty(...normalized.map((p) => p.insuranceExpiry)),
@@ -409,8 +419,14 @@ function buildFieldRowsFromPayload(payload, documentType, sourceEngine) {
     purchase_invoice: [
       ['Document Type', ['Document Type'], payload.documentType || 'Purchase Invoice'],
       ['Registration No', ['Reg No', 'Registration No', 'Vehicle No'], payload.regNo],
-      ['Tax Validity Until', ['Tax Validity Until', 'Validity Upto', 'Expiry Date'], payload.roadTaxExpiry],
       ['Owner Name', ['Owner Name'], payload.ownerName],
+      ['Make', ['Make', "Maker's Name", 'Manufacturer'], payload.make],
+      ['Model', ['Model', "Maker's Model Name", 'Variant'], payload.model],
+      ['Chassis No', ['Chassis No', 'Chassis Number', 'VIN'], payload.chassisNo],
+      ['Engine No', ['Engine No', 'Engine Number', 'Motor No'], payload.engineNo],
+      ['Purchase Date', ['Purchase Date', 'Invoice Date'], payload.purchaseDate],
+      ['Purchase Price', ['Purchase Price', 'Invoice Value', 'Sale Amount', 'Ex Showroom Price'], payload.purchasePrice],
+      ['Fuel Type', ['Fuel Type', 'Fuel'], payload.fuelType],
     ],
     dl: [
       ['Document Type', ['Document Type'], payload.documentType || 'Driving License'],
@@ -550,8 +566,8 @@ async function upsertTruckDocumentRegister(client, payload) {
      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
      ON CONFLICT (truck_id)
      DO UPDATE SET
-       owner_user_id = EXCLUDED.owner_user_id,
-       reg_no = EXCLUDED.reg_no,
+       owner_user_id = COALESCE(EXCLUDED.owner_user_id, truck_document_registers.owner_user_id),
+       reg_no = COALESCE(EXCLUDED.reg_no, truck_document_registers.reg_no),
        ${column} = EXCLUDED.${column},
        updated_at = CURRENT_TIMESTAMP`,
     [
@@ -736,12 +752,46 @@ async function upsertTruckFromDocument(client, mergedPayload, documentType, merg
     row = existing.rows[0] || null;
   }
 
+  const chassisNo = cleanString(mergedPayload.chassisNo);
+  const engineNo = cleanString(mergedPayload.engineNo);
+
+  if (!row && chassisNo) {
+    const existingByChassis = await client.query(
+      `SELECT *
+         FROM trucks
+        WHERE UPPER(COALESCE(chassis_no, '')) = UPPER($1)
+          AND ($2::int IS NULL OR owner_user_id = $2 OR owner_user_id IS NULL)
+        ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC
+        LIMIT 1`,
+      [chassisNo, ownerUserId || null]
+    );
+    row = existingByChassis.rows[0] || null;
+  }
+
+  if (!row && engineNo) {
+    const existingByEngine = await client.query(
+      `SELECT *
+         FROM trucks
+        WHERE UPPER(COALESCE(engine_no, '')) = UPPER($1)
+          AND ($2::int IS NULL OR owner_user_id = $2 OR owner_user_id IS NULL)
+        ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC
+        LIMIT 1`,
+      [engineNo, ownerUserId || null]
+    );
+    row = existingByEngine.rows[0] || null;
+  }
+
   const patch = {
     owner_user_id: ownerUserId,
     reg_no: regNo,
     owner_name: mergedPayload.ownerName,
     chassis_no: mergedPayload.chassisNo,
     engine_no: mergedPayload.engineNo,
+    make: mergedPayload.make,
+    model: mergedPayload.model,
+    fuel_type: mergedPayload.fuelType,
+    purchase_date: mergedPayload.purchaseDate,
+    purchase_price: mergedPayload.purchasePrice,
     insurance_provider: mergedPayload.insuranceProvider,
     policy_no: mergedPayload.policyNo,
     ins_expiry_date: mergedPayload.insuranceExpiry,
@@ -1280,7 +1330,7 @@ function registerDocumentWorkflow({
       await upsertTruckDocumentRegister(client, {
         truckId,
         ownerUserId: document.owner_user_id,
-        regNo: mergedPayload.regNo,
+        regNo: mergedPayload.regNo || req.body.regNo || null,
         documentType: document.document_type,
         snapshot: buildRegisterDocumentSnapshot(document, mergedPayload, fieldRows, mergedStoredPath, sourceEngine),
       });
