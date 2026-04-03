@@ -33,6 +33,13 @@ function extractTruckNumberSuffix(regNo) {
   return matches[matches.length - 1];
 }
 
+function normalizeTruckRegNo(regNo) {
+  return String(regNo || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .trim();
+}
+
 function appendPageSuffix(baseName, pageIndex) {
   return pageIndex === 0 ? baseName : `${baseName} (${pageIndex})`;
 }
@@ -536,7 +543,7 @@ async function upsertTruckDocumentRegister(client, payload) {
        reg_no = EXCLUDED.reg_no,
        ${column} = EXCLUDED.${column},
        updated_at = CURRENT_TIMESTAMP`,
-    [payload.truckId, payload.ownerUserId || null, payload.regNo || null, payload.snapshot]
+    [payload.truckId, payload.ownerUserId || null, normalizeTruckRegNo(payload.regNo) || null, payload.snapshot]
   );
 }
 
@@ -695,10 +702,17 @@ function classifyOcrError(err) {
 }
 
 async function upsertTruckFromDocument(client, mergedPayload, documentType, mergedStoredPath, regNoHint = null) {
-  const regNo = firstNonEmpty(mergedPayload.regNo, regNoHint);
+  const rawRegNo = firstNonEmpty(mergedPayload.regNo, regNoHint);
+  const regNo = normalizeTruckRegNo(rawRegNo);
   if (!regNo) throw new Error('Truck registration number could not be resolved from OCR');
 
-  const existing = await client.query('SELECT * FROM trucks WHERE reg_no = $1 LIMIT 1', [regNo]);
+  const existing = await client.query(
+    `SELECT *
+       FROM trucks
+      WHERE UPPER(REGEXP_REPLACE(COALESCE(reg_no, ''), '[^A-Z0-9]', '', 'g')) = $1
+      LIMIT 1`,
+    [regNo]
+  );
   const row = existing.rows[0];
 
   const patch = {
@@ -743,6 +757,7 @@ async function upsertTruckFromDocument(client, mergedPayload, documentType, merg
   );
   return result.rows[0].id;
 }
+
 
 function normalizePhone(value) {
   const digits = String(value || '').replace(/\D/g, '');
