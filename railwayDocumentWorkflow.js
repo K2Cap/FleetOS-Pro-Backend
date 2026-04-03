@@ -243,11 +243,13 @@ async function ensureDocumentTables(db) {
       entity_id INTEGER,
       document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
       document_type TEXT NOT NULL,
+      display_order INTEGER,
       field_name TEXT NOT NULL,
       field_value TEXT,
       source_engine TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`);
+  await db.query(`ALTER TABLE document_field_values ADD COLUMN IF NOT EXISTS display_order INTEGER`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_document_field_values_document ON document_field_values (document_id, field_name)`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_document_field_values_entity ON document_field_values (entity_type, entity_id, document_type)`);
 }
@@ -264,21 +266,176 @@ function formatFieldLabel(key) {
     .join(' ');
 }
 
+function normalizeLookupKey(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+function findValueInPayloads(payloads, candidateKeys) {
+  const normalizedCandidates = candidateKeys.map(normalizeLookupKey);
+  for (const payload of payloads) {
+    const flat = flattenOcrPayload(payload || {});
+    for (const [key, value] of Object.entries(flat)) {
+      if (value === undefined || value === null || value === '') continue;
+      if (normalizedCandidates.includes(normalizeLookupKey(key))) {
+        return String(value).trim();
+      }
+    }
+  }
+  return null;
+}
+
 function buildFieldRowsFromPayload(payload, documentType, sourceEngine) {
+  const rawPayloads = Array.isArray(payload?.pages) ? payload.pages : [];
+  const read = (candidateKeys, ...fallbackValues) => {
+    const fromRaw = findValueInPayloads(rawPayloads, candidateKeys);
+    if (fromRaw) return fromRaw;
+    for (const value of fallbackValues) {
+      const cleaned = cleanString(value);
+      if (cleaned) return cleaned;
+    }
+    return null;
+  };
+
+  const specs = {
+    rc: [
+      ['Document Type', ['Document Type', 'Certificate Type', 'Form Type'], payload.documentType || 'Registration Certificate'],
+      ['Vehicle No', ['Vehicle No', 'Vehicle Number'], payload.regNo],
+      ['Registration No', ['Reg No', 'Registration No', 'Registration Number'], payload.regNo],
+      ['Owner Name', ['Owner Name', 'Registered Owner'], payload.ownerName],
+      ['Chassis No', ['Chassis No', 'Chassis Number', 'VIN'], payload.chassisNo],
+      ['Engine No', ['Engine No', 'Engine Number', 'Motor No'], payload.engineNo],
+      ['Make', ['Make', 'Maker', 'Manufacturer'], payload.make],
+      ['Model', ['Model', 'Vehicle Model'], payload.model],
+      ['Fuel Type', ['Fuel Type', 'Fuel'], payload.fuelType],
+      ['Manufacturing Year', ['Manufacturing Year', 'Year of Manufacture'], payload.year],
+      ['Registration Date', ['Registration Date', 'Date of Registration'], payload.registrationDate],
+    ],
+    insurance: [
+      ['Document Type', ['Document Type', 'Policy Type'], payload.documentType || 'Insurance Certificate'],
+      ['Insurance Provider', ['Insurance Provider', 'Insurer', 'Company Name'], payload.insuranceProvider],
+      ['Policy Number', ['Policy No', 'Policy Number', 'Policy No.'], payload.policyNo],
+      ['Insurance Expiry', ['Insurance Expiry', 'Expiry Date', 'Policy Expiry'], payload.insuranceExpiry],
+      ['Coverage Type', ['Coverage Type', 'Insurance Type'], payload.coverageType],
+      ['Registration No', ['Reg No', 'Registration No', 'Vehicle No'], payload.regNo],
+      ['Owner Name', ['Owner Name', 'Insured Name'], payload.ownerName],
+      ['Chassis No', ['Chassis No', 'Chassis Number', 'VIN'], payload.chassisNo],
+      ['Engine No', ['Engine No', 'Engine Number', 'Motor No'], payload.engineNo],
+    ],
+    fitness: [
+      ['Department', ['Department', 'Office', 'Authority'], null],
+      ['Issuing Authority', ['Issuing Authority', 'DTO', 'RTO', 'Authority'], null],
+      ['Document Type', ['Document Type', 'Certificate Type', 'Form Type'], payload.documentType || 'Fitness Certificate'],
+      ['Vehicle No', ['Vehicle No', 'Vehicle Number'], payload.regNo],
+      ['Registration No', ['Reg No', 'Registration No', 'Registration Number'], payload.regNo],
+      ['Application No', ['Application No', 'Application Number'], null],
+      ['Inspection Fee Receipt No', ['Inspection Fee Receipt No', 'Receipt No', 'Receipt Number'], null],
+      ['Receipt Date', ['Receipt Date'], null],
+      ['Chassis No', ['Chassis No', 'Chassis Number', 'VIN'], payload.chassisNo],
+      ['Engine No', ['Engine No', 'Engine Number', 'Motor No'], payload.engineNo],
+      ['Seating Capacity', ['Seating Capacity'], null],
+      ['Type of Body', ['Type of Body', 'Body Type'], null],
+      ['Manufacturing Year', ['Manufacturing Year', 'Year of Manufacture'], null],
+      ['Category of Vehicle', ['Category of Vehicle', 'Vehicle Category'], null],
+      ['Inspected on', ['Inspected On', 'Inspected Date', 'Inspection Date'], null],
+      ['Certificate expiry', ['Fitness Expiry', 'Certificate will expire on', 'Certificate Expiry'], payload.fitnessExpiry],
+      ['Next Inspection Due Date', ['Next Inspection Due Date', 'Inspection Due Date'], null],
+      ['Printed on', ['Printed On', 'Print Date'], null],
+      ['Inspector', ['Inspector', 'Inspected By'], null],
+    ],
+    puc: [
+      ['Document Type', ['Document Type', 'Certificate Type'], payload.documentType || 'Pollution Under Control Certificate'],
+      ['Authorised By', ['Authorised By', 'Authorized By', 'Issued By'], null],
+      ['Date', ['Date', 'Issue Date'], null],
+      ['Time', ['Time'], null],
+      ['Validity Upto', ['Validity Upto', 'Valid Upto', 'Validity Up To', 'Expiry Date'], payload.pucExpiry],
+      ['Certificate SL. No.', ['Certificate SL No', 'Certificate Sl No', 'Certificate No', 'PUC Certificate No'], payload.pucCertNo],
+      ['Registration No', ['Reg No', 'Registration No', 'Vehicle No'], payload.regNo],
+      ['Date of Registration', ['Date of Registration'], null],
+      ['Month & Year of Mfg', ['Month & Year of Mfg', 'Month and Year of Mfg'], null],
+      ['Emission Norms', ['Emission Norms'], null],
+      ['Fuel', ['Fuel', 'Fuel Type'], null],
+      ['PUC Code', ['PUC Code'], null],
+      ['Fees', ['Fees', 'Fee'], null],
+      ['MIL observation', ['MIL Observation', 'MIL observation'], null],
+    ],
+    permit: [
+      ['Document Type', ['Document Type', 'Permit Type'], payload.documentType || 'Route Permit'],
+      ['Permit Number', ['Permit No', 'Permit Number'], payload.permitNo],
+      ['Permit Expiry', ['Permit Expiry', 'Validity Upto', 'Expiry Date'], payload.permitExpiry],
+      ['Registration No', ['Reg No', 'Registration No', 'Vehicle No'], payload.regNo],
+      ['Owner Name', ['Owner Name'], payload.ownerName],
+    ],
+    roadtax: [
+      ['Document Type', ['Document Type'], payload.documentType || 'Road Tax Receipt'],
+      ['Registration No', ['Reg No', 'Registration No', 'Vehicle No'], payload.regNo],
+      ['Tax Validity Until', ['Tax Validity Until', 'Validity Upto', 'Expiry Date'], payload.roadTaxExpiry],
+      ['Owner Name', ['Owner Name'], payload.ownerName],
+    ],
+    dl: [
+      ['Document Type', ['Document Type'], payload.documentType || 'Driving License'],
+      ['Full Name', ['Name', 'Driver Name'], payload.fullName],
+      ['DOB', ['DOB', 'Date of Birth'], payload.dob],
+      ['DL Number', ['DL No', 'DL Number', 'License Number'], payload.dlNo],
+      ['DL Issue Date', ['DL Issue Date', 'Issue Date'], payload.dlIssue],
+      ['DL Expiry', ['DL Expiry', 'Expiry Date'], payload.dlExpiry],
+      ['Address', ['Address'], null],
+    ],
+    aadhar: [
+      ['Document Type', ['Document Type'], payload.documentType || 'Aadhaar Card'],
+      ['Full Name', ['Name'], payload.fullName],
+      ['DOB', ['DOB', 'Date of Birth'], payload.dob],
+      ['Aadhaar Number', ['Aadhaar Number', 'Aadhar Number'], payload.aadhar],
+      ['Address', ['Address'], null],
+    ],
+    pan: [
+      ['Document Type', ['Document Type'], payload.documentType || 'Pan Card'],
+      ['Full Name', ['Name'], payload.fullName],
+      ['PAN Number', ['PAN Number', 'PAN'], payload.pan],
+      ['DOB', ['DOB', 'Date of Birth'], payload.dob],
+    ],
+    photo: [
+      ['Document Type', ['Document Type'], payload.documentType || 'Photo'],
+      ['Full Name', ['Name'], payload.fullName],
+    ],
+  };
+
+  const selectedSpecs = specs[documentType] || [];
   const rows = [];
-  const skipKeys = new Set(['raw', 'pages', 'documentType']);
-  for (const [key, value] of Object.entries(payload || {})) {
-    if (skipKeys.has(key)) continue;
-    if (value === undefined || value === null || value === '') continue;
-    const fieldName = formatFieldLabel(key);
-    if (!fieldName) continue;
+  const seen = new Set();
+
+  selectedSpecs.forEach(([label, keys, fallback], index) => {
+    const value = read(keys, fallback);
+    if (!value) return;
+    seen.add(normalizeLookupKey(label));
     rows.push({
-      fieldName,
+      displayOrder: index + 1,
+      fieldName: label,
       fieldValue: String(value),
       sourceEngine: sourceEngine || null,
       documentType,
     });
+  });
+
+  if (!rows.length) {
+    const skipKeys = new Set(['raw', 'pages', 'documentType']);
+    let order = 1;
+    for (const [key, value] of Object.entries(payload || {})) {
+      if (skipKeys.has(key)) continue;
+      if (value === undefined || value === null || value === '') continue;
+      const fieldName = formatFieldLabel(key);
+      if (!fieldName) continue;
+      rows.push({
+        displayOrder: order++,
+        fieldName,
+        fieldValue: String(value),
+        sourceEngine: sourceEngine || null,
+        documentType,
+      });
+    }
   }
+
   return rows;
 }
 
@@ -289,13 +446,15 @@ async function replaceDocumentFieldRows(client, payload) {
     await client.query(
       `INSERT INTO document_field_values
        (owner_user_id, entity_type, entity_id, document_id, document_type, field_name, field_value, source_engine)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+       (owner_user_id, entity_type, entity_id, document_id, document_type, display_order, field_name, field_value, source_engine)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
         payload.ownerUserId || null,
         payload.entityType,
         payload.entityId || null,
         payload.documentId,
         payload.documentType,
+        row.displayOrder || null,
         row.fieldName,
         row.fieldValue,
         row.sourceEngine || null,
@@ -563,15 +722,16 @@ function registerDocumentWorkflow({
     const fieldRowsByDocument = new Map();
     if (docIds.length) {
       const fieldRes = await pool.query(
-        `SELECT document_id, field_name, field_value, source_engine, created_at
+        `SELECT document_id, display_order, field_name, field_value, source_engine, created_at
          FROM document_field_values
          WHERE document_id = ANY($1::int[])
-         ORDER BY document_id ASC, field_name ASC`,
+         ORDER BY document_id ASC, display_order ASC NULLS LAST, field_name ASC`,
         [docIds]
       );
       for (const row of fieldRes.rows) {
         if (!fieldRowsByDocument.has(row.document_id)) fieldRowsByDocument.set(row.document_id, []);
         fieldRowsByDocument.get(row.document_id).push({
+          displayOrder: row.display_order,
           fieldName: row.field_name,
           fieldValue: row.field_value,
           sourceEngine: row.source_engine,
@@ -624,7 +784,7 @@ function registerDocumentWorkflow({
       { header: 'Document Type', key: 'document_type', width: 18 },
       { header: 'Display Name', key: 'display_name', width: 24 },
       { header: 'Document Status', key: 'status', width: 16 },
-      { header: 'Field', key: 'field_name', width: 24 },
+      { header: 'Field', key: 'field_name', width: 28 },
       { header: 'Extracted Details', key: 'field_value', width: 40 },
       { header: 'OCR Engine', key: 'source_engine', width: 16 },
       { header: 'Created At', key: 'created_at', width: 24 },
@@ -632,10 +792,10 @@ function registerDocumentWorkflow({
 
     const result = await pool.query(
       `SELECT d.owner_user_id, d.entity_type, d.entity_id, d.id AS document_id, d.document_type, d.display_name, d.status,
-              f.field_name, f.field_value, f.source_engine, f.created_at
+              f.display_order, f.field_name, f.field_value, f.source_engine, f.created_at
        FROM document_field_values f
        JOIN documents d ON d.id = f.document_id
-       ORDER BY f.created_at DESC, d.id DESC, f.field_name ASC`
+       ORDER BY f.created_at DESC, d.id DESC, f.display_order ASC NULLS LAST, f.field_name ASC`
     );
 
     result.rows.forEach((row) => sheet.addRow(row));
