@@ -1037,6 +1037,48 @@ function registerSummary(registerDoc) {
     return [status, ...fields].filter(Boolean).join(' | ');
 }
 
+function registerFields(registerDoc) {
+    const parsed = parseRegisterJson(registerDoc);
+    const fields = Array.isArray(parsed?.fields) ? parsed.fields : [];
+    return fields
+        .filter((item) => item && item.field && item.value)
+        .sort((a, b) => (Number(a.order || 9999) - Number(b.order || 9999)));
+}
+
+function appendReadableDocumentBlock(sheet, startRow, title, registerDoc) {
+    const fields = registerFields(registerDoc);
+    if (!fields.length) return startRow;
+
+    sheet.mergeCells(`A${startRow}:B${startRow}`);
+    const titleCell = sheet.getCell(`A${startRow}`);
+    titleCell.value = title;
+    titleCell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 12 };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F1F24' } };
+    titleCell.alignment = { vertical: 'middle', horizontal: 'left' };
+
+    const headerRow = startRow + 1;
+    sheet.getCell(`A${headerRow}`).value = 'Field';
+    sheet.getCell(`B${headerRow}`).value = 'Extracted Details';
+    ['A', 'B'].forEach((col) => {
+        const cell = sheet.getCell(`${col}${headerRow}`);
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF343A40' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'left' };
+    });
+
+    let rowPointer = headerRow + 1;
+    fields.forEach((item) => {
+        sheet.getCell(`A${rowPointer}`).value = item.field;
+        sheet.getCell(`B${rowPointer}`).value = String(item.value);
+        sheet.getCell(`A${rowPointer}`).font = { bold: true };
+        sheet.getCell(`A${rowPointer}`).alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
+        sheet.getCell(`B${rowPointer}`).alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
+        rowPointer += 1;
+    });
+
+    return rowPointer + 1;
+}
+
 async function generateMasterFleetExcel() {
     const workbook = new ExcelJS.Workbook();
     const fleetSheet = workbook.addWorksheet('Master Fleet');
@@ -1070,17 +1112,8 @@ async function generateMasterFleetExcel() {
     ];
 
     docsSheet.columns = [
-        { header: 'Truck ID', key: 'truck_id', width: 10 },
-        { header: 'Registration No', key: 'reg_no', width: 18 },
-        { header: 'Transporter Name', key: 'transporter_name', width: 24 },
-        { header: 'Company Name', key: 'company_name', width: 26 },
-        { header: 'RC Summary', key: 'rc_document', width: 60 },
-        { header: 'Insurance Summary', key: 'insurance_document', width: 60 },
-        { header: 'Fitness Summary', key: 'fitness_document', width: 60 },
-        { header: 'PUC Summary', key: 'puc_document', width: 60 },
-        { header: 'Permit Summary', key: 'permit_document', width: 60 },
-        { header: 'Road Tax Summary', key: 'roadtax_document', width: 60 },
-        { header: 'Updated At', key: 'updated_at', width: 22 },
+        { key: 'field', width: 30 },
+        { key: 'value', width: 90 },
     ];
 
     const result = await pool.query(
@@ -1136,26 +1169,42 @@ async function generateMasterFleetExcel() {
             permit_expiry_date: row.permit_expiry_date || registerFieldValue(row.permit_document, ['Permit Expiry','Validity Upto']),
         });
 
-        docsSheet.addRow({
-            truck_id: row.truck_id,
-            reg_no: row.reg_no,
-            transporter_name: row.transporter_name,
-            company_name: row.company_name,
-            rc_document: registerSummary(row.rc_document),
-            insurance_document: registerSummary(row.insurance_document),
-            fitness_document: registerSummary(row.fitness_document),
-            puc_document: registerSummary(row.puc_document),
-            permit_document: registerSummary(row.permit_document),
-            roadtax_document: registerSummary(row.roadtax_document),
-            updated_at: row.updated_at,
-        });
     });
 
-    [fleetSheet, docsSheet].forEach((sheet) => {
-        sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A5C3A' } };
-        sheet.views = [{ state: 'frozen', ySplit: 1 }];
-      });
+    let docsRow = 1;
+    result.rows.forEach((row, index) => {
+        const heading = `Truck ${row.truck_id} | ${row.reg_no || 'NO REG'} | ${row.transporter_name || 'Unknown Transporter'}${row.company_name ? ` | ${row.company_name}` : ''}`;
+        docsSheet.mergeCells(`A${docsRow}:B${docsRow}`);
+        const headingCell = docsSheet.getCell(`A${docsRow}`);
+        headingCell.value = `${index + 1}. ${heading}`;
+        headingCell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 13 };
+        headingCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A5C3A' } };
+        headingCell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+        docsRow += 2;
+
+        docsRow = appendReadableDocumentBlock(docsSheet, docsRow, 'RC Book', row.rc_document);
+        docsRow = appendReadableDocumentBlock(docsSheet, docsRow, 'Insurance Certificate', row.insurance_document);
+        docsRow = appendReadableDocumentBlock(docsSheet, docsRow, 'Fitness Certificate', row.fitness_document);
+        docsRow = appendReadableDocumentBlock(docsSheet, docsRow, 'PUC Certificate', row.puc_document);
+        docsRow = appendReadableDocumentBlock(docsSheet, docsRow, 'Route Permit', row.permit_document);
+        docsRow = appendReadableDocumentBlock(docsSheet, docsRow, 'Road Tax', row.roadtax_document);
+        docsRow += 1;
+    });
+
+    fleetSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    fleetSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A5C3A' } };
+    fleetSheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+    docsSheet.eachRow((row) => {
+        row.eachCell((cell) => {
+            cell.border = {
+                top: { style: 'thin', color: { argb: 'FF4A4A4A' } },
+                left: { style: 'thin', color: { argb: 'FF4A4A4A' } },
+                bottom: { style: 'thin', color: { argb: 'FF4A4A4A' } },
+                right: { style: 'thin', color: { argb: 'FF4A4A4A' } },
+            };
+        });
+    });
 
     return workbook;
 }
