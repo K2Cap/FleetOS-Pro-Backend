@@ -199,7 +199,7 @@ const TRUCK_DOCUMENT_LABELS = {
   fitness: 'Fitness',
   puc: 'PUC',
   permit: 'Permit',
-  roadtax: 'Road Tax',
+  purchase_invoice: 'Purchase Invoice',
 };
 
 const DRIVER_DOCUMENT_LABELS = {
@@ -208,6 +208,15 @@ const DRIVER_DOCUMENT_LABELS = {
   pan: 'Pan Card',
   photo: 'Photo',
 };
+
+function normalizeTruckDocumentType(value) {
+  const cleaned = String(value || '').trim().toLowerCase();
+  if (!cleaned) return cleaned;
+  if (['tax', 'roadtax', 'road_tax', 'purchase invoice', 'purchase_invoice'].includes(cleaned)) {
+    return 'purchase_invoice';
+  }
+  return cleaned;
+}
 
 async function ensureDocumentTables(db) {
   await db.query(`CREATE TABLE IF NOT EXISTS documents (
@@ -269,6 +278,7 @@ async function ensureDocumentTables(db) {
       puc_document JSONB,
       permit_document JSONB,
       roadtax_document JSONB,
+      purchase_invoice_document JSONB,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`);
   await db.query(`CREATE TABLE IF NOT EXISTS driver_document_registers (
@@ -281,6 +291,7 @@ async function ensureDocumentTables(db) {
       photo_document JSONB,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`);
+  await db.query(`ALTER TABLE truck_document_registers ADD COLUMN IF NOT EXISTS purchase_invoice_document JSONB`);
 }
 
 function formatFieldLabel(key) {
@@ -396,8 +407,8 @@ function buildFieldRowsFromPayload(payload, documentType, sourceEngine) {
       ['Registration No', ['Reg No', 'Registration No', 'Vehicle No'], payload.regNo],
       ['Owner Name', ['Owner Name'], payload.ownerName],
     ],
-    roadtax: [
-      ['Document Type', ['Document Type'], payload.documentType || 'Road Tax Receipt'],
+    purchase_invoice: [
+      ['Document Type', ['Document Type'], payload.documentType || 'Purchase Invoice'],
       ['Registration No', ['Reg No', 'Registration No', 'Vehicle No'], payload.regNo],
       ['Tax Validity Until', ['Tax Validity Until', 'Validity Upto', 'Expiry Date'], payload.roadTaxExpiry],
       ['Owner Name', ['Owner Name'], payload.ownerName],
@@ -516,7 +527,8 @@ function getTruckRegisterColumn(documentType) {
     fitness: 'fitness_document',
     puc: 'puc_document',
     permit: 'permit_document',
-    roadtax: 'roadtax_document',
+    purchase_invoice: 'purchase_invoice_document',
+    roadtax: 'purchase_invoice_document',
   };
   return mapping[documentType] || null;
 }
@@ -535,15 +547,22 @@ async function upsertTruckDocumentRegister(client, payload) {
   const column = getTruckRegisterColumn(payload.documentType);
   if (!column) return;
   await client.query(
-    `INSERT INTO truck_document_registers (truck_id, owner_user_id, reg_no, ${column}, updated_at)
-     VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+    `INSERT INTO truck_document_registers (truck_id, owner_user_id, reg_no, ${column}, roadtax_document, updated_at)
+     VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
      ON CONFLICT (truck_id)
      DO UPDATE SET
        owner_user_id = EXCLUDED.owner_user_id,
        reg_no = EXCLUDED.reg_no,
        ${column} = EXCLUDED.${column},
+       roadtax_document = COALESCE(EXCLUDED.roadtax_document, truck_document_registers.roadtax_document),
        updated_at = CURRENT_TIMESTAMP`,
-    [payload.truckId, payload.ownerUserId || null, normalizeTruckRegNo(payload.regNo) || null, payload.snapshot]
+    [
+      payload.truckId,
+      payload.ownerUserId || null,
+      normalizeTruckRegNo(payload.regNo) || null,
+      payload.snapshot,
+      payload.documentType === 'purchase_invoice' ? payload.snapshot : null,
+    ]
   );
 }
 
@@ -747,7 +766,7 @@ async function upsertTruckFromDocument(client, mergedPayload, documentType, merg
   if (documentType === 'fitness') patch.doc_fitness_path = mergedStoredPath;
   if (documentType === 'puc') patch.doc_puc_path = mergedStoredPath;
   if (documentType === 'permit') patch.doc_permit_path = mergedStoredPath;
-  if (documentType === 'roadtax') patch.doc_roadtax_path = mergedStoredPath;
+  if (documentType === 'roadtax' || documentType === 'purchase_invoice') patch.doc_roadtax_path = mergedStoredPath;
 
   if (row) {
     const columns = Object.keys(patch);
@@ -943,12 +962,13 @@ function registerDocumentWorkflow({
       { header: 'Fitness', key: 'fitness_document', width: 40 },
       { header: 'PUC', key: 'puc_document', width: 40 },
       { header: 'Permit', key: 'permit_document', width: 40 },
-      { header: 'Road Tax', key: 'roadtax_document', width: 40 },
+      { header: 'Purchase Invoice', key: 'purchase_invoice_document', width: 40 },
       { header: 'Updated At', key: 'updated_at', width: 24 },
     ];
 
     const result = await pool.query(
-      `SELECT truck_id, reg_no, owner_user_id, rc_document, insurance_document, fitness_document, puc_document, permit_document, roadtax_document, updated_at
+      `SELECT truck_id, reg_no, owner_user_id, rc_document, insurance_document, fitness_document, puc_document, permit_document,
+              COALESCE(purchase_invoice_document, roadtax_document) AS purchase_invoice_document, updated_at
        FROM truck_document_registers
        ORDER BY updated_at DESC, truck_id DESC`
     );
@@ -963,7 +983,7 @@ function registerDocumentWorkflow({
         fitness_document: flattenRegisterDocument(row.fitness_document),
         puc_document: flattenRegisterDocument(row.puc_document),
         permit_document: flattenRegisterDocument(row.permit_document),
-        roadtax_document: flattenRegisterDocument(row.roadtax_document),
+        purchase_invoice_document: flattenRegisterDocument(row.purchase_invoice_document),
         updated_at: row.updated_at,
       });
     });
@@ -975,7 +995,7 @@ function registerDocumentWorkflow({
 
   app.post('/api/fleet/documents/batch', authenticateTransporter, upload.array('documents', 12), async (req, res) => {
     const regNo = cleanString(req.body.regNo) || `PENDING_${Date.now()}`;
-    const documentType = cleanString(req.body.documentType);
+    const documentType = normalizeTruckDocumentType(cleanString(req.body.documentType));
     const ownerUserId = toNumberOrNull(req.body.ownerUserId || req.user?.id);
     let pageLabels = normalizePageLabels(req.body.pageLabels);
     const files = Array.isArray(req.files) ? req.files : [];
@@ -1092,7 +1112,7 @@ function registerDocumentWorkflow({
 
   app.post('/api/drivers/documents/batch', authenticateTransporter, upload.array('documents', 12), async (req, res) => {
     const fullName = cleanString(req.body.fullName) || `PENDING_DRIVER_${Date.now()}`;
-    const documentType = cleanString(req.body.documentType);
+    const documentType = normalizeTruckDocumentType(cleanString(req.body.documentType));
     const ownerUserId = toNumberOrNull(req.body.ownerUserId || req.user?.id);
     const pageLabels = normalizePageLabels(req.body.pageLabels);
     const files = Array.isArray(req.files) ? req.files : [];
