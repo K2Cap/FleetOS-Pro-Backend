@@ -1147,7 +1147,7 @@ async function generateMasterFleetExcel() {
             r.fitness_document,
             r.puc_document,
             r.permit_document,
-            r.roadtax_document,
+            r.purchase_invoice_document,
             r.updated_at
          FROM trucks t
          LEFT JOIN users u ON u.id = COALESCE(t.owner_user_id, r.owner_user_id)
@@ -1194,7 +1194,7 @@ async function generateMasterFleetExcel() {
         docsRow = appendReadableDocumentBlock(docsSheet, docsRow, 'Fitness Certificate', row.fitness_document);
         docsRow = appendReadableDocumentBlock(docsSheet, docsRow, 'PUC Certificate', row.puc_document);
         docsRow = appendReadableDocumentBlock(docsSheet, docsRow, 'Route Permit', row.permit_document);
-        docsRow = appendReadableDocumentBlock(docsSheet, docsRow, 'Road Tax', row.roadtax_document);
+        docsRow = appendReadableDocumentBlock(docsSheet, docsRow, 'Purchase Invoice', row.purchase_invoice_document);
         docsRow += 1;
     });
 

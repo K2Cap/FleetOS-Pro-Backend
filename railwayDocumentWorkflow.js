@@ -277,7 +277,6 @@ async function ensureDocumentTables(db) {
       fitness_document JSONB,
       puc_document JSONB,
       permit_document JSONB,
-      roadtax_document JSONB,
       purchase_invoice_document JSONB,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`);
@@ -547,21 +546,19 @@ async function upsertTruckDocumentRegister(client, payload) {
   const column = getTruckRegisterColumn(payload.documentType);
   if (!column) return;
   await client.query(
-    `INSERT INTO truck_document_registers (truck_id, owner_user_id, reg_no, ${column}, roadtax_document, updated_at)
-     VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+    `INSERT INTO truck_document_registers (truck_id, owner_user_id, reg_no, ${column}, updated_at)
+     VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
      ON CONFLICT (truck_id)
      DO UPDATE SET
        owner_user_id = EXCLUDED.owner_user_id,
        reg_no = EXCLUDED.reg_no,
        ${column} = EXCLUDED.${column},
-       roadtax_document = COALESCE(EXCLUDED.roadtax_document, truck_document_registers.roadtax_document),
        updated_at = CURRENT_TIMESTAMP`,
     [
       payload.truckId,
       payload.ownerUserId || null,
       normalizeTruckRegNo(payload.regNo) || null,
       payload.snapshot,
-      payload.documentType === 'purchase_invoice' ? payload.snapshot : null,
     ]
   );
 }
@@ -968,7 +965,7 @@ function registerDocumentWorkflow({
 
     const result = await pool.query(
       `SELECT truck_id, reg_no, owner_user_id, rc_document, insurance_document, fitness_document, puc_document, permit_document,
-              COALESCE(purchase_invoice_document, roadtax_document) AS purchase_invoice_document, updated_at
+              purchase_invoice_document, updated_at
        FROM truck_document_registers
        ORDER BY updated_at DESC, truck_id DESC`
     );
