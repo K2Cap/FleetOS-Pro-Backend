@@ -2222,12 +2222,7 @@ app.post('/api/ocr-truck', authenticateToken, async (req, res) => {
                 engine = 'gravityocr';
                 console.log(`[OCR] Local GravityOCR success. Extracted keys: ${Object.keys(result).join(', ')}`);
             } catch (localErr) {
-                console.warn(`[OCR] Local GravityOCR unavailable, trying Tesseract fallback: ${localErr.message}`);
-                result = await tryTesseractDocumentOcr(image, mimeType || 'image/jpeg', normalizedDocumentType);
-                result = flattenOcrPayload(result);
-                result._source = result._source || 'TesseractFallback';
-                engine = 'tesseract';
-                console.log(`[OCR] Tesseract fallback success. Extracted keys: ${Object.keys(result).join(', ')}`);
+                throw new Error(`Gemini and GravityOCR both failed. Gemini: ${geminiErr.message}. GravityOCR: ${localErr.message}`);
             }
         }
 

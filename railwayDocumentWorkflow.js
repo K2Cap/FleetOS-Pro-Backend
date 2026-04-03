@@ -678,16 +678,6 @@ async function runStoredFileOcr(absolutePath, mimeType, documentType, deps) {
       return { engine: 'gravityocr', payload: flattenOcrPayload(localResult) };
     } catch (_err) {}
   }
-  if (deps.tryTesseractDocumentOcr) {
-    try {
-      const tesseractResult = await deps.tryTesseractDocumentOcr(
-        base64,
-        mimeType || 'image/jpeg',
-        documentType || 'logistics'
-      );
-      return { engine: 'tesseract', payload: flattenOcrPayload(tesseractResult) };
-    } catch (_err) {}
-  }
   throw new Error('All OCR engines failed');
 }
 
