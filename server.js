@@ -21,7 +21,6 @@ const multer = require('multer');
 const { parseDocumentWithGemini } = require('./vision-service');
 const { tryTesseractDocumentOcr } = require('./local-ocr');
 const { flattenOcrPayload, normalizeTruckOcrPayload } = require('./ocr-normalizers');
-const { tryDocumentAiOcr, getDocumentAiConfig } = require('./document-ai-service');
 const ExcelJS = require('exceljs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
@@ -29,13 +28,6 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_for_dev_only';
 
 const app = express();
-const documentAiConfig = getDocumentAiConfig();
-
-if (documentAiConfig.enabled) {
-    console.log(`[OCR] Document AI enabled (${documentAiConfig.location}/${documentAiConfig.processorId})`);
-} else {
-    console.warn('[OCR] Document AI not configured. Falling back to GravityOCR/Tesseract/Gemini.');
-}
 
 // --- DIAGNOSTIC TRAFFIC LOGGER ---
 app.use((req, res, next) => {
@@ -1111,8 +1103,7 @@ registerDocumentWorkflow({
     UPLOADS_DIR,
     parseDocumentWithGemini,
     tryLocalGravityOcr,
-    tryTesseractDocumentOcr,
-    tryDocumentAiOcr
+    tryTesseractDocumentOcr
 });
 
 
@@ -1971,33 +1962,25 @@ app.post('/api/ocr-truck', authenticateToken, async (req, res) => {
         console.log(`[OCR] Smart truck scan request. Mime: ${mimeType || 'image/jpeg'}, Size: ${Math.round(image.length / 1024)} KB`);
 
         try {
-            result = await tryDocumentAiOcr(image, mimeType || 'image/jpeg', normalizedDocumentType);
+            result = await tryLocalGravityOcr(image, mimeType || 'image/jpeg');
             result = flattenOcrPayload(result);
-            engine = 'documentai';
-            console.log(`[OCR] Document AI success. Extracted keys: ${Object.keys(result).join(', ')}`);
-        } catch (documentAiErr) {
-            console.warn(`[OCR] Document AI unavailable, trying GravityOCR fallback: ${documentAiErr.message}`);
+            engine = 'gravityocr';
+            console.log(`[OCR] Local GravityOCR success. Extracted keys: ${Object.keys(result).join(', ')}`);
+        } catch (localErr) {
+            console.warn(`[OCR] Local GravityOCR unavailable, trying Tesseract fallback: ${localErr.message}`);
             try {
-                result = await tryLocalGravityOcr(image, mimeType || 'image/jpeg');
+                result = await tryTesseractDocumentOcr(image, mimeType || 'image/jpeg', normalizedDocumentType);
                 result = flattenOcrPayload(result);
-                engine = 'gravityocr';
-                console.log(`[OCR] Local GravityOCR success. Extracted keys: ${Object.keys(result).join(', ')}`);
-            } catch (localErr) {
-                console.warn(`[OCR] Local GravityOCR unavailable, trying Tesseract fallback: ${localErr.message}`);
-                try {
-                    result = await tryTesseractDocumentOcr(image, mimeType || 'image/jpeg', normalizedDocumentType);
-                    result = flattenOcrPayload(result);
-                    result._source = result._source || 'TesseractFallback';
-                    engine = 'tesseract';
-                    console.log(`[OCR] Tesseract fallback success. Extracted keys: ${Object.keys(result).join(', ')}`);
-                } catch (tesseractErr) {
-                    console.warn(`[OCR] Tesseract fallback unavailable, falling back to Gemini: ${tesseractErr.message}`);
-                    result = await parseDocumentWithGemini(image, mimeType || 'image/jpeg', normalizedDocumentType);
-                    result = flattenOcrPayload(result);
-                    result._source = 'GeminiFallback';
-                    engine = 'gemini';
-                    console.log(`[OCR] Gemini fallback success. Extracted keys: ${Object.keys(result).join(', ')}`);
-                }
+                result._source = result._source || 'TesseractFallback';
+                engine = 'tesseract';
+                console.log(`[OCR] Tesseract fallback success. Extracted keys: ${Object.keys(result).join(', ')}`);
+            } catch (tesseractErr) {
+                console.warn(`[OCR] Tesseract fallback unavailable, falling back to Gemini: ${tesseractErr.message}`);
+                result = await parseDocumentWithGemini(image, mimeType || 'image/jpeg', normalizedDocumentType);
+                result = flattenOcrPayload(result);
+                result._source = 'GeminiFallback';
+                engine = 'gemini';
+                console.log(`[OCR] Gemini fallback success. Extracted keys: ${Object.keys(result).join(', ')}`);
             }
         }
 
