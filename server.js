@@ -1581,92 +1581,148 @@ app.delete('/api/expenses/:id', async (req, res) => {
 });
 
 // --- FLEET API ---
-app.get('/api/fleet', (req, res) => {
-    db.all('SELECT * FROM trucks ORDER BY created_at DESC', (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
+function getFleetUploadPath(files, key, fallbackValue = null) {
+    const file = Array.isArray(files?.[key]) ? files[key][0] : null;
+    return file ? `/uploads/${file.filename}` : fallbackValue;
+}
+
+function buildFleetTruckPayload(req, existing = {}) {
+    const d = req.body || {};
+    const files = req.files || {};
+    return {
+        owner_user_id: existing.owner_user_id || req.user?.id || null,
+        reg_no: cleanString(d.regNo) || cleanString(existing.reg_no),
+        chassis_no: cleanString(d.chassis) || cleanString(existing.chassis_no),
+        engine_no: cleanString(d.engine) || cleanString(existing.engine_no),
+        truck_type: cleanString(d.truckType) || cleanString(existing.truck_type),
+        make: cleanString(d.make) || cleanString(existing.make),
+        model: cleanString(d.model) || cleanString(existing.model),
+        owner_name: cleanString(d.ownerName) || cleanString(existing.owner_name),
+        year: toNumberOrNull(d.year) ?? toNumberOrNull(existing.year),
+        fuel_type: cleanString(d.fuel) || cleanString(existing.fuel_type),
+        gvw: toNumberOrNull(d.gvw) ?? toNumberOrNull(existing.gvw) ?? 0,
+        axle_config: cleanString(d.axle) || cleanString(existing.axle_config),
+        tyres_count: toNumberOrNull(d.tyres) ?? toNumberOrNull(existing.tyres_count) ?? 0,
+        status: cleanString(d.status) || cleanString(existing.status) || 'Active',
+        driver_assigned: cleanString(d.driver) || cleanString(existing.driver_assigned),
+        odometer: toNumberOrNull(d.odometer) ?? toNumberOrNull(existing.odometer) ?? 0,
+        purchase_date: cleanString(d.purchaseDate) || cleanString(existing.purchase_date),
+        purchase_price: toNumberOrNull(d.price) ?? toNumberOrNull(existing.purchase_price) ?? 0,
+        insurance_provider: cleanString(d.insurer) || cleanString(existing.insurance_provider),
+        policy_no: cleanString(d.policyNo) || cleanString(existing.policy_no),
+        ins_start_date: cleanString(d.insStartDate) || cleanString(existing.ins_start_date),
+        ins_expiry_date: cleanString(d.insExpiry) || cleanString(existing.ins_expiry_date),
+        ins_value: toNumberOrNull(d.insValue) ?? toNumberOrNull(existing.ins_value) ?? 0,
+        coverage_type: cleanString(d.coverage) || cleanString(existing.coverage_type),
+        fitness_cert_no: cleanString(d.fitnessCertNo) || cleanString(existing.fitness_cert_no),
+        fitness_expiry_date: cleanString(d.fitnessExpiry) || cleanString(existing.fitness_expiry_date),
+        puc_cert_no: cleanString(d.pucCertNo) || cleanString(existing.puc_cert_no),
+        puc_expiry_date: cleanString(d.pucExpiry) || cleanString(existing.puc_expiry_date),
+        permit_no: cleanString(d.permitNo) || cleanString(existing.permit_no),
+        permit_expiry_date: cleanString(d.permitExpiry) || cleanString(existing.permit_expiry_date),
+        road_tax_paid_date: cleanString(d.taxPaidDate) || cleanString(existing.road_tax_paid_date),
+        road_tax_expiry_date: cleanString(d.taxExpiry) || cleanString(existing.road_tax_expiry_date),
+        road_tax_amount: toNumberOrNull(d.taxAmount) ?? toNumberOrNull(existing.road_tax_amount) ?? 0,
+        doc_rc_path: getFleetUploadPath(files, 'file_rc', existing.doc_rc_path || null),
+        doc_insurance_path: getFleetUploadPath(files, 'file_insurance', existing.doc_insurance_path || null),
+        doc_fitness_path: getFleetUploadPath(files, 'file_fitness', existing.doc_fitness_path || null),
+        doc_puc_path: getFleetUploadPath(files, 'file_puc', existing.doc_puc_path || null),
+        doc_permit_path: getFleetUploadPath(files, 'file_permit', existing.doc_permit_path || null),
+        doc_roadtax_path: getFleetUploadPath(files, 'file_roadtax', existing.doc_roadtax_path || null),
+    };
+}
+
+app.get('/api/fleet', async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT *
+             FROM trucks
+             WHERE owner_user_id = $1 OR owner_user_id IS NULL
+             ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC`,
+            [req.user?.id || null]
+        );
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message || 'Could not load fleet' });
+    }
 });
 
-app.get('/api/fleet/:id', (req, res) => {
-    db.get('SELECT * FROM trucks WHERE id = ?', [req.params.id], (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
+app.get('/api/fleet/:id', async (req, res) => {
+    try {
+        const id = toNumberOrNull(req.params.id);
+        if (!id) return res.status(400).json({ error: 'Valid truck id is required' });
+        const result = await pool.query(
+            `SELECT *
+             FROM trucks
+             WHERE id = $1
+               AND (owner_user_id = $2 OR owner_user_id IS NULL)
+             LIMIT 1`,
+            [id, req.user?.id || null]
+        );
+        const row = result.rows[0];
         if (!row) return res.status(404).json({ error: 'Truck not found' });
         res.json(row);
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message || 'Could not load truck' });
+    }
 });
 
-app.post('/api/fleet', upload.fields([{ name: 'file_rc' }, { name: 'file_insurance' }, { name: 'file_fitness' }, { name: 'file_puc' }, { name: 'file_permit' }, { name: 'file_roadtax' }]), (req, res) => {
-    const d = req.body;
-    const f = req.files || {};
-    const getPath = (k) => f[k] ? `/uploads/${f[k][0].filename}` : null;
-
-    const cols = ['owner_user_id', 'reg_no', 'chassis_no', 'engine_no', 'truck_type', 'make', 'model', 'owner_name', 'year', 'fuel_type', 'gvw', 'axle_config', 'tyres_count', 'status', 'driver_assigned', 'odometer', 'purchase_date', 'purchase_price', 'insurance_provider', 'policy_no', 'ins_start_date', 'ins_expiry_date', 'ins_value', 'coverage_type', 'fitness_cert_no', 'fitness_expiry_date', 'puc_cert_no', 'puc_expiry_date', 'permit_no', 'permit_expiry_date', 'road_tax_paid_date', 'road_tax_expiry_date', 'road_tax_amount', 'doc_rc_path', 'doc_insurance_path', 'doc_fitness_path', 'doc_puc_path', 'doc_permit_path', 'doc_roadtax_path'];
-    const p = [req.user?.id || null, d.regNo, d.chassis, d.engine, d.truckType, d.make, d.model, d.ownerName, d.year || null, d.fuel, d.gvw || 0, d.axle, d.tyres || 0, d.status, d.driver, d.odometer || 0, d.purchaseDate, d.price || 0, d.insurer, d.policyNo, d.insStartDate, d.insExpiry, d.insValue || 0, d.coverage, d.fitnessCertNo, d.fitnessExpiry, d.pucCertNo, d.pucExpiry, d.permitNo, d.permitExpiry, d.taxPaidDate, d.taxExpiry, d.taxAmount || 0, getPath('file_rc'), getPath('file_insurance'), getPath('file_fitness'), getPath('file_puc'), getPath('file_permit'), getPath('file_roadtax')];
-
-    db.run(`INSERT INTO trucks (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`, p, function(err) {
-        if (err) return res.status(400).json({ error: err.message.includes('unique') ? 'Truck exists' : err.message });
-        res.json({ id: this.lastID, message: 'Success' });
-    });
+app.post('/api/fleet', upload.fields([{ name: 'file_rc' }, { name: 'file_insurance' }, { name: 'file_fitness' }, { name: 'file_puc' }, { name: 'file_permit' }, { name: 'file_roadtax' }]), async (req, res) => {
+    try {
+        const payload = buildFleetTruckPayload(req);
+        if (!payload.reg_no) return res.status(400).json({ error: 'Registration number is required' });
+        const columns = Object.keys(payload);
+        const values = Object.values(payload);
+        const result = await pool.query(
+            `INSERT INTO trucks (${columns.join(', ')})
+             VALUES (${columns.map((_, index) => `$${index + 1}`).join(', ')})
+             RETURNING id, reg_no, status, make, model`,
+            values
+        );
+        res.json({ id: result.rows[0].id, message: 'Success', truck: result.rows[0] });
+    } catch (err) {
+        if (err?.code === '23505' || /unique/i.test(String(err?.message || ''))) {
+            return res.status(400).json({ error: 'Truck exists' });
+        }
+        res.status(500).json({ error: err.message || 'Truck could not be created' });
+    }
 });
 
-app.put('/api/fleet/:id', upload.fields([{ name: 'file_rc' }, { name: 'file_insurance' }, { name: 'file_fitness' }, { name: 'file_puc' }, { name: 'file_permit' }, { name: 'file_roadtax' }]), (req, res) => {
-    const d = req.body;
-    const f = req.files || {};
-    const getPath = (k) => f[k] ? `/uploads/${f[k][0].filename}` : null;
-
-    db.get('SELECT * FROM trucks WHERE id = ?', [req.params.id], (findErr, existing) => {
-        if (findErr) return res.status(500).json({ error: findErr.message });
+app.put('/api/fleet/:id', upload.fields([{ name: 'file_rc' }, { name: 'file_insurance' }, { name: 'file_fitness' }, { name: 'file_puc' }, { name: 'file_permit' }, { name: 'file_roadtax' }]), async (req, res) => {
+    try {
+        const id = toNumberOrNull(req.params.id);
+        if (!id) return res.status(400).json({ error: 'Valid truck id is required' });
+        const existingRes = await pool.query(
+            `SELECT *
+             FROM trucks
+             WHERE id = $1
+               AND (owner_user_id = $2 OR owner_user_id IS NULL)
+             LIMIT 1`,
+            [id, req.user?.id || null]
+        );
+        const existing = existingRes.rows[0];
         if (!existing) return res.status(404).json({ error: 'Truck not found' });
 
-        const sql = `UPDATE trucks SET owner_user_id=?, reg_no=?, chassis_no=?, engine_no=?, owner_name=?, make=?, model=?, year=?, fuel_type=?, gvw=?, axle_config=?, tyres_count=?, status=?, driver_assigned=?, odometer=?, purchase_date=?, purchase_price=?, insurance_provider=?, policy_no=?, ins_start_date=?, ins_expiry_date=?, ins_value=?, coverage_type=?, fitness_cert_no=?, fitness_expiry_date=?, puc_cert_no=?, puc_expiry_date=?, permit_no=?, permit_expiry_date=?, road_tax_paid_date=?, road_tax_expiry_date=?, road_tax_amount=?, truck_type=?, doc_rc_path=?, doc_insurance_path=?, doc_fitness_path=?, doc_puc_path=?, doc_permit_path=?, doc_roadtax_path=? WHERE id=?`;
-        const p = [
-            existing.owner_user_id || req.user?.id || null,
-            d.regNo,
-            d.chassis,
-            d.engine,
-            d.ownerName,
-            d.make,
-            d.model,
-            d.year,
-            d.fuel,
-            d.gvw,
-            d.axle,
-            d.tyres,
-            d.status,
-            d.driver,
-            d.odometer,
-            d.purchaseDate,
-            d.price,
-            d.insurer,
-            d.policyNo,
-            d.insStartDate,
-            d.insExpiry,
-            d.insValue,
-            d.coverage,
-            d.fitnessCertNo,
-            d.fitnessExpiry,
-            d.pucCertNo,
-            d.pucExpiry,
-            d.permitNo,
-            d.permitExpiry,
-            d.taxPaidDate,
-            d.taxExpiry,
-            d.taxAmount,
-            d.truckType,
-            getPath('file_rc') || existing.doc_rc_path,
-            getPath('file_insurance') || existing.doc_insurance_path,
-            getPath('file_fitness') || existing.doc_fitness_path,
-            getPath('file_puc') || existing.doc_puc_path,
-            getPath('file_permit') || existing.doc_permit_path,
-            getPath('file_roadtax') || existing.doc_roadtax_path,
-            req.params.id
-        ];
-        db.run(sql, p, (err) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: 'Updated' });
-        });
-    });
+        const payload = buildFleetTruckPayload(req, existing);
+        if (!payload.reg_no) return res.status(400).json({ error: 'Registration number is required' });
+        const columns = Object.keys(payload);
+        const values = Object.values(payload);
+        values.push(id);
+        const result = await pool.query(
+            `UPDATE trucks
+             SET ${columns.map((column, index) => `${column} = $${index + 1}`).join(', ')},
+                 updated_at = NOW()
+             WHERE id = $${columns.length + 1}
+             RETURNING id, reg_no, status, make, model`,
+            values
+        );
+        res.json({ id: result.rows[0].id, message: 'Updated', truck: result.rows[0] });
+    } catch (err) {
+        if (err?.code === '23505' || /unique/i.test(String(err?.message || ''))) {
+            return res.status(400).json({ error: 'Truck exists' });
+        }
+        res.status(500).json({ error: err.message || 'Truck could not be updated' });
+    }
 });
 
 app.delete('/api/fleet/:id', async (req, res) => {

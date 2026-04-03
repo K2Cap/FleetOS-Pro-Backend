@@ -1441,7 +1441,14 @@ function registerDocumentWorkflow({
 
   app.get('/api/fleet/prefill/:regNo', authenticateTransporter, async (req, res) => {
     const regNo = cleanString(req.params.regNo);
-    const truckRes = await pool.query('SELECT * FROM trucks WHERE reg_no = $1 LIMIT 1', [regNo]);
+    const truckRes = await pool.query(
+      `SELECT *
+       FROM trucks
+       WHERE reg_no = $1
+         AND (owner_user_id = $2 OR owner_user_id IS NULL)
+       LIMIT 1`,
+      [regNo, req.user?.id || null]
+    );
     const truck = truckRes.rows[0];
     if (!truck) return res.status(404).json({ error: 'Truck not found' });
 
@@ -1453,18 +1460,28 @@ function registerDocumentWorkflow({
   app.get('/api/fleet/:id/documents', authenticateTransporter, async (req, res) => {
     const id = toNumberOrNull(req.params.id);
     if (!id) return res.status(400).json({ error: 'Valid truck id is required' });
-    const truckRes = await pool.query('SELECT * FROM trucks WHERE id = $1 LIMIT 1', [id]);
+    const truckRes = await pool.query(
+      `SELECT *
+       FROM trucks
+       WHERE id = $1
+         AND (owner_user_id = $2 OR owner_user_id IS NULL)
+       LIMIT 1`,
+      [id, req.user?.id || null]
+    );
     const truck = truckRes.rows[0];
     if (!truck) return res.status(404).json({ error: 'Truck not found' });
     const documents = await getDocumentsForEntity('truck', truck.id);
     res.json({ truck, documents });
   });
 
-  app.get('/api/fleet/document-register', authenticateTransporter, async (_req, res) => {
+  app.get('/api/fleet/document-register', authenticateTransporter, async (req, res) => {
     const result = await pool.query(
       `SELECT *
        FROM truck_document_registers
+       WHERE owner_user_id = $1
        ORDER BY updated_at DESC, truck_id DESC`
+      ,
+      [req.user?.id || null]
     );
     res.json({ rows: result.rows });
   });
@@ -1483,18 +1500,28 @@ function registerDocumentWorkflow({
   app.get('/api/drivers/:id/documents', authenticateTransporter, async (req, res) => {
     const id = toNumberOrNull(req.params.id);
     if (!id) return res.status(400).json({ error: 'Valid driver id is required' });
-    const driverRes = await pool.query('SELECT * FROM drivers WHERE id = $1 LIMIT 1', [id]);
+    const driverRes = await pool.query(
+      `SELECT *
+       FROM drivers
+       WHERE id = $1
+         AND (owner_user_id = $2 OR owner_user_id IS NULL)
+       LIMIT 1`,
+      [id, req.user?.id || null]
+    );
     const driver = driverRes.rows[0];
     if (!driver) return res.status(404).json({ error: 'Driver not found' });
     const documents = await getDocumentsForEntity('driver', driver.id);
     res.json({ driver, documents });
   });
 
-  app.get('/api/drivers/document-register', authenticateTransporter, async (_req, res) => {
+  app.get('/api/drivers/document-register', authenticateTransporter, async (req, res) => {
     const result = await pool.query(
       `SELECT *
        FROM driver_document_registers
+       WHERE owner_user_id = $1
        ORDER BY updated_at DESC, driver_id DESC`
+      ,
+      [req.user?.id || null]
     );
     res.json({ rows: result.rows });
   });
