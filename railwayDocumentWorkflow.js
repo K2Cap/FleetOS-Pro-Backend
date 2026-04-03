@@ -558,6 +558,14 @@ async function fileToBase64(absolutePath) {
 
 async function runStoredFileOcr(absolutePath, mimeType, documentType, deps) {
   const base64 = await fileToBase64(absolutePath);
+  try {
+    const geminiResult = await deps.parseDocumentWithGemini(
+      base64,
+      mimeType || 'image/jpeg',
+      documentType || 'logistics'
+    );
+    return { engine: 'gemini', payload: flattenOcrPayload(geminiResult) };
+  } catch (_err) {}
   if (deps.tryLocalGravityOcr) {
     try {
       const localResult = await deps.tryLocalGravityOcr(base64, mimeType || 'image/jpeg');
@@ -574,12 +582,7 @@ async function runStoredFileOcr(absolutePath, mimeType, documentType, deps) {
       return { engine: 'tesseract', payload: flattenOcrPayload(tesseractResult) };
     } catch (_err) {}
   }
-  const geminiResult = await deps.parseDocumentWithGemini(
-    base64,
-    mimeType || 'image/jpeg',
-    documentType || 'logistics'
-  );
-  return { engine: 'gemini', payload: flattenOcrPayload(geminiResult) };
+  throw new Error('All OCR engines failed');
 }
 
 function classifyOcrError(err) {

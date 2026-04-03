@@ -1962,25 +1962,25 @@ app.post('/api/ocr-truck', authenticateToken, async (req, res) => {
         console.log(`[OCR] Smart truck scan request. Mime: ${mimeType || 'image/jpeg'}, Size: ${Math.round(image.length / 1024)} KB`);
 
         try {
-            result = await tryLocalGravityOcr(image, mimeType || 'image/jpeg');
+            result = await parseDocumentWithGemini(image, mimeType || 'image/jpeg', normalizedDocumentType);
             result = flattenOcrPayload(result);
-            engine = 'gravityocr';
-            console.log(`[OCR] Local GravityOCR success. Extracted keys: ${Object.keys(result).join(', ')}`);
-        } catch (localErr) {
-            console.warn(`[OCR] Local GravityOCR unavailable, trying Tesseract fallback: ${localErr.message}`);
+            result._source = 'GeminiPrimary';
+            engine = 'gemini';
+            console.log(`[OCR] Gemini primary success. Extracted keys: ${Object.keys(result).join(', ')}`);
+        } catch (geminiErr) {
+            console.warn(`[OCR] Gemini unavailable, trying GravityOCR fallback: ${geminiErr.message}`);
             try {
+                result = await tryLocalGravityOcr(image, mimeType || 'image/jpeg');
+                result = flattenOcrPayload(result);
+                engine = 'gravityocr';
+                console.log(`[OCR] Local GravityOCR success. Extracted keys: ${Object.keys(result).join(', ')}`);
+            } catch (localErr) {
+                console.warn(`[OCR] Local GravityOCR unavailable, trying Tesseract fallback: ${localErr.message}`);
                 result = await tryTesseractDocumentOcr(image, mimeType || 'image/jpeg', normalizedDocumentType);
                 result = flattenOcrPayload(result);
                 result._source = result._source || 'TesseractFallback';
                 engine = 'tesseract';
                 console.log(`[OCR] Tesseract fallback success. Extracted keys: ${Object.keys(result).join(', ')}`);
-            } catch (tesseractErr) {
-                console.warn(`[OCR] Tesseract fallback unavailable, falling back to Gemini: ${tesseractErr.message}`);
-                result = await parseDocumentWithGemini(image, mimeType || 'image/jpeg', normalizedDocumentType);
-                result = flattenOcrPayload(result);
-                result._source = 'GeminiFallback';
-                engine = 'gemini';
-                console.log(`[OCR] Gemini fallback success. Extracted keys: ${Object.keys(result).join(', ')}`);
             }
         }
 
