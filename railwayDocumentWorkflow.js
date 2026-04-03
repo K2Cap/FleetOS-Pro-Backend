@@ -252,6 +252,28 @@ async function ensureDocumentTables(db) {
   await db.query(`ALTER TABLE document_field_values ADD COLUMN IF NOT EXISTS display_order INTEGER`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_document_field_values_document ON document_field_values (document_id, field_name)`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_document_field_values_entity ON document_field_values (entity_type, entity_id, document_type)`);
+  await db.query(`CREATE TABLE IF NOT EXISTS truck_document_registers (
+      truck_id INTEGER PRIMARY KEY REFERENCES trucks(id) ON DELETE CASCADE,
+      owner_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      reg_no TEXT,
+      rc_document JSONB,
+      insurance_document JSONB,
+      fitness_document JSONB,
+      puc_document JSONB,
+      permit_document JSONB,
+      roadtax_document JSONB,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )`);
+  await db.query(`CREATE TABLE IF NOT EXISTS driver_document_registers (
+      driver_id INTEGER PRIMARY KEY REFERENCES drivers(id) ON DELETE CASCADE,
+      owner_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      full_name TEXT,
+      dl_document JSONB,
+      aadhar_document JSONB,
+      pan_document JSONB,
+      photo_document JSONB,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )`);
 }
 
 function formatFieldLabel(key) {
@@ -460,6 +482,84 @@ async function replaceDocumentFieldRows(client, payload) {
       ]
     );
   }
+}
+
+function buildRegisterDocumentSnapshot(document, mergedPayload, fieldRows, mergedStoredPath, sourceEngine) {
+  return {
+    documentId: document.id,
+    documentType: document.document_type,
+    displayName: document.display_name,
+    status: 'scanned',
+    mergedFile: mergedStoredPath,
+    sourceEngine: sourceEngine || null,
+    fields: fieldRows.map((row) => ({
+      order: row.displayOrder || null,
+      field: row.fieldName,
+      value: row.fieldValue,
+    })),
+    extractedData: mergedPayload,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function getTruckRegisterColumn(documentType) {
+  const mapping = {
+    rc: 'rc_document',
+    insurance: 'insurance_document',
+    fitness: 'fitness_document',
+    puc: 'puc_document',
+    permit: 'permit_document',
+    roadtax: 'roadtax_document',
+  };
+  return mapping[documentType] || null;
+}
+
+function getDriverRegisterColumn(documentType) {
+  const mapping = {
+    dl: 'dl_document',
+    aadhar: 'aadhar_document',
+    pan: 'pan_document',
+    photo: 'photo_document',
+  };
+  return mapping[documentType] || null;
+}
+
+async function upsertTruckDocumentRegister(client, payload) {
+  const column = getTruckRegisterColumn(payload.documentType);
+  if (!column) return;
+  await client.query(
+    `INSERT INTO truck_document_registers (truck_id, owner_user_id, reg_no, ${column}, updated_at)
+     VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+     ON CONFLICT (truck_id)
+     DO UPDATE SET
+       owner_user_id = EXCLUDED.owner_user_id,
+       reg_no = EXCLUDED.reg_no,
+       ${column} = EXCLUDED.${column},
+       updated_at = CURRENT_TIMESTAMP`,
+    [payload.truckId, payload.ownerUserId || null, payload.regNo || null, payload.snapshot]
+  );
+}
+
+async function upsertDriverDocumentRegister(client, payload) {
+  const column = getDriverRegisterColumn(payload.documentType);
+  if (!column) return;
+  await client.query(
+    `INSERT INTO driver_document_registers (driver_id, owner_user_id, full_name, ${column}, updated_at)
+     VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+     ON CONFLICT (driver_id)
+     DO UPDATE SET
+       owner_user_id = EXCLUDED.owner_user_id,
+       full_name = EXCLUDED.full_name,
+       ${column} = EXCLUDED.${column},
+       updated_at = CURRENT_TIMESTAMP`,
+    [payload.driverId, payload.ownerUserId || null, payload.fullName || null, payload.snapshot]
+  );
+}
+
+function flattenRegisterDocument(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return '';
+  const rows = Array.isArray(snapshot.fields) ? snapshot.fields : [];
+  return rows.map((row) => `${row.field}: ${row.value}`).join('\n');
 }
 
 async function createDocumentRecord(client, payload) {
@@ -806,6 +906,48 @@ function registerDocumentWorkflow({
     return workbook;
   }
 
+  async function generateTruckDocumentRegisterWorkbook() {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Truck Documents');
+    sheet.columns = [
+      { header: 'Truck ID', key: 'truck_id', width: 10 },
+      { header: 'Registration No', key: 'reg_no', width: 18 },
+      { header: 'Owner User ID', key: 'owner_user_id', width: 14 },
+      { header: 'RC', key: 'rc_document', width: 40 },
+      { header: 'Insurance', key: 'insurance_document', width: 40 },
+      { header: 'Fitness', key: 'fitness_document', width: 40 },
+      { header: 'PUC', key: 'puc_document', width: 40 },
+      { header: 'Permit', key: 'permit_document', width: 40 },
+      { header: 'Road Tax', key: 'roadtax_document', width: 40 },
+      { header: 'Updated At', key: 'updated_at', width: 24 },
+    ];
+
+    const result = await pool.query(
+      `SELECT truck_id, reg_no, owner_user_id, rc_document, insurance_document, fitness_document, puc_document, permit_document, roadtax_document, updated_at
+       FROM truck_document_registers
+       ORDER BY updated_at DESC, truck_id DESC`
+    );
+
+    result.rows.forEach((row) => {
+      sheet.addRow({
+        truck_id: row.truck_id,
+        reg_no: row.reg_no,
+        owner_user_id: row.owner_user_id,
+        rc_document: flattenRegisterDocument(row.rc_document),
+        insurance_document: flattenRegisterDocument(row.insurance_document),
+        fitness_document: flattenRegisterDocument(row.fitness_document),
+        puc_document: flattenRegisterDocument(row.puc_document),
+        permit_document: flattenRegisterDocument(row.permit_document),
+        roadtax_document: flattenRegisterDocument(row.roadtax_document),
+        updated_at: row.updated_at,
+      });
+    });
+
+    sheet.getRow(1).font = { bold: true };
+    sheet.views = [{ state: 'frozen', ySplit: 1 }];
+    return workbook;
+  }
+
   app.post('/api/fleet/documents/batch', authenticateTransporter, upload.array('documents', 12), async (req, res) => {
     const regNo = cleanString(req.body.regNo) || `PENDING_${Date.now()}`;
     const documentType = cleanString(req.body.documentType);
@@ -1067,11 +1209,8 @@ function registerDocumentWorkflow({
       const mergedPayload = mergeTruckPayloads(document.document_type, ocrResults.map((item) => item.payload));
       const mergedStoredPath = document.storage_key ? `/uploads/${document.storage_key}` : null;
       const truckId = await upsertTruckFromDocument(client, mergedPayload, document.document_type, mergedStoredPath, req.body.regNo);
-      const fieldRows = buildFieldRowsFromPayload(
-        mergedPayload,
-        document.document_type,
-        ocrResults.map((item) => item.engine).filter(Boolean).join(', ')
-      );
+      const sourceEngine = ocrResults.map((item) => item.engine).filter(Boolean).join(', ');
+      const fieldRows = buildFieldRowsFromPayload(mergedPayload, document.document_type, sourceEngine);
 
       await client.query(
         `UPDATE documents
@@ -1087,6 +1226,13 @@ function registerDocumentWorkflow({
         documentId,
         documentType: document.document_type,
         rows: fieldRows,
+      });
+      await upsertTruckDocumentRegister(client, {
+        truckId,
+        ownerUserId: document.owner_user_id,
+        regNo: mergedPayload.regNo,
+        documentType: document.document_type,
+        snapshot: buildRegisterDocumentSnapshot(document, mergedPayload, fieldRows, mergedStoredPath, sourceEngine),
       });
 
       await client.query(
@@ -1188,11 +1334,8 @@ function registerDocumentWorkflow({
       const mergedPayload = mergeDriverPayloads(document.document_type, ocrResults.map((item) => item.payload));
       const mergedStoredPath = document.storage_key ? `/uploads/${document.storage_key}` : null;
       const driverId = await upsertDriverFromDocument(client, mergedPayload, document.document_type, mergedStoredPath, req.body.fullName);
-      const fieldRows = buildFieldRowsFromPayload(
-        mergedPayload,
-        document.document_type,
-        ocrResults.map((item) => item.engine).filter(Boolean).join(', ')
-      );
+      const sourceEngine = ocrResults.map((item) => item.engine).filter(Boolean).join(', ');
+      const fieldRows = buildFieldRowsFromPayload(mergedPayload, document.document_type, sourceEngine);
 
       await client.query(
         `UPDATE documents
@@ -1208,6 +1351,13 @@ function registerDocumentWorkflow({
         documentId,
         documentType: document.document_type,
         rows: fieldRows,
+      });
+      await upsertDriverDocumentRegister(client, {
+        driverId,
+        ownerUserId: document.owner_user_id,
+        fullName: mergedPayload.fullName,
+        documentType: document.document_type,
+        snapshot: buildRegisterDocumentSnapshot(document, mergedPayload, fieldRows, mergedStoredPath, sourceEngine),
       });
 
       await client.query(
@@ -1277,6 +1427,15 @@ function registerDocumentWorkflow({
     res.json({ truck, documents });
   });
 
+  app.get('/api/fleet/document-register', authenticateTransporter, async (_req, res) => {
+    const result = await pool.query(
+      `SELECT *
+       FROM truck_document_registers
+       ORDER BY updated_at DESC, truck_id DESC`
+    );
+    res.json({ rows: result.rows });
+  });
+
   app.get('/api/drivers/prefill/:fullName', authenticateTransporter, async (req, res) => {
     const fullName = cleanString(req.params.fullName);
     const driverRes = await pool.query('SELECT * FROM drivers WHERE full_name = $1 LIMIT 1', [fullName]);
@@ -1298,6 +1457,15 @@ function registerDocumentWorkflow({
     res.json({ driver, documents });
   });
 
+  app.get('/api/drivers/document-register', authenticateTransporter, async (_req, res) => {
+    const result = await pool.query(
+      `SELECT *
+       FROM driver_document_registers
+       ORDER BY updated_at DESC, driver_id DESC`
+    );
+    res.json({ rows: result.rows });
+  });
+
   app.get('/api/export/ocr-fields', authenticateTransporter, async (_req, res) => {
     try {
       const workbook = await generateOcrWorkbook();
@@ -1307,6 +1475,18 @@ function registerDocumentWorkflow({
       res.end();
     } catch (err) {
       res.status(500).json({ error: err.message || 'OCR export failed' });
+    }
+  });
+
+  app.get('/api/export/truck-document-register', authenticateTransporter, async (_req, res) => {
+    try {
+      const workbook = await generateTruckDocumentRegisterWorkbook();
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=Truck_Document_Register.xlsx');
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (err) {
+      res.status(500).json({ error: err.message || 'Truck document register export failed' });
     }
   });
 }
