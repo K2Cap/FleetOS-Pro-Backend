@@ -17,15 +17,17 @@
   --ink:#1a1814;--ink2:#3d3a34;--mu:#7a7570;--mu2:#b0aca4;--bd:#ddd9d0;--bd2:#c8c4bb;
   --ff:'DM Sans',sans-serif;--fm:'JetBrains Mono',monospace;
   --r:18px;--r-lg:22px;
+  --app-footer-height:96px;
   --sh-sm:0 2px 8px rgba(26,24,20,.07);--sh-md:0 6px 24px rgba(26,24,20,.11);
 }
-body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:20px 0;}
-.phone{width:390px;background:var(--bg);border-radius:44px;overflow:hidden;box-shadow:0 32px 80px rgba(26,24,20,.35),0 0 0 9px #181510;border:5px solid #232018;display:flex;flex-direction:column;height:820px;}
+html,body{width:100%;height:100%;margin:0;padding:0;overflow:hidden;background:var(--bg);}
+body{font-family:var(--ff);color:var(--ink);}
+.phone{width:100%;max-width:none;min-height:100vh;min-height:100svh;min-height:100dvh;height:100vh;height:100svh;height:100dvh;background:var(--bg);overflow:hidden;display:flex;flex-direction:column;}
 .sbar{background:var(--g);padding:12px 22px 5px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
 .sbar-time{font-family:var(--fm);font-size:11px;font-weight:700;color:#fff;}
 .sbar-pill{width:80px;height:16px;background:#0d3626;border-radius:18px;display:flex;align-items:center;justify-content:center;}
 .sbar-dot{width:7px;height:7px;border-radius:50%;background:#0a2c1d;}
-.modal-header{background:var(--g);padding:14px 18px 16px;flex-shrink:0;}
+.modal-header{background:var(--g);padding:calc(14px + env(safe-area-inset-top,0px)) 18px 16px;flex-shrink:0;}
 .mh-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;}
 .mh-title{font-family:'Fraunces',serif;font-weight:900;font-size:22px;color:#fff;letter-spacing:-.5px;line-height:1;}
 .mh-title em{color:var(--s);font-style:italic;font-weight:400;}
@@ -37,7 +39,7 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
 .tab-bar{background:var(--wh);border-bottom:1.5px solid var(--bd);display:flex;flex-shrink:0;}
 .tab{flex:1;padding:12px 4px 9px;text-align:center;font-size:10.5px;font-weight:700;color:var(--mu2);cursor:pointer;border-bottom:2.5px solid transparent;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:4px;}
 .tab.active{color:var(--g);border-bottom-color:var(--g);}
-.scroll-body{flex:1;overflow-y:auto;padding:16px 16px 0;-webkit-overflow-scrolling:touch;}
+.scroll-body{flex:1;overflow-y:auto;padding:16px 16px calc(var(--app-footer-height) + 16px);-webkit-overflow-scrolling:touch;}
 .scroll-body::-webkit-scrollbar{display:none;}
 .lbl{display:block;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--mu);margin-bottom:6px;}
 .fg{display:flex;flex-direction:column;gap:14px;}
@@ -58,15 +60,16 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
 .ocr-txt{font-size:11.5px;font-weight:700;color:var(--g);}
 .docs-lbl{font-size:11px;font-weight:700;color:var(--mu);margin-bottom:10px;letter-spacing:.3px;}
-.docs-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
-.doc-card{background:var(--wh);border:1px solid var(--bd);border-radius:13px;padding:12px 11px;display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;box-shadow:var(--sh-sm);transition:all .2s;}
+.docs-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.doc-card{background:var(--wh);border:1px solid var(--bd);border-radius:13px;padding:10px 10px;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;box-shadow:var(--sh-sm);transition:all .2s;min-height:168px;}
 .doc-card.scanned{border-color:var(--glt2);background:var(--glt);}
-.doc-card-icon{font-size:26px;}
-.doc-card-name{font-size:11px;font-weight:700;color:var(--ink);line-height:1.3;}
-.doc-card-stat{font-size:9.5px;color:var(--mu2);}
+.doc-card-icon{font-size:22px;line-height:1;}
+.doc-card-name{font-size:10.5px;font-weight:700;color:var(--ink);line-height:1.25;min-height:26px;display:flex;align-items:center;justify-content:center;}
+.doc-card-stat{font-size:9px;color:var(--mu2);min-height:18px;display:flex;align-items:center;justify-content:center;line-height:1.2;}
 .doc-card-stat.ok{color:var(--g);font-weight:700;}
-.upload-btn{padding:7px 0;border-radius:9px;border:none;background:var(--s);width:100%;color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--ff);transition:all .15s;width:100%;}
+.upload-btn{padding:7px 0;border-radius:9px;border:none;background:var(--s);width:100%;color:#fff;font-size:10.5px;font-weight:700;cursor:pointer;font-family:var(--ff);transition:all .15s;width:100%;margin-top:auto;}
 .upload-btn.scanned{background:var(--g);}
+.doc-card-meta{font-size:8.5px;color:var(--mu);font-weight:700;letter-spacing:.2px;min-height:18px;display:flex;align-items:center;justify-content:center;line-height:1.2;}
 /* doc list */
 .doc-li{background:var(--wh);border:1.5px solid var(--bd);border-radius:var(--r);padding:13px 15px;display:flex;align-items:center;gap:12px;margin-bottom:9px;transition:border-color .2s;}
 .doc-li.uploaded{border-color:var(--glt2);}
@@ -82,8 +85,44 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
 .tip-icon{font-size:14px;flex-shrink:0;margin-top:1px;}
 .tip-txt{font-size:11px;color:var(--go);font-weight:600;line-height:1.55;}
 .tip-lnk{font-weight:800;text-decoration:underline;cursor:pointer;}
+.upload-sheet-backdrop{position:fixed;inset:0;background:rgba(26,24,20,.56);z-index:80;opacity:0;pointer-events:none;transition:opacity .2s;}
+.upload-sheet-backdrop.active{opacity:1;pointer-events:auto;}
+.upload-sheet{position:fixed;left:0;right:0;bottom:0;z-index:81;background:var(--bg);border-radius:24px 24px 0 0;padding:0 16px calc(24px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 36px rgba(26,24,20,.22);transform:translateY(110%);transition:transform .24s ease;}
+.upload-sheet.active{transform:translateY(0);}
+.sheet-handle{width:36px;height:4px;border-radius:999px;background:var(--bd2);margin:12px auto 16px;}
+.sheet-title{font-family:'Fraunces',serif;font-size:19px;font-weight:800;color:var(--ink);text-align:center;}
+.sheet-sub{font-size:11px;color:var(--mu);font-weight:600;text-align:center;margin:6px 0 16px;}
+.sheet-options{display:flex;flex-direction:column;gap:10px;}
+.sheet-option{width:100%;text-align:left;padding:14px 15px;border-radius:14px;border:1.5px solid var(--bd);background:var(--wh);color:var(--ink);font-family:var(--ff);cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.sheet-option strong{display:block;font-size:13px;}
+.sheet-option span{display:block;font-size:10.5px;color:var(--mu);font-weight:600;margin-top:2px;}
+.sheet-option.primary{border-color:var(--slt2);background:var(--slt);}
+.sheet-option-arrow{font-size:18px;color:var(--mu2);}
+.sheet-close{margin-top:12px;width:100%;padding:12px 14px;border-radius:14px;border:1.5px solid var(--bd);background:var(--bg);color:var(--ink2);font-family:var(--ff);font-size:13px;font-weight:700;cursor:pointer;}
+.camera-capture-backdrop{position:fixed;inset:0;background:rgba(10,12,16,.82);z-index:90;opacity:0;pointer-events:none;transition:opacity .2s;}
+.camera-capture-backdrop.active{opacity:1;pointer-events:auto;}
+.camera-capture-sheet{position:fixed;inset:0;z-index:91;background:#0d1117;color:#fff;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .2s;}
+.camera-capture-sheet.active{opacity:1;pointer-events:auto;}
+.camera-capture-top{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;}
+.camera-capture-title{font-family:'Fraunces',serif;font-size:18px;font-weight:700;}
+.camera-capture-sub{font-size:11px;color:rgba(255,255,255,.72);margin-top:4px;}
+.camera-capture-close{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;}
+.camera-capture-stage{flex:1;display:flex;align-items:center;justify-content:center;padding:0 14px;}
+.camera-capture-frame{width:100%;max-width:440px;aspect-ratio:3/4;background:#111;border-radius:22px;overflow:hidden;position:relative;box-shadow:0 12px 42px rgba(0,0,0,.35);}
+.camera-capture-video{width:100%;height:100%;object-fit:cover;background:#000;}
+.camera-capture-overlay{position:absolute;inset:0;border:2px solid rgba(255,255,255,.12);border-radius:22px;pointer-events:none;}
+.camera-capture-flash{position:absolute;inset:0;background:rgba(255,255,255,.88);opacity:0;pointer-events:none;transition:opacity .12s ease;}
+.camera-capture-flash.active{opacity:1;}
+.camera-capture-count{position:absolute;top:12px;right:12px;background:rgba(0,0,0,.46);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:6px 10px;font-size:11px;font-weight:700;}
+.camera-capture-count.bump{transform:scale(1.08);background:rgba(232,103,26,.82);transition:transform .15s ease, background .15s ease;}
+.camera-capture-hint{font-size:11px;color:rgba(255,255,255,.74);text-align:center;padding:10px 18px 0;}
+.camera-capture-actions{display:flex;gap:10px;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));}
+.camera-capture-btn{flex:1;border:none;border-radius:14px;padding:14px 16px;font-family:var(--ff);font-size:13px;font-weight:800;cursor:pointer;}
+.camera-capture-btn.secondary{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.14);}
+.camera-capture-btn.primary{background:var(--s);color:#fff;box-shadow:0 8px 28px rgba(232,103,26,.28);}
+.camera-capture-btn.primary:disabled{opacity:.55;cursor:not-allowed;box-shadow:none;}
 /* footer */
-.footer{background:var(--wh);border-top:1px solid var(--bd);padding:11px 16px 13px;flex-shrink:0;box-shadow:0 -4px 16px rgba(26,24,20,.07);}
+.footer{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--wh);border-top:1px solid var(--bd);padding:11px 16px calc(13px + env(safe-area-inset-bottom,0px));flex-shrink:0;box-shadow:0 -4px 16px rgba(26,24,20,.07);}
 .footer-inner{display:flex;align-items:center;justify-content:space-between;}
 .f-count{font-size:11.5px;color:var(--mu);font-weight:600;}
 .f-btns{display:flex;gap:9px;}
@@ -108,15 +147,6 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
 <div class="phone">
 
   <!-- STATUS BAR -->
-  <div class="sbar">
-    <span class="sbar-time">9:41</span>
-    <div class="sbar-pill"><div class="sbar-dot"></div></div>
-    <div style="display:flex;gap:5px;align-items:center">
-      <svg width="14" height="10" viewBox="0 0 14 10"><rect x="0" y="7.6" width="2.5" height="2.4" fill="white" opacity=".8" rx=".5"/><rect x="3.5" y="5.2" width="2.5" height="4.8" fill="white" opacity=".8" rx=".5"/><rect x="7" y="2.6" width="2.5" height="7.4" fill="white" opacity=".8" rx=".5"/><rect x="10.5" y="0" width="2.5" height="10" fill="white" opacity=".3" rx=".5"/></svg>
-      <svg width="16" height="10" viewBox="0 0 16 10"><rect x="1" y="2.5" width="10.5" height="6.5" rx="1.5" fill="none" stroke="white" stroke-width="1" opacity=".8"/><rect x="2" y="3.5" width="7.5" height="4.5" rx=".5" fill="white" opacity=".8"/><rect x="12" y="4.5" width="2" height="3" rx=".8" fill="white" opacity=".45"/></svg>
-    </div>
-  </div>
-
   <!-- HEADER -->
   <div class="modal-header">
     <div class="mh-row">
@@ -124,7 +154,7 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
         <div class="mh-title">Add New <em>Truck</em></div>
         <div class="mh-sub" id="mh-sub">Gravity Vision Engine active — auto-extracting details</div>
       </div>
-      <div class="close-btn">✕</div>
+      <div class="close-btn" onclick="closeScreen('/Fleet_List_FINAL.html')">✕</div>
     </div>
     <div class="mode-toggle">
       <button class="mode-btn active" id="btn-scan" onclick="setMode('scan')">📄 Scan Documents</button>
@@ -136,7 +166,6 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
   <div class="tab-bar" id="tab-bar" style="display:none">
     <div class="tab active" id="tab-basic" onclick="setTab('basic')"><span>🚛</span> Basic Info</div>
     <div class="tab" id="tab-compliance" onclick="setTab('compliance')"><span>📋</span> Compliance</div>
-    <div class="tab" id="tab-documents" onclick="setTab('documents')"><span>🗂️</span> Documents</div>
   </div>
 
   <!-- SCAN VIEW -->
@@ -147,36 +176,42 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
       <div class="doc-card" id="dc-rc">
         <div class="doc-card-icon">📋</div>
         <div class="doc-card-name">RC Book</div>
+        <div class="doc-card-meta" id="dm-rc">Front + Back required</div>
         <div class="doc-card-stat" id="ds-rc">Not scanned yet</div>
         <button class="upload-btn" id="ub-rc" onclick="scanDoc('rc')">Upload</button>
       </div>
       <div class="doc-card" id="dc-ins">
         <div class="doc-card-icon">🛡️</div>
         <div class="doc-card-name">Insurance Certificate</div>
+        <div class="doc-card-meta" id="dm-ins">Supports multiple pages</div>
         <div class="doc-card-stat" id="ds-ins">Not scanned yet</div>
         <button class="upload-btn" id="ub-ins" onclick="scanDoc('ins')">Upload</button>
       </div>
       <div class="doc-card" id="dc-fit">
         <div class="doc-card-icon">✅</div>
         <div class="doc-card-name">Fitness Certificate</div>
+        <div class="doc-card-meta" id="dm-fit">Supports multiple pages</div>
         <div class="doc-card-stat" id="ds-fit">Not scanned yet</div>
         <button class="upload-btn" id="ub-fit" onclick="scanDoc('fit')">Upload</button>
       </div>
       <div class="doc-card" id="dc-puc">
         <div class="doc-card-icon">🌿</div>
         <div class="doc-card-name">PUC Certificate</div>
+        <div class="doc-card-meta" id="dm-puc">Single page supported</div>
         <div class="doc-card-stat" id="ds-puc">Not scanned yet</div>
         <button class="upload-btn" id="ub-puc" onclick="scanDoc('puc')">Upload</button>
       </div>
       <div class="doc-card" id="dc-permit">
         <div class="doc-card-icon">🗺️</div>
         <div class="doc-card-name">Route Permit</div>
+        <div class="doc-card-meta" id="dm-permit">Single page supported</div>
         <div class="doc-card-stat" id="ds-permit">Not scanned yet</div>
         <button class="upload-btn" id="ub-permit" onclick="scanDoc('permit')">Upload</button>
       </div>
       <div class="doc-card" id="dc-tax">
-        <div class="doc-card-icon">💰</div>
-        <div class="doc-card-name">Road Tax Receipt</div>
+        <div class="doc-card-icon">🧾</div>
+        <div class="doc-card-name">Purchase Invoice</div>
+        <div class="doc-card-meta" id="dm-tax">Single page supported</div>
         <div class="doc-card-stat" id="ds-tax">Not scanned yet</div>
         <button class="upload-btn" id="ub-tax" onclick="scanDoc('tax')">Upload</button>
       </div>
@@ -237,30 +272,13 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
         <div><label class="lbl">PUC Cert No.</label><div class="finput"><input type="text" placeholder="PUC No." id="puc-no"></div></div>
         <div><label class="lbl">PUC Expiry</label><input class="fdate" type="date" id="puc-exp"></div>
       </div>
-      <div class="sub-hd" style="margin-top:4px">Permits &amp; Tax</div>
+      <div class="sub-hd" style="margin-top:4px">Permits</div>
       <div class="r2">
         <div><label class="lbl">Route Permit No.</label><div class="finput"><input type="text" placeholder="Permit No." id="permit-no"></div></div>
         <div><label class="lbl">Permit Expiry</label><input class="fdate" type="date" id="permit-exp"></div>
       </div>
-      <div class="r2">
-        <div><label class="lbl">Road Tax Amount (₹)</label><div class="finput"><span class="pfx">₹</span><input type="text" inputmode="numeric" placeholder="0" id="tax-amt" oninput="this.value=this.value.replace(/\D/g,'')"></div></div>
-        <div><label class="lbl">Tax Validity Until</label><input class="fdate" type="date" id="tax-val"></div>
-      </div>
       <div style="height:16px"></div>
     </div>
-  </div>
-
-  <!-- DOCUMENTS LIST -->
-  <div id="view-documents" class="scroll-body" style="display:none">
-    <div style="font-family:'Fraunces',serif;font-weight:700;font-size:16px;color:var(--ink);margin-bottom:14px;">Scanned Documents <span style="font-family:var(--ff);font-size:13px;font-weight:600;color:var(--mu)" id="doc-count-lbl">(0/6)</span></div>
-    <div class="doc-li" id="li-rc"><div class="doc-li-icon">📋</div><div class="doc-li-info"><div class="doc-li-name">RC Book</div><div class="doc-li-sub" id="lsub-rc">Missing</div></div><span class="pill pill-p" id="lpill-rc">Pending</span></div>
-    <div class="doc-li" id="li-ins"><div class="doc-li-icon">🛡️</div><div class="doc-li-info"><div class="doc-li-name">Insurance Certificate</div><div class="doc-li-sub" id="lsub-ins">Missing</div></div><span class="pill pill-p" id="lpill-ins">Pending</span></div>
-    <div class="doc-li" id="li-fit"><div class="doc-li-icon">✅</div><div class="doc-li-info"><div class="doc-li-name">Fitness Certificate</div><div class="doc-li-sub" id="lsub-fit">Missing</div></div><span class="pill pill-p" id="lpill-fit">Pending</span></div>
-    <div class="doc-li" id="li-puc"><div class="doc-li-icon">🌿</div><div class="doc-li-info"><div class="doc-li-name">PUC Certificate</div><div class="doc-li-sub" id="lsub-puc">Missing</div></div><span class="pill pill-p" id="lpill-puc">Pending</span></div>
-    <div class="doc-li" id="li-permit"><div class="doc-li-icon">🗺️</div><div class="doc-li-info"><div class="doc-li-name">Route Permit</div><div class="doc-li-sub" id="lsub-permit">Missing</div></div><span class="pill pill-p" id="lpill-permit">Pending</span></div>
-    <div class="doc-li" id="li-tax"><div class="doc-li-icon">💰</div><div class="doc-li-info"><div class="doc-li-name">Road Tax Receipt</div><div class="doc-li-sub" id="lsub-tax">Missing</div></div><span class="pill pill-p" id="lpill-tax">Pending</span></div>
-    <div class="tip-box"><div class="tip-icon">💡</div><div class="tip-txt">Tip: You can still go back and scan more documents to auto-fill missing fields. <span class="tip-lnk" onclick="setMode('scan')">← Go back to scan</span></div></div>
-    <div style="height:16px"></div>
   </div>
 
   <!-- SUCCESS -->
@@ -275,7 +293,7 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
       <div class="s-row"><span class="s-lbl">Load Capacity</span><span class="s-val" id="s-cap">—</span></div>
       <div class="s-row"><span class="s-lbl">Documents</span><span class="s-val" id="s-docs">0 / 6 scanned</span></div>
     </div>
-    <button onclick="location.reload()" style="width:100%;max-width:320px;padding:14px;border-radius:13px;border:none;background:var(--g);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;box-shadow:0 4px 20px rgba(26,92,58,.35);font-family:var(--ff)">Go to Fleet Register</button>
+    <button onclick="window.location.href='/Fleet_List_FINAL.html'" style="width:100%;max-width:320px;padding:14px;border-radius:13px;border:none;background:var(--g);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;box-shadow:0 4px 20px rgba(26,92,58,.35);font-family:var(--ff)">Go to Fleet Register</button>
     <button onclick="location.reload()" style="width:100%;max-width:320px;padding:12px;border-radius:13px;border:1.5px solid var(--bd);background:var(--wh);color:var(--ink2);font-size:13.5px;font-weight:700;cursor:pointer;font-family:var(--ff)">✚ Add Another Truck</button>
   </div>
 
@@ -293,17 +311,88 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
 
 </div>
 
+<input type="file" id="ocr-camera-input" accept="image/*" style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
+<input type="file" id="ocr-file-input" accept="image/*,application/pdf" style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
+<div class="upload-sheet-backdrop" id="truck-upload-backdrop" onclick="closeTruckUploadSheet()"></div>
+<div class="upload-sheet" id="truck-upload-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title" id="truck-sheet-title">Choose upload type</div>
+  <div class="sheet-sub" id="truck-sheet-sub">Select how you want to add this document.</div>
+  <div class="sheet-options" id="truck-sheet-options"></div>
+  <button class="sheet-close" type="button" onclick="closeTruckUploadSheet()">Cancel</button>
+</div>
+<div class="camera-capture-backdrop" id="truck-camera-backdrop"></div>
+<div class="camera-capture-sheet" id="truck-camera-sheet">
+  <div class="camera-capture-top">
+    <div>
+      <div class="camera-capture-title" id="truck-camera-title">Capture Pages</div>
+      <div class="camera-capture-sub" id="truck-camera-sub">Tap capture for each page, then finish once all pages are clicked.</div>
+    </div>
+    <button type="button" class="camera-capture-close" onclick="cancelTruckCameraCapture()">Close</button>
+  </div>
+  <div class="camera-capture-stage">
+    <div class="camera-capture-frame">
+      <video id="truck-camera-video" class="camera-capture-video" playsinline autoplay muted></video>
+      <div class="camera-capture-overlay"></div>
+      <div class="camera-capture-flash" id="truck-camera-flash"></div>
+      <div class="camera-capture-count" id="truck-camera-count">0 pages</div>
+    </div>
+  </div>
+  <div class="camera-capture-hint">Keep tapping Capture as you photograph each page. The camera will stay open until you press Finish.</div>
+  <div class="camera-capture-actions">
+    <button type="button" class="camera-capture-btn secondary" id="truck-camera-finish" onclick="finishTruckCameraCapture()" disabled>Finish</button>
+    <button type="button" class="camera-capture-btn primary" id="truck-camera-capture" onclick="captureTruckCameraPage()">Capture Page</button>
+  </div>
+</div>
+
 <script>
 let mode='scan',mTab='basic';
 const docs={rc:false,ins:false,fit:false,puc:false,permit:false,tax:false};
 const dkeys=Object.keys(docs);
 const cnt=()=>dkeys.filter(k=>docs[k]).length;
+const truckOcrDocTypes={rc:'registration certificate',ins:'insurance certificate',fit:'fitness certificate',puc:'puc certificate',permit:'route permit',tax:'purchase invoice'};
+let activeTruckDocKey=null;
+let activeTruckUploadMode='single';
+let activeTruckUploadLabel='';
+let activeTruckUploadSource='file';
+let pendingRcFollowup=false;
+let pendingTruckMultiPageDocKey=null;
+let truckCameraStream=null;
+let truckCameraDocKey=null;
+let truckCameraCapturedFiles=[];
+const truckDocUploads={
+  rc:{front:null,back:null,frontFile:null,backFile:null,serverDocumentId:null,uploadSignature:'',mergedFile:null,storedPages:[]},
+  ins:{files:[],selectedFiles:[],serverDocumentId:null,uploadSignature:'',mergedFile:null,storedPages:[]},
+  fit:{files:[],selectedFiles:[],serverDocumentId:null,uploadSignature:'',mergedFile:null,storedPages:[]},
+  puc:{files:[],selectedFiles:[],serverDocumentId:null,uploadSignature:'',mergedFile:null,storedPages:[]},
+  permit:{files:[],selectedFiles:[],serverDocumentId:null,uploadSignature:'',mergedFile:null,storedPages:[]},
+  tax:{files:[],selectedFiles:[],serverDocumentId:null,uploadSignature:'',mergedFile:null,storedPages:[]}
+};
+let truckRecordId=null;
+let truckDraftRegKey='';
+const latestTruckOcrByDoc={};
+const truckScanInFlight={};
+const truckDocUploadOptions={
+  rc:[
+    {label:'Front Side',description:'Upload the front page of the RC copy',mode:'rc-front',multiple:false},
+    {label:'Back Side',description:'Upload the back page of the RC copy',mode:'rc-back',multiple:false}
+  ],
+  ins:[
+    {label:'Add Multiple Pages',description:'Select all insurance pages in one go',mode:'multi-pages',multiple:true},
+    {label:'Add Single Page',description:'Upload one insurance page now',mode:'single',multiple:false}
+  ],
+  fit:[
+    {label:'Add Multiple Pages',description:'Select all fitness certificate pages together',mode:'multi-pages',multiple:true},
+    {label:'Add Single Page',description:'Upload one fitness page now',mode:'single',multiple:false}
+  ]
+};
 
 function setMode(m){
   mode=m;
   document.getElementById('btn-scan').classList.toggle('active',m==='scan');
   document.getElementById('btn-manual').classList.toggle('active',m==='manual');
-  document.getElementById('tab-bar').style.display=m==='manual'?'flex':'none';
+  const showingFormView = ['basic','compliance'].includes(mTab);
+  document.getElementById('tab-bar').style.display=(m==='manual' || showingFormView)?'flex':'none';
   document.getElementById('mh-sub').textContent=m==='scan'
     ?'Gravity Vision Engine active — auto-extracting details'
     :'Enter truck details manually';
@@ -313,7 +402,8 @@ function setMode(m){
 
 function setTab(t){
   mTab=t;
-  ['basic','compliance','documents'].forEach(id=>{
+  document.getElementById('tab-bar').style.display='flex';
+  ['basic','compliance'].forEach(id=>{
     document.getElementById('tab-'+id).classList.toggle('active',id===t);
   });
   showView('view-'+t);
@@ -322,9 +412,13 @@ function setTab(t){
 }
 
 function showView(id){
-  ['view-scan','view-basic','view-compliance','view-documents','view-success'].forEach(v=>{
+  ['view-scan','view-basic','view-compliance','view-success'].forEach(v=>{
     document.getElementById(v).style.display=v===id?'block':'none';
   });
+}
+
+function isTruckScanViewVisible(){
+  return document.getElementById('view-scan').style.display==='block';
 }
 
 function updFooterScan(){
@@ -342,46 +436,1243 @@ function updFooterManual(t){
   document.getElementById('f-count').textContent=filledCount()+' fields filled';
   document.getElementById('btn-cancel').style.display='none';
   document.getElementById('btn-back').style.display='inline-flex';
-  document.getElementById('btn-next').textContent=t==='documents'?'Add Truck ✓':'Next →';
+  document.getElementById('btn-next').textContent=t==='compliance'?'Add Truck ✓':'Next →';
 }
 
 function updDocCount(){
-  document.getElementById('doc-count-lbl').textContent='('+cnt()+'/6)';
+  const label=document.getElementById('doc-count-lbl');
+  if(label) label.textContent='('+cnt()+'/6)';
+}
+
+function updateTruckDocCompletion(key){
+  if(key==='rc'){
+    docs.rc=Boolean(truckDocUploads.rc.frontFile && truckDocUploads.rc.backFile);
+    return;
+  }
+  const bucket=truckDocUploads[key];
+  if(bucket && Array.isArray(bucket.files)){
+    docs[key]=bucket.files.length>0;
+  }
+}
+
+function getTruckDocSummary(key){
+  if(key==='rc'){
+    const front=truckDocUploads.rc.frontFile ? 'Front' : null;
+    const back=truckDocUploads.rc.backFile ? 'Back' : null;
+    const parts=[front,back].filter(Boolean);
+    if(parts.length===0) return 'Front + Back pending';
+    if(parts.length===2) return 'Front + Back ready';
+    return parts[0] + ' uploaded';
+  }
+  const bucket=truckDocUploads[key];
+  if(bucket && Array.isArray(bucket.files) && bucket.files.length){
+    return bucket.files.length===1 ? '1 page uploaded' : `${bucket.files.length} pages uploaded`;
+  }
+  return '';
+}
+
+function closeTruckUploadSheet(){
+  document.getElementById('truck-upload-backdrop').classList.remove('active');
+  document.getElementById('truck-upload-sheet').classList.remove('active');
+}
+
+function isTruckScanMode(){
+  return document.getElementById('btn-scan')?.classList.contains('active');
+}
+
+function openTruckInputPicker({ useCamera=false, multiple=false, facing='environment' } = {}){
+  const input=document.getElementById(useCamera ? 'ocr-camera-input' : 'ocr-file-input');
+  if(!input) return;
+  input.value='';
+  if(useCamera){
+    input.setAttribute('accept','image/*');
+    input.setAttribute('capture',facing);
+    input.removeAttribute('multiple');
+  }else{
+    input.setAttribute('accept','image/*,application/pdf');
+    if(multiple) input.setAttribute('multiple','multiple');
+    else input.removeAttribute('multiple');
+    input.removeAttribute('capture');
+  }
+  input.click();
+}
+
+function updateTruckCameraCaptureUi(){
+  const count=truckCameraCapturedFiles.length;
+  const countEl=document.getElementById('truck-camera-count');
+  const finishBtn=document.getElementById('truck-camera-finish');
+  if(countEl) countEl.textContent=`${count} page${count===1?'':'s'}`;
+  if(finishBtn) finishBtn.disabled=count===0;
+}
+
+function stopTruckCameraCapture(){
+  if(truckCameraStream){
+    truckCameraStream.getTracks().forEach(track=>track.stop());
+    truckCameraStream=null;
+  }
+  const video=document.getElementById('truck-camera-video');
+  if(video) video.srcObject=null;
+}
+
+async function openTruckMultiPageCameraCapture(docKey){
+  truckCameraDocKey=docKey;
+  truckCameraCapturedFiles=getTruckSelectedFiles(docKey).slice();
+  updateTruckCameraCaptureUi();
+  document.getElementById('truck-camera-title').textContent=`${getTruckDocDisplayName(docKey)} Pages`;
+  document.getElementById('truck-camera-sub').textContent='Tap capture for each page. The camera stays open until you press Finish.';
+  document.getElementById('truck-camera-backdrop').classList.add('active');
+  document.getElementById('truck-camera-sheet').classList.add('active');
+  closeTruckUploadSheet();
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({
+      video:{
+        facingMode:{ ideal:'environment' },
+        width:{ ideal:1600 },
+        height:{ ideal:2200 }
+      },
+      audio:false
+    });
+    truckCameraStream=stream;
+    const video=document.getElementById('truck-camera-video');
+    video.srcObject=stream;
+    await video.play();
+  }catch(error){
+    stopTruckCameraCapture();
+    document.getElementById('truck-camera-backdrop').classList.remove('active');
+    document.getElementById('truck-camera-sheet').classList.remove('active');
+    alert('Camera could not be opened on this device. Please use Upload from Device instead.');
+  }
+}
+
+async function captureTruckCameraPage(){
+  const video=document.getElementById('truck-camera-video');
+  const docKey=truckCameraDocKey;
+  if(!video || !docKey || !video.videoWidth || !video.videoHeight) return;
+  const canvas=document.createElement('canvas');
+  canvas.width=video.videoWidth;
+  canvas.height=video.videoHeight;
+  const ctx=canvas.getContext('2d');
+  ctx.drawImage(video,0,0,canvas.width,canvas.height);
+  const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.92));
+  if(!blob) return;
+  const stamp=Date.now();
+  const file=new File([blob], `${docKey}-page-${truckCameraCapturedFiles.length+1}-${stamp}.jpg`, {
+    type:'image/jpeg',
+    lastModified:stamp
+  });
+  truckCameraCapturedFiles.push(file);
+  setTruckSelectedFiles(docKey, truckCameraCapturedFiles, true);
+  updateTruckCameraCaptureUi();
+  const flash=document.getElementById('truck-camera-flash');
+  if(flash){
+    flash.classList.add('active');
+    setTimeout(()=>flash.classList.remove('active'),140);
+  }
+  const countBadge=document.getElementById('truck-camera-count');
+  if(countBadge){
+    countBadge.classList.add('bump');
+    setTimeout(()=>countBadge.classList.remove('bump'),180);
+  }
+  const captureBtn=document.getElementById('truck-camera-capture');
+  if(captureBtn){
+    captureBtn.textContent='Captured ✓';
+    setTimeout(()=>{
+      if(captureBtn.textContent==='Captured ✓') captureBtn.textContent='Capture Page';
+    },260);
+  }
+}
+
+function cancelTruckCameraCapture(){
+  stopTruckCameraCapture();
+  truckCameraDocKey=null;
+  truckCameraCapturedFiles=[];
+  document.getElementById('truck-camera-backdrop').classList.remove('active');
+  document.getElementById('truck-camera-sheet').classList.remove('active');
+  activeTruckDocKey=null;
+  activeTruckUploadMode='single';
+  activeTruckUploadLabel='';
+  activeTruckUploadSource='file';
+  pendingTruckMultiPageDocKey=null;
+}
+
+async function finishTruckCameraCapture(){
+  const docKey=truckCameraDocKey;
+  const captured=truckCameraCapturedFiles.slice();
+  if(!docKey || !captured.length) return;
+  stopTruckCameraCapture();
+  document.getElementById('truck-camera-backdrop').classList.remove('active');
+  document.getElementById('truck-camera-sheet').classList.remove('active');
+  setTruckSelectedFiles(docKey, captured, true);
+  truckCameraDocKey=null;
+  truckCameraCapturedFiles=[];
+  await finalizeTruckMultiPageCapture(docKey);
+}
+
+function openTruckSourceSheet(docKey){
+  const optionsHost=document.getElementById('truck-sheet-options');
+  const docTitle=docKey==='rc'?'RC Copy':docKey==='ins'?'Insurance Certificate':docKey==='fit'?'Fitness Certificate':docKey==='puc'?'PUC Certificate':docKey==='permit'?'Route Permit':'Purchase Invoice';
+  const cameraDescription=activeTruckUploadMode==='multi-pages'
+    ? 'Capture pages one by one using your camera'
+    : 'Open camera and click a photo now';
+  document.getElementById('truck-sheet-title').textContent=`Add ${docTitle}`;
+  document.getElementById('truck-sheet-sub').textContent='Choose where you want to add this document from.';
+  optionsHost.innerHTML=`
+    <button type="button" class="sheet-option primary" onclick="chooseTruckInputSource('camera')">
+      <div><strong>Use Camera</strong><span>${cameraDescription}</span></div>
+      <div class="sheet-option-arrow">›</div>
+    </button>
+    <button type="button" class="sheet-option" onclick="chooseTruckInputSource('file')">
+      <div><strong>Upload from Device</strong><span>Open your phone files and choose the document</span></div>
+      <div class="sheet-option-arrow">›</div>
+    </button>
+  `;
+  document.getElementById('truck-upload-backdrop').classList.add('active');
+  document.getElementById('truck-upload-sheet').classList.add('active');
+}
+
+function chooseTruckInputSource(source){
+  activeTruckUploadSource=source;
+  if(source==='camera' && activeTruckUploadMode==='multi-pages'){
+    openTruckMultiPageCameraCapture(activeTruckDocKey);
+    return;
+  }
+  openTruckInputPicker({
+    useCamera:source==='camera',
+    multiple:source==='file' && activeTruckUploadMode==='multi-pages'
+  });
+  setTimeout(()=>closeTruckUploadSheet(),120);
+}
+
+function getTruckDocDisplayName(docKey){
+  return docKey==='rc' ? 'RC Copy'
+    : docKey==='ins' ? 'Insurance Certificate'
+    : docKey==='fit' ? 'Fitness Certificate'
+    : docKey==='puc' ? 'PUC Certificate'
+    : docKey==='permit' ? 'Route Permit'
+    : 'Purchase Invoice';
+}
+
+function openTruckMultiPageCaptureSheet(docKey){
+  const selectedCount=getTruckSelectedFiles(docKey).length;
+  const optionsHost=document.getElementById('truck-sheet-options');
+  document.getElementById('truck-sheet-title').textContent=`${getTruckDocDisplayName(docKey)} Pages`;
+  document.getElementById('truck-sheet-sub').textContent=`${selectedCount} page${selectedCount===1?'':'s'} captured. Add more pages or start scanning when ready.`;
+  optionsHost.innerHTML=`
+    <button type="button" class="sheet-option primary" onclick="continueTruckMultiPageCapture('${docKey}')">
+      <div><strong>Add Another Page</strong><span>Open camera again and capture the next page</span></div>
+      <div class="sheet-option-arrow">›</div>
+    </button>
+    <button type="button" class="sheet-option" onclick="finalizeTruckMultiPageCapture('${docKey}')">
+      <div><strong>Start Scanning</strong><span>Scan all captured pages together now</span></div>
+      <div class="sheet-option-arrow">›</div>
+    </button>
+  `;
+  document.getElementById('truck-upload-backdrop').classList.add('active');
+  document.getElementById('truck-upload-sheet').classList.add('active');
+}
+
+function continueTruckMultiPageCapture(docKey){
+  pendingTruckMultiPageDocKey=docKey;
+  activeTruckDocKey=docKey;
+  activeTruckUploadMode='multi-pages';
+  activeTruckUploadSource='camera';
+  openTruckMultiPageCameraCapture(docKey);
+}
+
+async function finalizeTruckMultiPageCapture(docKey){
+  const files=getTruckSelectedFiles(docKey);
+  closeTruckUploadSheet();
+  if(!files.length){
+    alert('Capture at least one page before starting the scan.');
+    return;
+  }
+  updateTruckDocUi(docKey,'scanning',{
+    message:`Uploading ${files.length} pages…`,
+    detail:`${files.length} pages selected`,
+    listMessage:'Saving pages to backend and starting OCR…'
+  });
+  const batchUpload=await persistTruckDocumentUpload(docKey);
+  if(!handleTruckDeferredScan(docKey,batchUpload,`${files.length} pages saved to backend. OCR retry needed later.`)){
+    updateTruckDocUi(docKey,'done',{
+      engine:batchUpload?.extracted?._engine || 'documentai',
+      listMessage:`${files.length} pages processed and saved to backend`
+    });
+  }
+  activeTruckDocKey=null;
+  activeTruckUploadMode='single';
+  activeTruckUploadLabel='';
+  activeTruckUploadSource='file';
+  pendingTruckMultiPageDocKey=null;
+}
+
+function selectTruckUploadOption(mode,multiple,label){
+  activeTruckUploadMode=mode;
+  activeTruckUploadLabel=label || '';
+  activeTruckUploadSource='file';
+  pendingRcFollowup=false;
+  openTruckSourceSheet(activeTruckDocKey);
+}
+
+function openTruckUploadSheet(docKey){
+  const options=truckDocUploadOptions[docKey];
+  if(!options || !options.length) return false;
+  const optionsHost=document.getElementById('truck-sheet-options');
+  document.getElementById('truck-sheet-title').textContent=`Upload ${docKey==='rc'?'RC Copy':docKey==='ins'?'Insurance Certificate':'Fitness Certificate'}`;
+  document.getElementById('truck-sheet-sub').textContent=docKey==='rc'
+    ?'Choose whether you are uploading the front side or back side.'
+    :'You can add one page or select multiple pages together.';
+  optionsHost.innerHTML=options.map((option,index)=>`
+    <button type="button" class="sheet-option ${index===0?'primary':''}" onclick="selectTruckUploadOption('${option.mode}', ${option.multiple ? 'true' : 'false'}, '${option.label.replace(/'/g,"\\'")}')">
+      <div><strong>${option.label}</strong><span>${option.description}</span></div>
+      <div class="sheet-option-arrow">›</div>
+    </button>
+  `).join('');
+  document.getElementById('truck-upload-backdrop').classList.add('active');
+  document.getElementById('truck-upload-sheet').classList.add('active');
+  return true;
+}
+
+function openRcUploadSheetForMissingSide(){
+  activeTruckDocKey='rc';
+  const options=[];
+  if(!truckDocUploads.rc.frontFile){
+    options.push({label:'Front Side',description:'Upload the front page of the RC copy',mode:'rc-front',multiple:false});
+  }
+  if(!truckDocUploads.rc.backFile){
+    options.push({label:'Back Side',description:'Upload the back page of the RC copy',mode:'rc-back',multiple:false});
+  }
+  if(!options.length) return;
+  const optionsHost=document.getElementById('truck-sheet-options');
+  document.getElementById('truck-sheet-title').textContent='Upload RC Copy';
+  document.getElementById('truck-sheet-sub').textContent='Upload both sides first. OCR will start only after front and back are available.';
+  optionsHost.innerHTML=options.map((option,index)=>`
+    <button type="button" class="sheet-option ${index===0?'primary':''}" onclick="selectTruckUploadOption('${option.mode}', false, '${option.label.replace(/'/g,"\\'")}')">
+      <div><strong>${option.label}</strong><span>${option.description}</span></div>
+      <div class="sheet-option-arrow">›</div>
+    </button>
+  `).join('');
+  document.getElementById('truck-upload-backdrop').classList.add('active');
+  document.getElementById('truck-upload-sheet').classList.add('active');
+}
+
+  function getFleetApiBase(){
+    return window.FLEETOS_API_BASE || 'https://fleetos-pro-backend-production.up.railway.app';
+  }
+
+  function getFleetAuthToken(){
+    return localStorage.getItem('fleetToken') || localStorage.getItem('gravityToken') || localStorage.getItem('token') || '';
+  }
+
+  function getFleetUserId(){
+    const raw=localStorage.getItem('fleetUser') || localStorage.getItem('gravityUser') || localStorage.getItem('user') || '';
+    if(!raw) return '';
+    try{
+      const parsed=JSON.parse(raw);
+      return parsed?.id ? String(parsed.id) : '';
+    }catch(_error){
+      return '';
+    }
+  }
+
+const truckBackendDocTypeMap={rc:'rc',ins:'insurance',fit:'fitness',puc:'puc',permit:'permit',tax:'roadtax'};
+
+function getTruckBucket(key){
+  return truckDocUploads[key] || null;
+}
+
+function getTruckSelectedFiles(key){
+  const bucket=getTruckBucket(key);
+  if(!bucket) return [];
+  if(key==='rc') return [bucket.frontFile,bucket.backFile].filter(Boolean);
+  return Array.isArray(bucket.selectedFiles)?bucket.selectedFiles.filter(Boolean):[];
+}
+
+function setTruckSelectedFiles(key,files,replace=false){
+  const bucket=getTruckBucket(key);
+  if(!bucket || key==='rc') return;
+  const incoming=Array.isArray(files)?files.filter(Boolean):[];
+  const previousSignature=Array.isArray(bucket.selectedFiles)
+    ? buildTruckFileSignature(bucket.selectedFiles.filter(Boolean))
+    : '';
+  if(replace || !Array.isArray(bucket.selectedFiles)){
+    bucket.selectedFiles=incoming.slice();
+  }else{
+    const existing=new Map((bucket.selectedFiles||[]).map(file=>[`${file.name}:${file.size}:${file.lastModified}`,file]));
+    incoming.forEach(file=>existing.set(`${file.name}:${file.size}:${file.lastModified}`,file));
+    bucket.selectedFiles=Array.from(existing.values());
+  }
+  bucket.files=bucket.selectedFiles.map(file=>file.name);
+  const nextSignature=buildTruckFileSignature(bucket.selectedFiles.filter(Boolean));
+  if(previousSignature!==nextSignature){
+    bucket.serverDocumentId=null;
+    bucket.uploadSignature='';
+    bucket.mergedFile=null;
+    bucket.storedPages=[];
+    docs[key]=false;
+  }
+}
+
+function buildTruckFileSignature(files){
+  return files.map(file=>`${file.name}:${file.size}:${file.lastModified}`).join('|');
+}
+
+function collectTruckRegCandidates(input,bucket=[]){
+  if(input===null || input===undefined) return bucket;
+  if(Array.isArray(input)){
+    input.forEach(item=>collectTruckRegCandidates(item,bucket));
+    return bucket;
+  }
+  if(typeof input==='object'){
+    Object.entries(input).forEach(([key,value])=>{
+      const lower=String(key||'').toLowerCase();
+      if(lower.includes('reg') || lower.includes('registration') || lower.includes('vehicle')){
+        bucket.push(value);
+      }
+      collectTruckRegCandidates(value,bucket);
+    });
+    return bucket;
+  }
+  bucket.push(input);
+  return bucket;
+}
+
+function extractTruckRegFromPayload(payload){
+  const candidates=[
+    payload?.['Reg No'],
+    payload?.['Registration Number'],
+    payload?.['Registration No'],
+    payload?.['Vehicle Number'],
+    payload?.regNo,
+    payload?.reg_no,
+    payload?.regNumber,
+    payload?.registrationNumber,
+    payload?.registration_no,
+    payload?.vehicleNumber,
+    payload?.data?.['Reg No'],
+    payload?.data?.['Registration Number'],
+    payload?.data?.['Registration No'],
+    payload?.data?.['Vehicle Number'],
+    payload?.data?.regNo,
+    payload?.data?.reg_no,
+    payload?.data?.registrationNumber,
+    payload?.data?.vehicleNumber,
+    ...collectTruckRegCandidates(payload,[])
+  ];
+  for(const candidate of candidates){
+    const normalized=normalizeRegNo(candidate || '');
+    if(normalized) return normalized;
+  }
+  return '';
+}
+
+function rememberTruckOcrPayload(key,payload){
+  if(!payload) return;
+  const existing=latestTruckOcrByDoc[key];
+  if(Array.isArray(existing)){
+    existing.push(payload);
+    return;
+  }
+  if(existing){
+    latestTruckOcrByDoc[key]=[existing,payload];
+    return;
+  }
+  latestTruckOcrByDoc[key]=payload;
+}
+
+function getCurrentTruckRegNo(){
+  const typed=normalizeRegNo(document.getElementById('reg-no')?.value || '');
+  if(typed) return typed;
+  const fromRc=extractTruckRegFromPayload(latestTruckOcrByDoc.rc || {});
+  if(fromRc){
+    const regInput=document.getElementById('reg-no');
+    if(regInput && !regInput.value.trim()) regInput.value=fromRc;
+    return fromRc;
+  }
+  for(const payload of Object.values(latestTruckOcrByDoc)){
+    const normalized=extractTruckRegFromPayload(payload || {});
+    if(normalized){
+      const regInput=document.getElementById('reg-no');
+      if(regInput && !regInput.value.trim()) regInput.value=normalized;
+      return normalized;
+    }
+  }
+  return '';
+}
+
+function getStableTruckDraftRegKey(){
+  if(truckDraftRegKey) return truckDraftRegKey;
+  truckDraftRegKey=`PENDING_${Date.now()}`;
+  return truckDraftRegKey;
+}
+
+function getTruckDocumentPageLabels(key,files){
+  if(key==='rc') return ['Front Side','Back Side'];
+  return files.map((_,index)=>`Page ${index+1}`);
+}
+
+async function scanStoredTruckDocument(key,documentId,regNo){
+  const inFlightKey=`${key}:${documentId}`;
+  if(truckScanInFlight[inFlightKey]) return truckScanInFlight[inFlightKey];
+  truckScanInFlight[inFlightKey]=(async()=>{
+    const token=getFleetAuthToken();
+    const response=await fetch(`${getFleetApiBase()}/api/fleet/documents/${documentId}/scan`,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        Authorization:`Bearer ${token}`
+      },
+      body:JSON.stringify({
+        regNo,
+        truckId: truckRecordId || null
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok){
+      const err=new Error(data.error || 'Document was uploaded, but scan finalization failed.');
+      err.code=data.code || '';
+      throw err;
+    }
+    if(data.extracted) applyTruckOcrData(data.extracted);
+    if(data.truckId) truckRecordId=data.truckId;
+    return data;
+  })();
+  try{
+    return await truckScanInFlight[inFlightKey];
+  }finally{
+    delete truckScanInFlight[inFlightKey];
+  }
+}
+
+async function persistTruckDocumentUpload(key,{scanAfterUpload=true}={}){
+  const token=getFleetAuthToken();
+  if(!token) throw new Error('Please log in again before saving documents.');
+  const files=getTruckSelectedFiles(key);
+  if(!files.length) return null;
+  let regNo=getCurrentTruckRegNo();
+  if(!regNo){
+    regNo=getStableTruckDraftRegKey();
+  }
+  const bucket=getTruckBucket(key);
+  const signature=buildTruckFileSignature(files);
+  if(bucket && bucket.serverDocumentId && bucket.uploadSignature===signature){
+    const cached={ documentId: bucket.serverDocumentId, mergedFile: bucket.mergedFile, storedPages: bucket.storedPages, skipped: true };
+    if(scanAfterUpload && !docs[key]){
+      try{
+        const scanData=await scanStoredTruckDocument(key,bucket.serverDocumentId,regNo);
+        if(scanData?.extracted) cached.extracted=scanData.extracted;
+      }catch(error){
+        cached.scanError={
+          message:error.message || 'Document was uploaded, but scan finalization failed.',
+          code:error.code || ''
+        };
+      }
+    }
+    return cached;
+  }
+
+    const formData=new FormData();
+    formData.append('regNo',regNo);
+    formData.append('documentType',truckBackendDocTypeMap[key] || key);
+    const ownerUserId=getFleetUserId();
+    if(ownerUserId) formData.append('ownerUserId',ownerUserId);
+    formData.append('pageLabels',JSON.stringify(getTruckDocumentPageLabels(key,files)));
+    files.forEach(file=>formData.append('documents',file,file.name));
+
+  const response=await fetch(`${getFleetApiBase()}/api/fleet/documents/batch`,{
+    method:'POST',
+    headers:{ Authorization:`Bearer ${token}` },
+    body:formData
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok){
+    throw new Error(data.error || 'Document upload could not be saved to the backend.');
+  }
+
+  if(bucket){
+    bucket.serverDocumentId=data.documentId || null;
+    bucket.uploadSignature=signature;
+    bucket.mergedFile=data.mergedFile || null;
+    bucket.storedPages=data.storedPages || [];
+  }
+
+  if(scanAfterUpload && data.documentId){
+    try{
+      const scanData=await scanStoredTruckDocument(key,data.documentId,regNo);
+      if(scanData?.extracted) data.extracted=scanData.extracted;
+    }catch(error){
+      data.scanError={
+        message:error.message || 'Document was uploaded, but scan finalization failed.',
+        code:error.code || ''
+      };
+    }
+  }
+
+  return data;
+}
+
+function isQuotaScanError(error){
+  const code=String(error?.code || '').toUpperCase();
+  const message=String(error?.message || '');
+  return code==='AI_QUOTA_EXCEEDED' || /quota exceeded|too many requests|\b429\b/i.test(message);
+}
+
+function handleTruckDeferredScan(key,data,fallbackMessage){
+  if(!data?.scanError) return false;
+  const deferred=isQuotaScanError(data.scanError);
+  updateTruckDocUi(key,'done',{
+    engine:deferred ? 'uploaded' : 'saved',
+    listMessage:fallbackMessage || (deferred ? 'Saved to backend. OCR retry needed later.' : 'Saved to backend. OCR review needed later.'),
+    fileName:data?.mergedFile?.storedName || data?.mergedFile?.displayName || ''
+  });
+  return true;
+}
+
+function getTruckFormValue(id){
+  return String(document.getElementById(id)?.value || '').trim();
+}
+
+function appendTruckFormData(formData,name,value){
+  if(value===undefined || value===null) return;
+  const next=String(value).trim();
+  if(!next) return;
+  formData.append(name,next);
+}
+
+function buildTruckSubmitFormData(){
+  const formData=new FormData();
+  if(truckRecordId) appendTruckFormData(formData,'truckId',truckRecordId);
+  appendTruckFormData(formData,'regNo',getCurrentTruckRegNo());
+  appendTruckFormData(formData,'chassis',getTruckFormValue('vin'));
+  appendTruckFormData(formData,'engine',getTruckFormValue('eng-no'));
+  appendTruckFormData(formData,'make',getTruckFormValue('make'));
+  appendTruckFormData(formData,'model',getTruckFormValue('model'));
+  appendTruckFormData(formData,'purchaseDate',getTruckFormValue('purchase-date'));
+  appendTruckFormData(formData,'price',getTruckFormValue('purchase-price'));
+  appendTruckFormData(formData,'axle',getTruckFormValue('axle'));
+  appendTruckFormData(formData,'tyres',getTruckFormValue('tyres'));
+  appendTruckFormData(formData,'gvw',getTruckFormValue('capacity'));
+  appendTruckFormData(formData,'fuel',getTruckFormValue('fuel'));
+  appendTruckFormData(formData,'status',getTruckFormValue('status'));
+  appendTruckFormData(formData,'insurer',getTruckFormValue('ins-prov'));
+  appendTruckFormData(formData,'policyNo',getTruckFormValue('ins-pol'));
+  appendTruckFormData(formData,'insExpiry',getTruckFormValue('ins-exp'));
+  appendTruckFormData(formData,'coverage',getTruckFormValue('ins-cov'));
+  appendTruckFormData(formData,'fitnessCertNo',getTruckFormValue('fit-no'));
+  appendTruckFormData(formData,'fitnessExpiry',getTruckFormValue('fit-exp'));
+  appendTruckFormData(formData,'pucCertNo',getTruckFormValue('puc-no'));
+  appendTruckFormData(formData,'pucExpiry',getTruckFormValue('puc-exp'));
+  appendTruckFormData(formData,'permitNo',getTruckFormValue('permit-no'));
+  appendTruckFormData(formData,'permitExpiry',getTruckFormValue('permit-exp'));
+  appendTruckFormData(formData,'taxAmount',getTruckFormValue('tax-amt'));
+  appendTruckFormData(formData,'taxExpiry',getTruckFormValue('tax-val'));
+  return formData;
+}
+
+async function resolveExistingTruckId(regNo){
+  if(truckRecordId) return truckRecordId;
+  const token=getFleetAuthToken();
+  if(!token || !regNo) return null;
+  const response=await fetch(`${getFleetApiBase()}/api/fleet`,{
+    headers:{ Authorization:`Bearer ${token}` }
+  });
+  if(!response.ok) return null;
+  const rows=await response.json().catch(()=>[]);
+  const match=Array.isArray(rows)
+    ? rows.find(row=>normalizeRegNo(row.reg_no || row.regNo)===regNo)
+    : null;
+  if(match?.id) truckRecordId=match.id;
+  return truckRecordId;
+}
+
+function normalizeDateInput(value){
+  if(!value) return '';
+  const raw=String(value).trim();
+  if(!raw) return '';
+  const cleaned=raw.replace(/\./g,'/').replace(/,/g,' ').replace(/\s+/g,' ').trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) return cleaned;
+  const slashMatch=cleaned.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);
+  if(slashMatch){
+    let [,d,m,y]=slashMatch;
+    if(y.length===2) y=`20${y}`;
+    return `${y.padStart(4,'0')}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+  }
+  const parsed=new Date(cleaned);
+  if(!Number.isNaN(parsed.getTime())){
+    return `${parsed.getFullYear()}-${String(parsed.getMonth()+1).padStart(2,'0')}-${String(parsed.getDate()).padStart(2,'0')}`;
+  }
+  return '';
+}
+
+function normalizeDigits(value){
+  return String(value||'').replace(/[^\d]/g,'');
+}
+
+function normalizeRegNo(value){
+  return String(value||'').replace(/[^a-z0-9]/gi,' ').replace(/\s+/g,' ').trim().toUpperCase();
+}
+
+function normalizeAlphaWords(value){
+  return String(value||'').replace(/[^a-z ]/gi,' ').replace(/\s+/g,' ').trim();
+}
+
+function sanitizeChassisNo(value){
+  const raw=String(value||'').trim().replace(/\s+/g,'');
+  if(!raw) return '';
+  if(/chassis|vin/i.test(raw)) return '';
+  if(!/[A-Z]/i.test(raw) || !/\d/.test(raw)) return '';
+  if(raw.length < 8) return '';
+  return raw.toUpperCase();
+}
+
+function sanitizeEngineNo(value){
+  const raw=String(value||'').trim().replace(/\s+/g,' ');
+  if(!raw) return '';
+  if(/engine number|motor no|motor number|eng no/i.test(raw) && !/\d/.test(raw)) return '';
+  const compact=raw.replace(/\s+/g,'');
+  if(!/[A-Z]/i.test(compact) && !/\d/.test(compact)) return '';
+  if(!/\d/.test(compact)) return '';
+  if(compact.length < 5) return '';
+  return compact.toUpperCase();
+}
+
+function sanitizeMake(value){
+  const raw=normalizeAlphaWords(value);
+  if(!raw) return '';
+  if(/\b(make|brand|vehicle|model)\b/i.test(raw)) return '';
+  const cleaned=raw.split(' ').filter(Boolean).slice(0,3).join(' ');
+  if(cleaned.length < 2) return '';
+  return cleaned.replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function sanitizeModel(value){
+  const raw=String(value||'').trim().replace(/\s+/g,' ');
+  if(!raw) return '';
+  if(/\bmodel\b/i.test(raw) && !/\d/.test(raw)) return '';
+  if(raw.length < 2) return '';
+  return raw;
+}
+
+function sanitizePersonOrgName(value){
+  const raw=normalizeAlphaWords(value);
+  if(!raw) return '';
+  const blocked=['insurance provider','policy as per details given','as per details given','fitness cert no','puc cert no','permit no'];
+  if(blocked.some((item)=>raw.toLowerCase().includes(item))) return '';
+  return raw.replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function sanitizePolicyNo(value){
+  const raw=String(value||'').trim().replace(/\s+/g,' ');
+  if(!raw) return '';
+  if(/policy as per details given|as per details given/i.test(raw)) return '';
+  const compact=raw.replace(/\s+/g,'');
+  if(compact.length < 5) return '';
+  if(!/[A-Z]/i.test(compact) && !/\d/.test(compact)) return '';
+  return compact.toUpperCase();
+}
+
+function sanitizeDocNumber(value){
+  const raw=String(value||'').trim().replace(/\s+/g,' ');
+  if(!raw) return '';
+  if(/\b(cert no|certificate no|permit no|puc no|number)\b/i.test(raw) && !/\d/.test(raw)) return '';
+  const compact=raw.replace(/\s+/g,'');
+  if(compact.length < 4) return '';
+  if(!/[A-Z]/i.test(compact) && !/\d/.test(compact)) return '';
+  return compact.toUpperCase();
+}
+
+function chooseFirstValue(payload, keys){
+  for(const key of keys){
+    const value=payload?.[key];
+    if(value!==undefined && value!==null && String(value).trim()) return value;
+  }
+  return '';
+}
+
+function normalizeCoverageType(value){
+  const text=String(value||'').trim().toLowerCase();
+  if(!text) return '';
+  if(text.includes('comprehensive')) return 'Comprehensive';
+  if(text.includes('third')) return 'Third Party';
+  if(text.includes('own')) return 'Own Damage';
+  return value;
+}
+
+function normalizeFuelType(value){
+  const text=String(value||'').trim().toLowerCase();
+  if(!text) return '';
+  if(text.includes('diesel')) return 'Diesel';
+  if(text.includes('cng')) return 'CNG';
+  if(text.includes('electric')) return 'Electric';
+  if(text.includes('lng')) return 'LNG';
+  return value;
+}
+
+function setFieldValue(id,value,transform){
+  const el=document.getElementById(id);
+  if(!el || value===null || value===undefined) return false;
+  let next=typeof transform==='function'?transform(value):String(value).trim();
+  if(next===null || next===undefined) return false;
+  next=String(next).trim();
+  if(!next) return false;
+  el.value=next;
+  const wrap=el.closest('.finput') || el;
+  wrap.style.transition='background .3s';
+  wrap.style.background='rgba(34,121,84,.12)';
+  setTimeout(()=>{wrap.style.background='';},1000);
+  return true;
+}
+
+function applyTruckOcrData(data){
+  const payload=data||{};
+  setFieldValue('reg-no',chooseFirstValue(payload,['regNo','Reg No','Registration Number','Registration No','Vehicle Number','Vehicle No']),normalizeRegNo);
+  setFieldValue('vin',chooseFirstValue(payload,['chassisNo','Chassis Number','Chassis No','VIN','VIN / Chassis No']),sanitizeChassisNo);
+  setFieldValue('eng-no',chooseFirstValue(payload,['engineNo','Engine No','Engine Number','Motor No','Motor Number']),sanitizeEngineNo);
+  setFieldValue('make',chooseFirstValue(payload,['make','Make',"Maker's Name",'Manufacturer','Brand']),sanitizeMake);
+  setFieldValue('model',chooseFirstValue(payload,['model','Model',"Maker's Model Name",'Variant']),sanitizeModel);
+  setFieldValue('purchase-date',chooseFirstValue(payload,['purchaseDate','Purchase Date','Invoice Date']),normalizeDateInput);
+  setFieldValue('purchase-price',chooseFirstValue(payload,['purchasePrice','Purchase Price','Invoice Value','Ex Showroom Price','Sale Amount']),normalizeDigits);
+  setFieldValue('capacity',chooseFirstValue(payload,['capacity','GCW','Gross Combination Weight','GVW']),normalizeDigits);
+  setFieldValue('fuel',chooseFirstValue(payload,['fuelType','Fuel Type','Fuel']),normalizeFuelType);
+  setFieldValue('ins-prov',chooseFirstValue(payload,['insuranceProvider','Insurance Provider','Insurer','Insurance Company']),sanitizePersonOrgName);
+  setFieldValue('ins-pol',chooseFirstValue(payload,['policyNo','Policy No','Policy Number']),sanitizePolicyNo);
+  setFieldValue('ins-exp',chooseFirstValue(payload,['insuranceExpiry','Insurance Expiry','Expiry Date','Policy Expiry']),normalizeDateInput);
+  setFieldValue('ins-cov',chooseFirstValue(payload,['coverageType','Coverage Type','Insurance Type']),normalizeCoverageType);
+  setFieldValue('fit-no',chooseFirstValue(payload,['fitnessCertNo','Fitness Cert No.','Fitness Cert No','Fitness Certificate No']),sanitizeDocNumber);
+  setFieldValue('fit-exp',chooseFirstValue(payload,['fitnessExpiry','Fitness Expiry','Certificate expiry','Certificate will expire on']),normalizeDateInput);
+  setFieldValue('puc-no',chooseFirstValue(payload,['pucCertNo','PUC Cert No','PUC Certificate No','Certificate SL. No.','PUC Code']),sanitizeDocNumber);
+  setFieldValue('puc-exp',chooseFirstValue(payload,['pucExpiry','PUC Expiry','Validity Upto']),normalizeDateInput);
+  setFieldValue('permit-no',chooseFirstValue(payload,['permitNo','Permit No','Route Permit No','Permit Number']),sanitizeDocNumber);
+  setFieldValue('permit-exp',chooseFirstValue(payload,['permitExpiry','Permit Expiry','Validity Upto']),normalizeDateInput);
+  setFieldValue('tax-val',chooseFirstValue(payload,['roadTaxExpiry','Road Tax Expiry','Road Tax Validity','Tax Validity Until']),normalizeDateInput);
+}
+
+function buildTruckPayloadFromFieldRows(fieldRows){
+  if(!Array.isArray(fieldRows) || !fieldRows.length) return null;
+  const payload={};
+  for(const row of fieldRows){
+    const key=(row?.fieldName || row?.field || '').trim();
+    const value=row?.fieldValue ?? row?.value;
+    if(!key || value===null || value===undefined || !String(value).trim()) continue;
+    payload[key]=value;
+  }
+  return Object.keys(payload).length ? payload : null;
+}
+
+function applyTruckBackendData(truck){
+  if(!truck) return;
+  if(truck.id) truckRecordId=truck.id;
+  setFieldValue('reg-no',truck.reg_no || truck.regNo,normalizeRegNo);
+  setFieldValue('vin',truck.chassis_no || truck.chassisNo,sanitizeChassisNo);
+  setFieldValue('eng-no',truck.engine_no || truck.engineNo,sanitizeEngineNo);
+  setFieldValue('make',truck.make,sanitizeMake);
+  setFieldValue('model',truck.model,sanitizeModel);
+  setFieldValue('purchase-date',truck.purchase_date || truck.purchaseDate,normalizeDateInput);
+  setFieldValue('purchase-price',truck.purchase_price || truck.purchasePrice,normalizeDigits);
+  setFieldValue('capacity',truck.gvw || truck.payload || truck.load_capacity || truck.loadCapacity,normalizeDigits);
+  setFieldValue('fuel',truck.fuel_type || truck.fuelType,normalizeFuelType);
+  setFieldValue('status',truck.status);
+  setFieldValue('ins-prov',truck.insurance_provider || truck.insurer,sanitizePersonOrgName);
+  setFieldValue('ins-pol',truck.policy_no || truck.policyNo,sanitizePolicyNo);
+  setFieldValue('ins-exp',truck.ins_expiry_date || truck.insExpiry,normalizeDateInput);
+  setFieldValue('ins-cov',truck.coverage_type || truck.coverage,normalizeCoverageType);
+  setFieldValue('fit-no',truck.fitness_cert_no || truck.fitnessCertNo,sanitizeDocNumber);
+  setFieldValue('fit-exp',truck.fitness_expiry_date || truck.fitnessExpiry,normalizeDateInput);
+  setFieldValue('puc-no',truck.puc_cert_no || truck.pucCertNo,sanitizeDocNumber);
+  setFieldValue('puc-exp',truck.puc_expiry_date || truck.pucExpiry,normalizeDateInput);
+  setFieldValue('permit-no',truck.permit_no || truck.permitNo,sanitizeDocNumber);
+  setFieldValue('permit-exp',truck.permit_expiry_date || truck.permitExpiry,normalizeDateInput);
+  setFieldValue('tax-amt',truck.road_tax_amount || truck.taxAmount,normalizeDigits);
+  setFieldValue('tax-val',truck.road_tax_expiry_date || truck.taxExpiry,normalizeDateInput);
+}
+
+function applyTruckDocumentPayloads(documents){
+  if(!Array.isArray(documents)) return;
+  for(const doc of documents){
+    if(doc?.extractedData) applyTruckOcrData(doc.extractedData);
+    const fieldPayload=buildTruckPayloadFromFieldRows(doc?.fieldRows);
+    if(fieldPayload) applyTruckOcrData(fieldPayload);
+    if(Array.isArray(doc?.fields) && doc.fields.length){
+      const registerPayload=buildTruckPayloadFromFieldRows(doc.fields);
+      if(registerPayload) applyTruckOcrData(registerPayload);
+    }
+  }
+}
+
+async function hydrateTruckFormFromBackend(){
+  const token=getFleetAuthToken();
+  const regNo=getCurrentTruckRegNo();
+  if(!token || (!regNo && !truckRecordId)) return false;
+  try{
+    const endpoint=truckRecordId
+      ? `${getFleetApiBase()}/api/fleet/${encodeURIComponent(truckRecordId)}/documents`
+      : `${getFleetApiBase()}/api/fleet/prefill/${encodeURIComponent(regNo)}`;
+    const response=await fetch(endpoint,{
+      headers:{ Authorization:`Bearer ${token}` }
+    });
+    if(!response.ok) return false;
+    const data=await response.json().catch(()=>null);
+    if(!data) return false;
+    if(data.truck) applyTruckBackendData(data.truck);
+    if(data.documents) applyTruckDocumentPayloads(data.documents);
+    return true;
+  }catch(error){
+    console.warn('Truck prefill sync failed:', error);
+    return false;
+  }
+}
+
+function updateTruckDocUi(k,state,meta={}){
+  const dc=document.getElementById('dc-'+k);
+  const ds=document.getElementById('ds-'+k);
+  const ub=document.getElementById('ub-'+k);
+  const dm=document.getElementById('dm-'+k);
+  const pill=document.getElementById('lpill-'+k);
+  const ls=document.getElementById('lsub-'+k);
+  const li=document.getElementById('li-'+k);
+  dc.classList.remove('scanning','scanned');
+  ub.disabled=false;
+  ub.classList.remove('scanned');
+
+  if(state==='scanning'){
+    docs[k]=false;
+    dc.classList.add('scanning');
+    ds.textContent=meta.message || 'Scanning…';
+    ds.className='doc-card-stat scanning';
+    ub.textContent='⏳';
+    ub.disabled=true;
+    if(pill){
+      pill.textContent='Scanning';
+      pill.className='pill pill-p';
+    }
+    if(dm && meta.detail) dm.textContent=meta.detail;
+    if(ls){
+      ls.textContent=meta.listMessage || 'Running OCR extraction…';
+      ls.className='doc-li-sub';
+    }
+    if(li) li.classList.remove('uploaded');
+  }else if(state==='done'){
+    updateTruckDocCompletion(k);
+    dc.classList.add('scanned');
+    const summary=getTruckDocSummary(k);
+    ds.textContent=summary ? `✓ ${summary}` : '✓ Scanned';
+    ds.className='doc-card-stat ok';
+    ub.textContent=k==='rc' ? 'Update Sides' : 'Add More';
+    ub.classList.add('scanned');
+    if(pill){
+      pill.textContent=meta.engine==='gravityocr'?'OCR Ready':'Uploaded';
+      pill.className='pill pill-u';
+    }
+    if(dm && summary) dm.textContent=summary;
+    if(ls){
+      ls.textContent=meta.listMessage || (meta.fileName?`${meta.fileName} processed`:'Scanned via OCR');
+      ls.className='doc-li-sub ok';
+    }
+    if(li) li.classList.toggle('uploaded', docs[k]);
+  }else{
+    docs[k]=false;
+    ds.textContent=meta.message||'Scan failed';
+    ds.className='doc-card-stat';
+    ub.textContent='Retry';
+    if(pill){
+      pill.textContent='Pending';
+      pill.className='pill pill-p';
+    }
+    if(dm && meta.detail) dm.textContent=meta.detail;
+    if(ls){
+      ls.textContent=meta.message||'Try a clearer image';
+      ls.className='doc-li-sub';
+    }
+    if(li) li.classList.remove('uploaded');
+  }
+
+  updDocCount();
+  if(mode==='scan') updFooterScan();
+}
+
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>{
+      const result=String(reader.result||'');
+      const commaIndex=result.indexOf(',');
+      resolve(commaIndex>=0?result.slice(commaIndex+1):result);
+    };
+    reader.onerror=()=>reject(new Error('Could not read the selected file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function runTruckOcrBatch(k,files,meta={}){
+  if(!files || !files.length) return;
+  updateTruckDocUi(k,'scanning',{
+    message: meta.message || (files.length>1 ? `Scanning ${files.length} pages…` : 'Scanning…'),
+    detail: meta.detail,
+    listMessage: meta.listMessage
+  });
+  for(const file of files){
+    await runTruckOcr(k,file,{skipUi:true});
+  }
+  const finalMessage=meta.finalMessage || (k==='rc'
+    ? 'Front and back processed'
+    : files.length>1
+      ? `${files.length} pages processed`
+      : `${files[0].name} processed`);
+  updateTruckDocUi(k,'done',{
+    engine:'gravityocr',
+    listMessage:finalMessage
+  });
+}
+
+async function runTruckOcr(k,file,options={}){
+  const token=getFleetAuthToken();
+  if(!token){
+    updateTruckDocUi(k,'error',{message:'Please log in again to scan documents.'});
+    alert('Please log in again before scanning documents.');
+    return;
+  }
+
+  if(!options.skipUi){
+    const scanMessage=activeTruckUploadMode==='rc-front' ? 'Scanning RC front…'
+      : activeTruckUploadMode==='rc-back' ? 'Scanning RC back…'
+      : activeTruckUploadMode==='multi-pages' ? `Scanning ${file.name}…`
+      : 'Scanning…';
+    updateTruckDocUi(k,'scanning',{message:scanMessage});
+  }
+  try{
+    const image=await fileToBase64(file);
+    const response=await fetch(getFleetApiBase()+'/api/ocr-truck',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        Authorization:`Bearer ${token}`
+      },
+      body:JSON.stringify({
+        image,
+        mimeType:file.type||'image/jpeg',
+        documentType:truckOcrDocTypes[k] || 'logistics'
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok){
+      throw new Error(data.error || data.details || 'Scanning could not be completed.');
+    }
+    rememberTruckOcrPayload(k,data);
+    applyTruckOcrData(data);
+    const extractedReg=extractTruckRegFromPayload(data);
+    if(extractedReg && !document.getElementById('reg-no')?.value.trim()){
+      setFieldValue('reg-no', extractedReg, normalizeRegNo);
+    }
+    if(k==='rc'){
+      if(activeTruckUploadMode==='rc-front') truckDocUploads.rc.front=file.name;
+      else if(activeTruckUploadMode==='rc-back') truckDocUploads.rc.back=file.name;
+    }else{
+      const bucket=truckDocUploads[k];
+      if(bucket && Array.isArray(bucket.files) && !bucket.files.includes(file.name)) bucket.files.push(file.name);
+    }
+    if(options.skipUi) return;
+    const sideLabel=activeTruckUploadMode==='rc-front' ? 'Front side processed'
+      : activeTruckUploadMode==='rc-back' ? 'Back side processed'
+      : null;
+    updateTruckDocUi(k,'done',{
+      fileName:file.name,
+      engine:data._engine,
+      listMessage:sideLabel || (k==='ins' || k==='fit' ? getTruckDocSummary(k) : `${file.name} processed`)
+    });
+  }catch(error){
+    console.error('Truck OCR failed:',error);
+    updateTruckDocUi(k,'error',{message:error.message || 'Try a clearer image'});
+    alert(error.message || 'Scanning could not be completed right now.');
+  }
 }
 
 function scanDoc(k){
-  docs[k]=true;
-  const dc=document.getElementById('dc-'+k);
-  dc.classList.add('scanned');
-  const ds=document.getElementById('ds-'+k);
-  ds.textContent='✓ Scanned';ds.className='doc-card-stat ok';
-  const ub=document.getElementById('ub-'+k);
-  ub.textContent='✓ Scanned';ub.classList.add('scanned');
-  document.getElementById('lpill-'+k).textContent='Uploaded';
-  document.getElementById('lpill-'+k).className='pill pill-u';
-  const ls=document.getElementById('lsub-'+k);
-  ls.textContent='Scanned via OCR';ls.className='doc-li-sub ok';
-  document.getElementById('li-'+k).classList.add('uploaded');
-  updDocCount();updFooterScan();
+  activeTruckDocKey=k;
+  if(k==='rc' || k==='ins' || k==='fit'){
+    pendingRcFollowup=false;
+    if(k==='rc' && !(truckDocUploads.rc.frontFile && truckDocUploads.rc.backFile)){
+      openRcUploadSheetForMissingSide();
+      return;
+    }
+    if(openTruckUploadSheet(k)) return;
+  }
+  activeTruckUploadMode='single';
+  activeTruckUploadLabel='';
+  activeTruckUploadSource='file';
+  openTruckSourceSheet(k);
 }
 
-function goNext(){
-  if(mode==='scan'){setMode('manual');setTab('basic');}
+async function handleTruckInputChange(event){
+  const files=Array.from(event.target.files || []);
+  const docKey=activeTruckDocKey;
+  const uploadMode=activeTruckUploadMode;
+  const uploadSource=activeTruckUploadSource;
+  event.target.value='';
+  if(!files.length || !docKey) return;
+  try{
+    if(docKey==='rc'){
+      const pickedFile=files[0];
+      if(activeTruckUploadMode==='rc-front') truckDocUploads.rc.frontFile=pickedFile;
+      if(activeTruckUploadMode==='rc-back') truckDocUploads.rc.backFile=pickedFile;
+      updateTruckDocUi('rc','done',{
+        listMessage:getTruckDocSummary('rc'),
+        engine:'gravityocr'
+      });
+      if(!(truckDocUploads.rc.frontFile && truckDocUploads.rc.backFile)){
+        pendingRcFollowup=true;
+        setTimeout(()=>{
+          if(!pendingRcFollowup) return;
+          openRcUploadSheetForMissingSide();
+        },150);
+        return;
+      }
+      pendingRcFollowup=false;
+      updateTruckDocUi('rc','scanning',{
+        message:'Uploading RC front and back…',
+        detail:'Both sides uploaded',
+        listMessage:'Saving both sides to backend and starting OCR…'
+      });
+      const rcUpload=await persistTruckDocumentUpload('rc');
+      if(!handleTruckDeferredScan('rc',rcUpload,'Front and back saved to backend. OCR retry needed later.')){
+        updateTruckDocUi('rc','done',{
+          engine:rcUpload?.extracted?._engine || 'documentai',
+          listMessage:'Front and back processed and saved to backend'
+        });
+      }
+    }else if(uploadMode==='multi-pages'){
+      if(uploadSource==='camera'){
+        setTruckSelectedFiles(docKey,files,false);
+        pendingTruckMultiPageDocKey=docKey;
+        const total=getTruckSelectedFiles(docKey).length;
+        updateTruckDocUi(docKey,'done',{
+          listMessage:`${total} page${total===1?'':'s'} captured`,
+          engine:'gravityocr'
+        });
+        openTruckMultiPageCaptureSheet(docKey);
+        return;
+      }
+      setTruckSelectedFiles(docKey,files,true);
+      await finalizeTruckMultiPageCapture(docKey);
+    }else{
+      setTruckSelectedFiles(docKey,files,true);
+      updateTruckDocUi(docKey,'scanning',{
+        message:'Uploading…',
+        detail:`${files.length} page${files.length===1?'':'s'} selected`,
+        listMessage:'Saving document to backend and starting OCR…'
+      });
+      const singleUpload=await persistTruckDocumentUpload(docKey);
+      const total=getTruckSelectedFiles(docKey).length;
+      if(!handleTruckDeferredScan(docKey,singleUpload,total>1 ? `${total} pages saved to backend. OCR retry needed later.` : `1 page saved to backend. OCR retry needed later.`)){
+        updateTruckDocUi(docKey,'done',{
+          engine:singleUpload?.extracted?._engine || 'documentai',
+          listMessage:total>1 ? `${total} pages processed and saved to backend` : `1 page processed and saved to backend`
+        });
+      }
+    }
+  }catch(error){
+    console.error('Truck document processing failed:',error);
+    if(!error?.scanDeferred){
+      alert(error.message || 'Document upload could not be saved right now.');
+    }
+  }finally{
+    if(!(uploadMode==='multi-pages' && uploadSource==='camera')){
+      activeTruckDocKey=null;
+      activeTruckUploadMode='single';
+      activeTruckUploadLabel='';
+      activeTruckUploadSource='file';
+      pendingTruckMultiPageDocKey=null;
+    }
+  }
+}
+
+document.getElementById('ocr-camera-input').addEventListener('change', handleTruckInputChange);
+document.getElementById('ocr-file-input').addEventListener('change', handleTruckInputChange);
+window.addEventListener('beforeunload', stopTruckCameraCapture);
+
+async function goNext(){
+  if(mode==='scan' && isTruckScanViewVisible()){
+    await hydrateTruckFormFromBackend();
+    setTab('basic');
+  }
   else if(mTab==='basic'){setTab('compliance');}
-  else if(mTab==='compliance'){setTab('documents');}
+  else if(mTab==='compliance'){submitTruck();}
   else{submitTruck();}
 }
 
 function goBack(){
-  if(mTab==='basic')setMode('scan');
+  if(mTab==='basic'){
+    if(mode==='scan'){
+      document.getElementById('tab-bar').style.display='none';
+      showView('view-scan');
+      updFooterScan();
+    }else{
+      setMode('scan');
+    }
+  }
   else if(mTab==='compliance')setTab('basic');
-  else if(mTab==='documents')setTab('compliance');
 }
 
-function submitTruck(){
+function closeScreen(fallbackUrl){
+  try{
+    if(window.history.length > 1){
+      window.history.back();
+      return;
+    }
+  }catch(error){
+    console.warn('Could not navigate back:', error);
+  }
+  window.location.href=fallbackUrl || '/Fleet_List_FINAL.html';
+}
+
+async function submitTruck(){
   const btn=document.getElementById('btn-next');
-  btn.textContent='Saving…';btn.disabled=true;
-  setTimeout(()=>{
+  const originalText=btn.textContent;
+  btn.textContent='Saving…';
+  btn.disabled=true;
+
+  try{
+    const token=getFleetAuthToken();
+    if(!token){
+      throw new Error('Please log in again before saving the truck.');
+    }
+
+    const regNo=getCurrentTruckRegNo();
+    if(!regNo){
+      throw new Error('Registration number is required before saving the truck.');
+    }
+
+    for(const key of dkeys){
+      const files=getTruckSelectedFiles(key);
+      if(files.length){
+        await persistTruckDocumentUpload(key);
+      }
+    }
+
+    let existingTruckId=truckRecordId || await resolveExistingTruckId(regNo);
+    let response=await fetch(`${getFleetApiBase()}${existingTruckId ? `/api/fleet/${existingTruckId}` : '/api/fleet'}`,{
+      method: existingTruckId ? 'PUT' : 'POST',
+      headers:{ Authorization:`Bearer ${token}` },
+      body: buildTruckSubmitFormData()
+    });
+    let data=await response.json().catch(()=>({}));
+
+    if(!response.ok && !existingTruckId && /exists/i.test(String(data.error || ''))){
+      existingTruckId=await resolveExistingTruckId(regNo);
+      if(existingTruckId){
+        response=await fetch(`${getFleetApiBase()}/api/fleet/${existingTruckId}`,{
+          method:'PUT',
+          headers:{ Authorization:`Bearer ${token}` },
+          body: buildTruckSubmitFormData()
+        });
+        data=await response.json().catch(()=>({}));
+      }
+    }
+
+    if(!response.ok){
+      throw new Error(data.error || 'Truck could not be saved right now.');
+    }
+
+    truckRecordId=data.id || existingTruckId || truckRecordId;
+
     const reg=document.getElementById('reg-no').value||'MH 04 DB 0075';
     const mk=document.getElementById('make').value||'—';
     const md=document.getElementById('model').value;
@@ -395,10 +1686,37 @@ function submitTruck(){
     document.getElementById('tab-bar').style.display='none';
     showView('view-success');
     document.getElementById('footer').style.display='none';
-  },1200);
+  }catch(error){
+    console.error('Truck save failed:',error);
+    alert(error.message || 'Truck could not be saved right now.');
+    btn.textContent=originalText;
+    btn.disabled=false;
+  }
+}
+
+function syncAddTruckFooterHeight(){
+  const footer=document.getElementById('footer');
+  if(!footer || footer.style.display==='none') return;
+  document.documentElement.style.setProperty('--app-footer-height', footer.offsetHeight + 'px');
+}
+
+window.addEventListener('resize', syncAddTruckFooterHeight);
+window.addEventListener('orientationchange', syncAddTruckFooterHeight);
+window.addEventListener('load', syncAddTruckFooterHeight);
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', syncAddTruckFooterHeight);
+  window.visualViewport.addEventListener('scroll', syncAddTruckFooterHeight);
 }
 
 updFooterScan();
+syncAddTruckFooterHeight();
 </script>
 </body>
 </html>
+
+
+
+
+
+
+
