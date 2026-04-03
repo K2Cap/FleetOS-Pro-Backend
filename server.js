@@ -1634,6 +1634,80 @@ function buildFleetTruckPayload(req, existing = {}) {
     };
 }
 
+async function findExistingFleetTruckByRegNo(regNo, ownerUserId) {
+    const normalized = cleanString(regNo)
+        ?.toUpperCase()
+        .replace(/[^A-Z0-9]/g, '');
+    if (!normalized) return null;
+    const result = await pool.query(
+        `SELECT *
+         FROM trucks
+         WHERE UPPER(REGEXP_REPLACE(COALESCE(reg_no, ''), '[^A-Z0-9]', '', 'g')) = $1
+           AND (owner_user_id = $2 OR owner_user_id IS NULL)
+         ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC
+         LIMIT 1`,
+        [normalized, ownerUserId || null]
+    );
+    return result.rows[0] || null;
+}
+
+async function saveFleetTruckRecord(req, explicitId = null) {
+    const requestedId = toNumberOrNull(explicitId ?? req.body?.truckId);
+    let existing = null;
+
+    if (requestedId) {
+        const existingRes = await pool.query(
+            `SELECT *
+             FROM trucks
+             WHERE id = $1
+               AND (owner_user_id = $2 OR owner_user_id IS NULL)
+             LIMIT 1`,
+            [requestedId, req.user?.id || null]
+        );
+        existing = existingRes.rows[0] || null;
+    }
+
+    if (!existing) {
+        const requestedRegNo = cleanString(req.body?.regNo);
+        if (requestedRegNo) {
+            existing = await findExistingFleetTruckByRegNo(requestedRegNo, req.user?.id || null);
+        }
+    }
+
+    const payload = buildFleetTruckPayload(req, existing || {});
+    if (!payload.reg_no) {
+        throw new Error('Registration number is required');
+    }
+
+    if (!existing) {
+        existing = await findExistingFleetTruckByRegNo(payload.reg_no, req.user?.id || null);
+    }
+
+    const columns = Object.keys(payload);
+    const values = Object.values(payload);
+
+    if (existing) {
+        values.push(existing.id);
+        const result = await pool.query(
+            `UPDATE trucks
+             SET ${columns.map((column, index) => `${column} = $${index + 1}`).join(', ')},
+                 updated_at = NOW()
+             WHERE id = $${columns.length + 1}
+             RETURNING id, reg_no, status, make, model`,
+            values
+        );
+        return { action: 'updated', truck: result.rows[0] };
+    }
+
+    const result = await pool.query(
+        `INSERT INTO trucks (${columns.join(', ')})
+         VALUES (${columns.map((_, index) => `$${index + 1}`).join(', ')})
+         RETURNING id, reg_no, status, make, model`,
+        values
+    );
+    return { action: 'created', truck: result.rows[0] };
+}
+
 app.get('/api/fleet', async (req, res) => {
     try {
         const result = await pool.query(
@@ -1671,18 +1745,16 @@ app.get('/api/fleet/:id', async (req, res) => {
 
 app.post('/api/fleet', upload.fields([{ name: 'file_rc' }, { name: 'file_insurance' }, { name: 'file_fitness' }, { name: 'file_puc' }, { name: 'file_permit' }, { name: 'file_roadtax' }]), async (req, res) => {
     try {
-        const payload = buildFleetTruckPayload(req);
-        if (!payload.reg_no) return res.status(400).json({ error: 'Registration number is required' });
-        const columns = Object.keys(payload);
-        const values = Object.values(payload);
-        const result = await pool.query(
-            `INSERT INTO trucks (${columns.join(', ')})
-             VALUES (${columns.map((_, index) => `$${index + 1}`).join(', ')})
-             RETURNING id, reg_no, status, make, model`,
-            values
-        );
-        res.json({ id: result.rows[0].id, message: 'Success', truck: result.rows[0] });
+        const saved = await saveFleetTruckRecord(req);
+        res.json({
+            id: saved.truck.id,
+            message: saved.action === 'updated' ? 'Updated' : 'Success',
+            truck: saved.truck
+        });
     } catch (err) {
+        if (/Registration number is required/i.test(String(err?.message || ''))) {
+            return res.status(400).json({ error: 'Registration number is required' });
+        }
         if (err?.code === '23505' || /unique/i.test(String(err?.message || ''))) {
             return res.status(400).json({ error: 'Truck exists' });
         }
@@ -1695,31 +1767,20 @@ app.put('/api/fleet/:id', upload.fields([{ name: 'file_rc' }, { name: 'file_insu
         const id = toNumberOrNull(req.params.id);
         if (!id) return res.status(400).json({ error: 'Valid truck id is required' });
         const existingRes = await pool.query(
-            `SELECT *
+            `SELECT id
              FROM trucks
              WHERE id = $1
                AND (owner_user_id = $2 OR owner_user_id IS NULL)
              LIMIT 1`,
             [id, req.user?.id || null]
         );
-        const existing = existingRes.rows[0];
-        if (!existing) return res.status(404).json({ error: 'Truck not found' });
-
-        const payload = buildFleetTruckPayload(req, existing);
-        if (!payload.reg_no) return res.status(400).json({ error: 'Registration number is required' });
-        const columns = Object.keys(payload);
-        const values = Object.values(payload);
-        values.push(id);
-        const result = await pool.query(
-            `UPDATE trucks
-             SET ${columns.map((column, index) => `${column} = $${index + 1}`).join(', ')},
-                 updated_at = NOW()
-             WHERE id = $${columns.length + 1}
-             RETURNING id, reg_no, status, make, model`,
-            values
-        );
-        res.json({ id: result.rows[0].id, message: 'Updated', truck: result.rows[0] });
+        if (!existingRes.rows[0]) return res.status(404).json({ error: 'Truck not found' });
+        const saved = await saveFleetTruckRecord(req, id);
+        res.json({ id: saved.truck.id, message: 'Updated', truck: saved.truck });
     } catch (err) {
+        if (/Registration number is required/i.test(String(err?.message || ''))) {
+            return res.status(400).json({ error: 'Registration number is required' });
+        }
         if (err?.code === '23505' || /unique/i.test(String(err?.message || ''))) {
             return res.status(400).json({ error: 'Truck exists' });
         }

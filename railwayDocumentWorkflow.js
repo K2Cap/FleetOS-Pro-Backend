@@ -1458,13 +1458,23 @@ function registerDocumentWorkflow({
 
   app.get('/api/fleet/prefill/:regNo', authenticateTransporter, async (req, res) => {
     const regNo = cleanString(req.params.regNo);
+    const normalizedRegNo = normalizeTruckRegNo(regNo);
     const truckRes = await pool.query(
       `SELECT *
        FROM trucks
-       WHERE reg_no = $1
+       WHERE (
+             UPPER(REGEXP_REPLACE(COALESCE(reg_no, ''), '[^A-Z0-9]', '', 'g')) = $1
+          OR id IN (
+               SELECT truck_id
+               FROM truck_document_registers
+               WHERE UPPER(REGEXP_REPLACE(COALESCE(reg_no, ''), '[^A-Z0-9]', '', 'g')) = $1
+                 AND (owner_user_id = $2 OR owner_user_id IS NULL)
+             )
+       )
          AND (owner_user_id = $2 OR owner_user_id IS NULL)
+       ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC
        LIMIT 1`,
-      [regNo, req.user?.id || null]
+      [normalizedRegNo, req.user?.id || null]
     );
     const truck = truckRes.rows[0];
     if (!truck) return res.status(404).json({ error: 'Truck not found' });
