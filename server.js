@@ -1121,7 +1121,7 @@ async function generateMasterFleetExcel() {
             t.id AS truck_id,
             t.reg_no,
             t.status AS truck_status,
-            t.owner_user_id,
+            COALESCE(t.owner_user_id, r.owner_user_id) AS owner_user_id,
             u.full_name AS transporter_name,
             u.company_name,
             u.mobile,
@@ -1150,7 +1150,7 @@ async function generateMasterFleetExcel() {
             r.roadtax_document,
             r.updated_at
          FROM trucks t
-         LEFT JOIN users u ON u.id = t.owner_user_id
+         LEFT JOIN users u ON u.id = COALESCE(t.owner_user_id, r.owner_user_id)
          LEFT JOIN truck_document_registers r ON r.truck_id = t.id
          ORDER BY COALESCE(u.company_name, ''), COALESCE(u.full_name, ''), t.created_at DESC, t.id DESC`
     );
@@ -1158,6 +1158,13 @@ async function generateMasterFleetExcel() {
     result.rows.forEach((row) => {
         fleetSheet.addRow({
             ...row,
+            reg_no: row.reg_no || registerFieldValue(row.rc_document, ['Registration No','Vehicle No']),
+            truck_status: row.truck_status || 'Registered',
+            owner_name: row.owner_name || registerFieldValue(row.rc_document, ['Owner Name']),
+            chassis_no: row.chassis_no || registerFieldValue(row.rc_document, ['Chassis Number','Chassis No']),
+            engine_no: row.engine_no || registerFieldValue(row.rc_document, ['Engine Number','Engine No']),
+            make: row.make || registerFieldValue(row.rc_document, ["Maker's Name",'Make','Manufacturer']),
+            model: row.model || registerFieldValue(row.rc_document, ["Maker's Model Name",'Model']),
             insurance_provider: row.insurance_provider || registerFieldValue(row.insurance_document, ['Insurance Provider']),
             policy_no: row.policy_no || registerFieldValue(row.insurance_document, ['Policy Number']),
             ins_expiry_date: row.ins_expiry_date || registerFieldValue(row.insurance_document, ['Insurance Expiry']),
