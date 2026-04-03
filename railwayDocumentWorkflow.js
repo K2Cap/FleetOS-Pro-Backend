@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { PDFDocument } = require('pdf-lib');
+const ExcelJS = require('exceljs');
 const { flattenOcrPayload, normalizeTruckOcrPayload } = require('./ocr-normalizers');
 
 function cleanString(value) {
@@ -235,6 +236,72 @@ async function ensureDocumentTables(db) {
 
   await db.query(`CREATE INDEX IF NOT EXISTS idx_documents_entity ON documents (entity_type, entity_id, document_type)`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_document_pages_document ON document_pages (document_id, page_number)`);
+  await db.query(`CREATE TABLE IF NOT EXISTS document_field_values (
+      id SERIAL PRIMARY KEY,
+      owner_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      entity_type TEXT NOT NULL CHECK (entity_type IN ('truck', 'driver')),
+      entity_id INTEGER,
+      document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+      document_type TEXT NOT NULL,
+      field_name TEXT NOT NULL,
+      field_value TEXT,
+      source_engine TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )`);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_document_field_values_document ON document_field_values (document_id, field_name)`);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_document_field_values_entity ON document_field_values (entity_type, entity_id, document_type)`);
+}
+
+function formatFieldLabel(key) {
+  const cleaned = String(key || '')
+    .replace(/_/g, ' ')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .trim();
+  if (!cleaned) return null;
+  return cleaned
+    .split(/\s+/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function buildFieldRowsFromPayload(payload, documentType, sourceEngine) {
+  const rows = [];
+  const skipKeys = new Set(['raw', 'pages', 'documentType']);
+  for (const [key, value] of Object.entries(payload || {})) {
+    if (skipKeys.has(key)) continue;
+    if (value === undefined || value === null || value === '') continue;
+    const fieldName = formatFieldLabel(key);
+    if (!fieldName) continue;
+    rows.push({
+      fieldName,
+      fieldValue: String(value),
+      sourceEngine: sourceEngine || null,
+      documentType,
+    });
+  }
+  return rows;
+}
+
+async function replaceDocumentFieldRows(client, payload) {
+  await client.query('DELETE FROM document_field_values WHERE document_id = $1', [payload.documentId]);
+  if (!payload.rows.length) return;
+  for (const row of payload.rows) {
+    await client.query(
+      `INSERT INTO document_field_values
+       (owner_user_id, entity_type, entity_id, document_id, document_type, field_name, field_value, source_engine)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        payload.ownerUserId || null,
+        payload.entityType,
+        payload.entityId || null,
+        payload.documentId,
+        payload.documentType,
+        row.fieldName,
+        row.fieldValue,
+        row.sourceEngine || null,
+      ]
+    );
+  }
 }
 
 async function createDocumentRecord(client, payload) {
@@ -492,6 +559,27 @@ function registerDocumentWorkflow({
       [entityType, entityId]
     );
 
+    const docIds = docsRes.rows.map((row) => row.id).filter(Boolean);
+    const fieldRowsByDocument = new Map();
+    if (docIds.length) {
+      const fieldRes = await pool.query(
+        `SELECT document_id, field_name, field_value, source_engine, created_at
+         FROM document_field_values
+         WHERE document_id = ANY($1::int[])
+         ORDER BY document_id ASC, field_name ASC`,
+        [docIds]
+      );
+      for (const row of fieldRes.rows) {
+        if (!fieldRowsByDocument.has(row.document_id)) fieldRowsByDocument.set(row.document_id, []);
+        fieldRowsByDocument.get(row.document_id).push({
+          fieldName: row.field_name,
+          fieldValue: row.field_value,
+          sourceEngine: row.source_engine,
+          createdAt: row.created_at,
+        });
+      }
+    }
+
     const documents = [];
     const byId = new Map();
     for (const row of docsRes.rows) {
@@ -505,6 +593,7 @@ function registerDocumentWorkflow({
           extractedData: row.extracted_data || null,
           mergedFile: row.storage_key ? `/uploads/${row.storage_key}` : null,
           storedPages: [],
+          fieldRows: fieldRowsByDocument.get(row.id) || [],
         };
         byId.set(row.id, doc);
         documents.push(doc);
@@ -522,6 +611,37 @@ function registerDocumentWorkflow({
       }
     }
     return documents;
+  }
+
+  async function generateOcrWorkbook() {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('OCR Fields');
+    sheet.columns = [
+      { header: 'Owner User ID', key: 'owner_user_id', width: 14 },
+      { header: 'Entity Type', key: 'entity_type', width: 12 },
+      { header: 'Entity ID', key: 'entity_id', width: 10 },
+      { header: 'Document ID', key: 'document_id', width: 12 },
+      { header: 'Document Type', key: 'document_type', width: 18 },
+      { header: 'Display Name', key: 'display_name', width: 24 },
+      { header: 'Document Status', key: 'status', width: 16 },
+      { header: 'Field', key: 'field_name', width: 24 },
+      { header: 'Extracted Details', key: 'field_value', width: 40 },
+      { header: 'OCR Engine', key: 'source_engine', width: 16 },
+      { header: 'Created At', key: 'created_at', width: 24 },
+    ];
+
+    const result = await pool.query(
+      `SELECT d.owner_user_id, d.entity_type, d.entity_id, d.id AS document_id, d.document_type, d.display_name, d.status,
+              f.field_name, f.field_value, f.source_engine, f.created_at
+       FROM document_field_values f
+       JOIN documents d ON d.id = f.document_id
+       ORDER BY f.created_at DESC, d.id DESC, f.field_name ASC`
+    );
+
+    result.rows.forEach((row) => sheet.addRow(row));
+    sheet.getRow(1).font = { bold: true };
+    sheet.views = [{ state: 'frozen', ySplit: 1 }];
+    return workbook;
   }
 
   app.post('/api/fleet/documents/batch', authenticateTransporter, upload.array('documents', 12), async (req, res) => {
@@ -785,6 +905,11 @@ function registerDocumentWorkflow({
       const mergedPayload = mergeTruckPayloads(document.document_type, ocrResults.map((item) => item.payload));
       const mergedStoredPath = document.storage_key ? `/uploads/${document.storage_key}` : null;
       const truckId = await upsertTruckFromDocument(client, mergedPayload, document.document_type, mergedStoredPath, req.body.regNo);
+      const fieldRows = buildFieldRowsFromPayload(
+        mergedPayload,
+        document.document_type,
+        ocrResults.map((item) => item.engine).filter(Boolean).join(', ')
+      );
 
       await client.query(
         `UPDATE documents
@@ -792,6 +917,15 @@ function registerDocumentWorkflow({
          WHERE id = $3`,
         [truckId, mergedPayload, documentId]
       );
+
+      await replaceDocumentFieldRows(client, {
+        ownerUserId: document.owner_user_id,
+        entityType: 'truck',
+        entityId: truckId,
+        documentId,
+        documentType: document.document_type,
+        rows: fieldRows,
+      });
 
       await client.query(
         `INSERT INTO ocr_scans (doc_type, reg_no, owner_name, raw_data, status, error_msg)
@@ -822,6 +956,7 @@ function registerDocumentWorkflow({
            WHERE document_id = $1 AND ocr_status != 'completed'`,
           [documentId]
         );
+        await client.query('DELETE FROM document_field_values WHERE document_id = $1', [documentId]);
         await client.query(
           `INSERT INTO ocr_scans (doc_type, reg_no, owner_name, raw_data, status, error_msg)
            VALUES ($1, $2, $3, NULL, 'FAILED', $4)`,
@@ -887,6 +1022,11 @@ function registerDocumentWorkflow({
       const mergedPayload = mergeDriverPayloads(document.document_type, ocrResults.map((item) => item.payload));
       const mergedStoredPath = document.storage_key ? `/uploads/${document.storage_key}` : null;
       const driverId = await upsertDriverFromDocument(client, mergedPayload, document.document_type, mergedStoredPath, req.body.fullName);
+      const fieldRows = buildFieldRowsFromPayload(
+        mergedPayload,
+        document.document_type,
+        ocrResults.map((item) => item.engine).filter(Boolean).join(', ')
+      );
 
       await client.query(
         `UPDATE documents
@@ -894,6 +1034,15 @@ function registerDocumentWorkflow({
          WHERE id = $3`,
         [driverId, mergedPayload, documentId]
       );
+
+      await replaceDocumentFieldRows(client, {
+        ownerUserId: document.owner_user_id,
+        entityType: 'driver',
+        entityId: driverId,
+        documentId,
+        documentType: document.document_type,
+        rows: fieldRows,
+      });
 
       await client.query(
         `INSERT INTO ocr_scans (doc_type, reg_no, owner_name, raw_data, status, error_msg)
@@ -924,6 +1073,7 @@ function registerDocumentWorkflow({
            WHERE document_id = $1 AND ocr_status != 'completed'`,
           [documentId]
         );
+        await client.query('DELETE FROM document_field_values WHERE document_id = $1', [documentId]);
         await client.query(
           `INSERT INTO ocr_scans (doc_type, reg_no, owner_name, raw_data, status, error_msg)
            VALUES ($1, NULL, $2, NULL, 'FAILED', $3)`,
@@ -976,6 +1126,18 @@ function registerDocumentWorkflow({
     if (!driver) return res.status(404).json({ error: 'Driver not found' });
     const documents = await getDocumentsForEntity('driver', driver.id);
     res.json({ driver, documents });
+  });
+
+  app.get('/api/export/ocr-fields', authenticateTransporter, async (_req, res) => {
+    try {
+      const workbook = await generateOcrWorkbook();
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=OCR_Field_Register.xlsx');
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (err) {
+      res.status(500).json({ error: err.message || 'OCR export failed' });
+    }
   });
 }
 
