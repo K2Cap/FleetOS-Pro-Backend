@@ -706,7 +706,8 @@ async function initializeDatabase() {
             doc_puc_path TEXT,
             doc_permit_path TEXT,
             doc_roadtax_path TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
 
         await pool.query(`CREATE TABLE IF NOT EXISTS drivers (
@@ -861,6 +862,7 @@ async function initializeDatabase() {
             `ALTER TABLE trucks ADD COLUMN IF NOT EXISTS doc_permit_path TEXT`,
             `ALTER TABLE trucks ADD COLUMN IF NOT EXISTS doc_roadtax_path TEXT`,
             `ALTER TABLE trucks ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
+            `ALTER TABLE trucks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS dob TEXT`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS blood_group TEXT`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS emergency_phone TEXT`,
@@ -2842,3 +2844,4 @@ process.on('SIGTERM', () => {
         process.exit(0);
     }
 });
+
