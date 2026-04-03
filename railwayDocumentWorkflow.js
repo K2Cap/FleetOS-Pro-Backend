@@ -445,7 +445,6 @@ async function replaceDocumentFieldRows(client, payload) {
   for (const row of payload.rows) {
     await client.query(
       `INSERT INTO document_field_values
-       (owner_user_id, entity_type, entity_id, document_id, document_type, field_name, field_value, source_engine)
        (owner_user_id, entity_type, entity_id, document_id, document_type, display_order, field_name, field_value, source_engine)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
