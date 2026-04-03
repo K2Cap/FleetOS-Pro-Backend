@@ -1105,6 +1105,10 @@ function registerDocumentWorkflow({
       });
     } catch (err) {
       const classified = classifyOcrError(err);
+      console.error(`[SCAN][truck][document:${documentId}] ${classified.code}: ${classified.message}`);
+      if (err?.stack) {
+        console.error(err.stack);
+      }
       try {
         await client.query('ROLLBACK');
         await client.query(
@@ -1222,6 +1226,10 @@ function registerDocumentWorkflow({
       });
     } catch (err) {
       const classified = classifyOcrError(err);
+      console.error(`[SCAN][driver][document:${documentId}] ${classified.code}: ${classified.message}`);
+      if (err?.stack) {
+        console.error(err.stack);
+      }
       try {
         await client.query('ROLLBACK');
         await client.query(
