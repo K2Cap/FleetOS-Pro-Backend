@@ -701,19 +701,34 @@ function classifyOcrError(err) {
   };
 }
 
-async function upsertTruckFromDocument(client, mergedPayload, documentType, mergedStoredPath, regNoHint = null, ownerUserId = null) {
+async function upsertTruckFromDocument(client, mergedPayload, documentType, mergedStoredPath, regNoHint = null, ownerUserId = null, existingTruckIdHint = null) {
   const rawRegNo = firstNonEmpty(mergedPayload.regNo, regNoHint);
   const regNo = normalizeTruckRegNo(rawRegNo);
   if (!regNo) throw new Error('Truck registration number could not be resolved from OCR');
 
-  const existing = await client.query(
-    `SELECT *
-       FROM trucks
-      WHERE UPPER(REGEXP_REPLACE(COALESCE(reg_no, ''), '[^A-Z0-9]', '', 'g')) = $1
-      LIMIT 1`,
-    [regNo]
-  );
-  const row = existing.rows[0];
+  let row = null;
+  const hintedTruckId = toNumberOrNull(existingTruckIdHint);
+  if (hintedTruckId) {
+    const hinted = await client.query(
+      `SELECT *
+         FROM trucks
+        WHERE id = $1
+        LIMIT 1`,
+      [hintedTruckId]
+    );
+    row = hinted.rows[0] || null;
+  }
+
+  if (!row) {
+    const existing = await client.query(
+      `SELECT *
+         FROM trucks
+        WHERE UPPER(REGEXP_REPLACE(COALESCE(reg_no, ''), '[^A-Z0-9]', '', 'g')) = $1
+        LIMIT 1`,
+      [regNo]
+    );
+    row = existing.rows[0] || null;
+  }
 
   const patch = {
     owner_user_id: ownerUserId,
@@ -1228,7 +1243,15 @@ function registerDocumentWorkflow({
 
       const mergedPayload = mergeTruckPayloads(document.document_type, ocrResults.map((item) => item.payload));
       const mergedStoredPath = document.storage_key ? `/uploads/${document.storage_key}` : null;
-  const truckId = await upsertTruckFromDocument(client, mergedPayload, document.document_type, mergedStoredPath, req.body.regNo, document.owner_user_id);
+      const truckId = await upsertTruckFromDocument(
+        client,
+        mergedPayload,
+        document.document_type,
+        mergedStoredPath,
+        req.body.regNo,
+        document.owner_user_id,
+        req.body.truckId
+      );
       const sourceEngine = ocrResults.map((item) => item.engine).filter(Boolean).join(', ');
       const fieldRows = buildFieldRowsFromPayload(mergedPayload, document.document_type, sourceEngine);
 
