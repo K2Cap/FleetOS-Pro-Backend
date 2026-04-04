@@ -781,6 +781,7 @@ async function initializeDatabase() {
             id SERIAL PRIMARY KEY,
             full_name TEXT NOT NULL,
             transporter_id INTEGER,
+            owner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
             owner_user_name TEXT,
             dob TEXT,
             blood_group TEXT,
@@ -976,6 +977,7 @@ async function initializeDatabase() {
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS location_alert TEXT`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS is_onboarded INTEGER DEFAULT 0`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS transporter_id INTEGER`,
+            `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS owner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS owner_user_name TEXT`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS account_status TEXT DEFAULT 'Active'`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`,
@@ -1043,6 +1045,13 @@ async function initializeDatabase() {
         for (const statement of migrations) {
             await pool.query(statement);
         }
+
+        await pool.query(`
+            UPDATE drivers
+            SET owner_user_id = transporter_id
+            WHERE owner_user_id IS NULL
+              AND transporter_id IS NOT NULL
+        `);
 
         await ensureDocumentTables(pool);
         
