@@ -1105,6 +1105,23 @@ function registerDocumentWorkflow({
     return documents;
   }
 
+  function keepLatestDocumentPerType(documents) {
+    if (!Array.isArray(documents) || !documents.length) return [];
+    const latestByType = new Map();
+    for (const doc of documents) {
+      const typeKey = String(doc?.documentType || doc?.document_type || '').toLowerCase();
+      const currentId = Number(doc?.documentId || doc?.id || 0);
+      const existing = latestByType.get(typeKey);
+      const existingId = Number(existing?.documentId || existing?.id || 0);
+      if (!existing || currentId > existingId) latestByType.set(typeKey, doc);
+    }
+    return [...latestByType.values()].sort((a, b) => {
+      const aId = Number(a?.documentId || a?.id || 0);
+      const bId = Number(b?.documentId || b?.id || 0);
+      return bId - aId;
+    });
+  }
+
   async function generateOcrWorkbook() {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('OCR Fields');
@@ -1874,7 +1891,7 @@ function registerDocumentWorkflow({
     );
     const driver = driverRes.rows[0];
     if (!driver) return res.status(404).json({ error: 'Driver not found' });
-    const documents = await getDocumentsForEntity('driver', driver.id);
+    const documents = keepLatestDocumentPerType(await getDocumentsForEntity('driver', driver.id));
     res.json({ driver, documents });
   });
 
@@ -1896,6 +1913,14 @@ function registerDocumentWorkflow({
     if (!document) return res.status(404).json({ error: 'Driver document not found' });
 
     const pdfDownloadName = sanitizeStorageToken(document.display_name || document.document_type || `driver-document-${documentId}`) || `driver-document-${documentId}`;
+
+    if (document.storage_key) {
+      const storedPdf = path.join(UPLOADS_DIR, document.storage_key);
+      if (fs.existsSync(storedPdf)) {
+        return res.download(storedPdf, `${pdfDownloadName}.pdf`);
+      }
+    }
+
     const pageRes = await pool.query(
       `SELECT page_number, page_label, original_name, stored_name, stored_path, mime_type
        FROM document_pages
@@ -1918,21 +1943,18 @@ function registerDocumentWorkflow({
         .filter(Boolean);
 
       if (mergeSourcePages.length) {
-        const mergedFileName = `${pdfDownloadName}_${documentId}_download.pdf`;
-        const pdfAbsolutePath = path.join(UPLOADS_DIR, mergedFileName);
-        await createMergedPdfFromPages(mergeSourcePages, pdfAbsolutePath);
-        return res.download(pdfAbsolutePath, `${pdfDownloadName}.pdf`);
+        try {
+          const mergedFileName = `${pdfDownloadName}_${documentId}_download.pdf`;
+          const pdfAbsolutePath = path.join(UPLOADS_DIR, mergedFileName);
+          await createMergedPdfFromPages(mergeSourcePages, pdfAbsolutePath);
+          return res.download(pdfAbsolutePath, `${pdfDownloadName}.pdf`);
+        } catch (error) {
+          console.error(`[DOWNLOAD][driver][document:${documentId}] rebuild failed: ${error?.message || error}`);
+        }
       }
     }
 
-    if (document.storage_key) {
-      const storedPdf = path.join(UPLOADS_DIR, document.storage_key);
-      if (fs.existsSync(storedPdf)) {
-        return res.download(storedPdf, `${pdfDownloadName}.pdf`);
-      }
-    }
-
-    return res.status(404).json({ error: 'Stored page files could not be found for this document' });
+    return res.status(404).json({ error: 'Stored PDF or page files could not be found for this document' });
   });
 
   app.get('/api/drivers/document-register', authenticateTransporter, async (req, res) => {
