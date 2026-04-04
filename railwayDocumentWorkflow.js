@@ -725,12 +725,8 @@ function classifyOcrError(err) {
 }
 
 async function upsertTruckFromDocument(client, mergedPayload, documentType, mergedStoredPath, regNoHint = null, ownerUserId = null, existingTruckIdHint = null) {
-  const rawRegNo = firstNonEmpty(mergedPayload.regNo, regNoHint);
-  const regNo = normalizeTruckRegNo(rawRegNo);
-  if (!regNo) throw new Error('Truck registration number could not be resolved from OCR');
-
-  let row = null;
   const hintedTruckId = toNumberOrNull(existingTruckIdHint);
+  let row = null;
   if (hintedTruckId) {
     const hinted = await client.query(
       `SELECT *
@@ -741,6 +737,14 @@ async function upsertTruckFromDocument(client, mergedPayload, documentType, merg
     );
     row = hinted.rows[0] || null;
   }
+
+  const hintedRegNo = normalizeTruckRegNo(regNoHint);
+  const existingTruckRegNo = normalizeTruckRegNo(row?.reg_no);
+  const rawRegNo = documentType === 'rc'
+    ? firstNonEmpty(mergedPayload.regNo, regNoHint, row?.reg_no)
+    : firstNonEmpty(existingTruckRegNo, hintedRegNo, row?.reg_no, mergedPayload.regNo);
+  const regNo = normalizeTruckRegNo(rawRegNo);
+  if (!regNo) throw new Error('Truck registration number could not be resolved from OCR');
 
   if (!row) {
     const existing = await client.query(
@@ -1310,6 +1314,13 @@ function registerDocumentWorkflow({
         document.owner_user_id,
         req.body.truckId
       );
+      const truckRegRes = await client.query('SELECT reg_no FROM trucks WHERE id = $1 LIMIT 1', [truckId]);
+      const resolvedTruckRegNo = normalizeTruckRegNo(
+        truckRegRes.rows[0]?.reg_no ||
+        (document.document_type === 'rc' ? mergedPayload.regNo : null) ||
+        req.body.regNo ||
+        null
+      ) || null;
       const sourceEngine = ocrResults.map((item) => item.engine).filter(Boolean).join(', ');
       const fieldRows = buildFieldRowsFromPayload(mergedPayload, document.document_type, sourceEngine);
 
@@ -1331,7 +1342,7 @@ function registerDocumentWorkflow({
       await upsertTruckDocumentRegister(client, {
         truckId,
         ownerUserId: document.owner_user_id,
-        regNo: mergedPayload.regNo || req.body.regNo || null,
+        regNo: resolvedTruckRegNo,
         documentType: document.document_type,
         snapshot: buildRegisterDocumentSnapshot(document, mergedPayload, fieldRows, mergedStoredPath, sourceEngine),
       });
@@ -1339,7 +1350,7 @@ function registerDocumentWorkflow({
       await client.query(
         `INSERT INTO ocr_scans (doc_type, reg_no, owner_name, raw_data, status, error_msg)
          VALUES ($1, $2, $3, $4, 'SUCCESS', NULL)`,
-        [document.document_type, mergedPayload.regNo, mergedPayload.ownerName, mergedPayload]
+        [document.document_type, resolvedTruckRegNo, mergedPayload.ownerName, mergedPayload]
       );
 
       await client.query('COMMIT');
