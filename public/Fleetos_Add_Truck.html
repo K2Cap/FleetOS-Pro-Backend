@@ -131,16 +131,28 @@ body{font-family:var(--ff);color:var(--ink);}
 .btn-p{background:var(--s);color:#fff;box-shadow:0 3px 14px rgba(232,103,26,.35);}
 .btn-p:active{transform:scale(.98);}
 /* success */
-.success{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 22px;text-align:center;overflow-y:auto;background:var(--bg);}
-.s-ring{width:76px;height:76px;border-radius:50%;background:var(--glt2);border:3px solid var(--g);display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:16px;position:relative;}
-.s-badge{position:absolute;bottom:-4px;right:-4px;width:26px;height:26px;border-radius:50%;background:var(--s);display:flex;align-items:center;justify-content:center;font-size:12px;border:2px solid var(--bg);color:#fff;font-weight:800;}
-.s-title{font-family:'Fraunces',serif;font-weight:900;font-size:22px;color:var(--ink);letter-spacing:-.5px;margin-bottom:5px;}
-.s-reg{font-family:var(--fm);font-size:13px;color:#fff;background:var(--ink);padding:5px 14px;border-radius:8px;margin-bottom:22px;display:inline-block;}
-.s-card{background:var(--wh);border:1.5px solid var(--bd);border-radius:var(--r-lg);padding:18px;width:100%;max-width:320px;margin-bottom:18px;box-shadow:0 4px 20px rgba(26,24,20,.08);text-align:left;}
-.s-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--bg2);font-size:12.5px;}
+.success{flex:1;display:flex;flex-direction:column;overflow-y:auto;background:var(--bg);padding:0 0 calc(20px + env(safe-area-inset-bottom,0px));}
+.success-body{flex:1;display:flex;flex-direction:column;align-items:center;padding:30px 20px 24px;overflow-y:auto;text-align:center;}
+.success-cluster{position:relative;width:100px;height:100px;margin-bottom:20px;}
+.success-ring{position:absolute;border-radius:50%;border:2px solid var(--g);}
+.success-ring.outer{inset:0;opacity:.12;}
+.success-ring.inner{inset:10px;opacity:.22;}
+.success-circle{position:absolute;inset:18px;background:var(--g);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:30px;}
+.success-badge{position:absolute;bottom:2px;right:2px;width:26px;height:26px;background:var(--s);border-radius:50%;border:2.5px solid var(--bg);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:800;}
+.s-title{font-family:'Fraunces',serif;font-size:26px;font-weight:800;color:var(--ink);margin-bottom:4px;letter-spacing:-.4px;}
+.s-caption{font-size:13px;color:var(--mu);margin-bottom:16px;}
+.s-reg{font-family:var(--fm);font-size:14px;color:#fff;background:var(--ink);padding:8px 22px;border-radius:9px;letter-spacing:.08em;margin-bottom:22px;display:inline-block;}
+.s-card{background:var(--wh);border:1.5px solid var(--bd);border-radius:18px;width:100%;max-width:340px;margin-bottom:16px;box-shadow:0 4px 20px rgba(26,24,20,.08);overflow:hidden;text-align:left;}
+.s-row{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid var(--bg2);font-size:12.5px;gap:14px;}
 .s-row:last-child{border-bottom:none;}
 .s-lbl{color:var(--mu);font-weight:600;}
-.s-val{color:var(--ink);font-weight:700;}
+.s-val{color:var(--ink);font-weight:700;text-align:right;max-width:58%;}
+.s-val.stack{font-size:11.5px;line-height:1.4;}
+.s-val.dash{color:var(--mu2);font-weight:500;}
+.s-val.ok{color:var(--g);display:flex;align-items:center;gap:5px;font-weight:700;}
+.s-primary,.s-secondary{width:100%;max-width:340px;border-radius:14px;font-family:var(--ff);cursor:pointer;}
+.s-primary{background:var(--g);color:#fff;border:none;padding:15px;font-size:15px;font-weight:700;margin-bottom:10px;box-shadow:0 16px 28px rgba(36,91,65,.16);}
+.s-secondary{background:transparent;color:var(--g);border:1.5px solid var(--g);padding:14px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:7px;}
 </style>
 </head>
 <body>
@@ -211,7 +223,7 @@ body{font-family:var(--ff);color:var(--ink);}
       <div class="doc-card" id="dc-tax">
         <div class="doc-card-icon">🧾</div>
         <div class="doc-card-name">Purchase Invoice</div>
-        <div class="doc-card-meta" id="dm-tax">Single page supported</div>
+        <div class="doc-card-meta" id="dm-tax">Supports multiple pages</div>
         <div class="doc-card-stat" id="ds-tax">Not scanned yet</div>
         <button class="upload-btn" id="ub-tax" onclick="scanDoc('tax')">Upload</button>
       </div>
@@ -236,16 +248,24 @@ body{font-family:var(--ff);color:var(--ink);}
         <div><label class="lbl">Model</label><div class="finput"><input type="text" placeholder="e.g. Prima 4928" id="model"></div></div>
       </div>
       <div class="r2">
+        <div><label class="lbl">Date of Regn.</label><input class="fdate" type="date" id="reg-date"></div>
+        <div><label class="lbl">Regn. Validity</label><input class="fdate" type="date" id="reg-validity"></div>
+      </div>
+      <div class="r2">
         <div><label class="lbl">Purchase Date</label><input class="fdate" type="date" id="purchase-date"></div>
-        <div><label class="lbl">Purchase Price (₹)</label><div class="finput"><span class="pfx">₹</span><input type="text" inputmode="numeric" placeholder="0" id="purchase-price" oninput="this.value=this.value.replace(/\D/g,'')"></div></div>
+        <div><label class="lbl">Purchase Price (₹)</label><div class="finput"><span class="pfx">₹</span><input type="text" inputmode="numeric" placeholder="0" id="purchase-price" oninput="formatIndianIntegerInput(this)"></div></div>
       </div>
       <div class="r2">
         <div><label class="lbl">Axle Configuration</label><select class="fsel" id="axle"><option value="">Select…</option><option>2-Axle (4×2)</option><option>3-Axle (6×2)</option><option>4-Axle (8×2)</option><option>Multi-Axle</option></select></div>
-        <div><label class="lbl">No. of Tyres</label><div class="finput"><input type="text" inputmode="numeric" placeholder="e.g. 10" id="tyres" oninput="this.value=this.value.replace(/\D/g,'')"></div></div>
+        <div><label class="lbl">Body Type</label><div class="finput"><input type="text" placeholder="e.g. 34FT 3 AXLE SIDE WALL TRAILER" id="body-type"></div></div>
       </div>
       <div class="r2">
-        <div><label class="lbl">Load Capacity (T)</label><div class="finput"><input type="text" inputmode="numeric" placeholder="e.g. 32" id="capacity"></div></div>
+        <div><label class="lbl">Load Capacity (Kgs)</label><div class="finput"><input type="text" inputmode="numeric" placeholder="e.g. 54,000" id="capacity" oninput="formatIndianIntegerInput(this)"></div></div>
+        <div><label class="lbl">No. of Tyres</label><div class="finput"><input type="text" inputmode="numeric" placeholder="e.g. 10" id="tyres" oninput="formatIndianIntegerInput(this)"></div></div>
+      </div>
+      <div class="r2">
         <div><label class="lbl">Fuel Type</label><select class="fsel" id="fuel"><option value="">Select…</option><option>Diesel</option><option>CNG</option><option>Electric</option><option>LNG</option></select></div>
+        <div></div>
       </div>
       <div style="height:16px"></div>
     </div>
@@ -283,18 +303,26 @@ body{font-family:var(--ff);color:var(--ink);}
 
   <!-- SUCCESS -->
   <div id="view-success" class="success" style="display:none">
-    <div class="s-ring">🚛<div class="s-badge">✓</div></div>
-    <div class="s-title">Truck Added!</div>
-    <div class="s-reg" id="s-reg">MH 04 DB 0075</div>
-    <div class="s-card">
-      <div class="s-row"><span class="s-lbl">Make / Model</span><span class="s-val" id="s-make">—</span></div>
-      <div class="s-row"><span class="s-lbl">Status</span><span class="s-val" id="s-status">—</span></div>
-      <div class="s-row"><span class="s-lbl">Fuel Type</span><span class="s-val" id="s-fuel">—</span></div>
-      <div class="s-row"><span class="s-lbl">Load Capacity</span><span class="s-val" id="s-cap">—</span></div>
-      <div class="s-row"><span class="s-lbl">Documents</span><span class="s-val" id="s-docs">0 / 6 scanned</span></div>
+    <div class="success-body">
+      <div class="success-cluster">
+        <div class="success-ring outer"></div>
+        <div class="success-ring inner"></div>
+        <div class="success-circle">🚛</div>
+        <div class="success-badge">✓</div>
+      </div>
+      <div class="s-title">Truck Added!</div>
+      <div class="s-caption">Successfully registered to your fleet</div>
+      <div class="s-reg" id="s-reg">MH 04 DB 0075</div>
+      <div class="s-card">
+        <div class="s-row"><span class="s-lbl">Make / Model</span><span class="s-val stack" id="s-make">—</span></div>
+        <div class="s-row"><span class="s-lbl">Status</span><span class="s-val dash" id="s-status">—</span></div>
+        <div class="s-row"><span class="s-lbl">Fuel Type</span><span class="s-val" id="s-fuel">—</span></div>
+        <div class="s-row"><span class="s-lbl">Load Capacity</span><span class="s-val dash" id="s-cap">—</span></div>
+        <div class="s-row"><span class="s-lbl">Documents</span><span class="s-val ok" id="s-docs">✓ 0 / 6 scanned</span></div>
+      </div>
+      <button class="s-primary" onclick="window.location.href='/Fleet_List_FINAL.html'">Go to Fleet Register</button>
+      <button class="s-secondary" onclick="location.reload()">✚ Add Another Truck</button>
     </div>
-    <button onclick="window.location.href='/Fleet_List_FINAL.html'" style="width:100%;max-width:320px;padding:14px;border-radius:13px;border:none;background:var(--g);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;box-shadow:0 4px 20px rgba(26,92,58,.35);font-family:var(--ff)">Go to Fleet Register</button>
-    <button onclick="location.reload()" style="width:100%;max-width:320px;padding:12px;border-radius:13px;border:1.5px solid var(--bd);background:var(--wh);color:var(--ink2);font-size:13.5px;font-weight:700;cursor:pointer;font-family:var(--ff)">✚ Add Another Truck</button>
   </div>
 
   <!-- FOOTER -->
@@ -360,6 +388,7 @@ let pendingTruckMultiPageDocKey=null;
 let truckCameraStream=null;
 let truckCameraDocKey=null;
 let truckCameraCapturedFiles=[];
+let truckNextNavLockUntil=0;
 const truckDocUploads={
   rc:{front:null,back:null,frontFile:null,backFile:null,serverDocumentId:null,uploadSignature:'',mergedFile:null,storedPages:[]},
   ins:{files:[],selectedFiles:[],serverDocumentId:null,uploadSignature:'',mergedFile:null,storedPages:[]},
@@ -384,6 +413,10 @@ const truckDocUploadOptions={
   fit:[
     {label:'Add Multiple Pages',description:'Select all fitness certificate pages together',mode:'multi-pages',multiple:true},
     {label:'Add Single Page',description:'Upload one fitness page now',mode:'single',multiple:false}
+  ],
+  tax:[
+    {label:'Add Multiple Pages',description:'Select all purchase invoice pages in one go',mode:'multi-pages',multiple:true},
+    {label:'Add Single Page',description:'Upload one purchase invoice page now',mode:'single',multiple:false}
   ]
 };
 
@@ -717,7 +750,7 @@ function openTruckUploadSheet(docKey){
   const options=truckDocUploadOptions[docKey];
   if(!options || !options.length) return false;
   const optionsHost=document.getElementById('truck-sheet-options');
-  document.getElementById('truck-sheet-title').textContent=`Upload ${docKey==='rc'?'RC Copy':docKey==='ins'?'Insurance Certificate':'Fitness Certificate'}`;
+  document.getElementById('truck-sheet-title').textContent=`Upload ${getTruckDocDisplayName(docKey)}`;
   document.getElementById('truck-sheet-sub').textContent=docKey==='rc'
     ?'Choose whether you are uploading the front side or back side.'
     :'You can add one page or select multiple pages together.';
@@ -774,7 +807,7 @@ function openRcUploadSheetForMissingSide(){
     }
   }
 
-const truckBackendDocTypeMap={rc:'rc',ins:'insurance',fit:'fitness',puc:'puc',permit:'permit',tax:'roadtax'};
+const truckBackendDocTypeMap={rc:'rc',ins:'insurance',fit:'fitness',puc:'puc',permit:'permit',tax:'purchase_invoice'};
 
 function getTruckBucket(key){
   return truckDocUploads[key] || null;
@@ -888,14 +921,6 @@ function getCurrentTruckRegNo(){
     if(regInput && !regInput.value.trim()) regInput.value=fromRc;
     return fromRc;
   }
-  for(const payload of Object.values(latestTruckOcrByDoc)){
-    const normalized=extractTruckRegFromPayload(payload || {});
-    if(normalized){
-      const regInput=document.getElementById('reg-no');
-      if(regInput && !regInput.value.trim()) regInput.value=normalized;
-      return normalized;
-    }
-  }
   return '';
 }
 
@@ -915,26 +940,33 @@ async function scanStoredTruckDocument(key,documentId,regNo){
   if(truckScanInFlight[inFlightKey]) return truckScanInFlight[inFlightKey];
   truckScanInFlight[inFlightKey]=(async()=>{
     const token=getFleetAuthToken();
-    const response=await fetch(`${getFleetApiBase()}/api/fleet/documents/${documentId}/scan`,{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        Authorization:`Bearer ${token}`
-      },
-      body:JSON.stringify({
-        regNo,
-        truckId: truckRecordId || null
-      })
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok){
+    const maxAttempts=['fit','permit','tax'].includes(key) ? 3 : 2;
+    for(let attempt=1; attempt<=maxAttempts; attempt+=1){
+      const response=await fetch(`${getFleetApiBase()}/api/fleet/documents/${documentId}/scan`,{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          Authorization:`Bearer ${token}`
+        },
+        body:JSON.stringify({
+          regNo,
+          truckId: truckRecordId || null
+        })
+      });
+      const data=await response.json().catch(()=>({}));
+      if(response.ok){
+        if(data.extracted) applyTruckOcrData(data.extracted);
+        if(data.truckId) truckRecordId=data.truckId;
+        return data;
+      }
+      if(attempt < maxAttempts){
+        await new Promise(resolve=>setTimeout(resolve,attempt===1 ? 700 : 1300));
+        continue;
+      }
       const err=new Error(data.error || 'Document was uploaded, but scan finalization failed.');
       err.code=data.code || '';
       throw err;
     }
-    if(data.extracted) applyTruckOcrData(data.extracted);
-    if(data.truckId) truckRecordId=data.truckId;
-    return data;
   })();
   try{
     return await truckScanInFlight[inFlightKey];
@@ -1031,6 +1063,23 @@ function getTruckFormValue(id){
   return String(document.getElementById(id)?.value || '').trim();
 }
 
+function getTruckNumericValue(id){
+  return getTruckFormValue(id).replace(/,/g,'');
+}
+
+function formatIndianIntegerString(value){
+  const digits=normalizeDigits(value);
+  if(!digits) return '';
+  const parsed=Number(digits);
+  return Number.isFinite(parsed) ? parsed.toLocaleString('en-IN') : digits;
+}
+
+function formatIndianIntegerInput(input){
+  if(!input) return;
+  const formatted=formatIndianIntegerString(input.value);
+  input.value=formatted;
+}
+
 function appendTruckFormData(formData,name,value){
   if(value===undefined || value===null) return;
   const next=String(value).trim();
@@ -1046,11 +1095,14 @@ function buildTruckSubmitFormData(){
   appendTruckFormData(formData,'engine',getTruckFormValue('eng-no'));
   appendTruckFormData(formData,'make',getTruckFormValue('make'));
   appendTruckFormData(formData,'model',getTruckFormValue('model'));
+  appendTruckFormData(formData,'registrationDate',getTruckFormValue('reg-date'));
+  appendTruckFormData(formData,'registrationValidity',getTruckFormValue('reg-validity'));
+  appendTruckFormData(formData,'bodyType',getTruckFormValue('body-type'));
   appendTruckFormData(formData,'purchaseDate',getTruckFormValue('purchase-date'));
-  appendTruckFormData(formData,'price',getTruckFormValue('purchase-price'));
+  appendTruckFormData(formData,'price',getTruckNumericValue('purchase-price'));
   appendTruckFormData(formData,'axle',getTruckFormValue('axle'));
-  appendTruckFormData(formData,'tyres',getTruckFormValue('tyres'));
-  appendTruckFormData(formData,'gvw',getTruckFormValue('capacity'));
+  appendTruckFormData(formData,'tyres',getTruckNumericValue('tyres'));
+  appendTruckFormData(formData,'gvw',getTruckNumericValue('capacity'));
   appendTruckFormData(formData,'fuel',getTruckFormValue('fuel'));
   appendTruckFormData(formData,'status',getTruckFormValue('status'));
   appendTruckFormData(formData,'insurer',getTruckFormValue('ins-prov'));
@@ -1063,7 +1115,7 @@ function buildTruckSubmitFormData(){
   appendTruckFormData(formData,'pucExpiry',getTruckFormValue('puc-exp'));
   appendTruckFormData(formData,'permitNo',getTruckFormValue('permit-no'));
   appendTruckFormData(formData,'permitExpiry',getTruckFormValue('permit-exp'));
-  appendTruckFormData(formData,'taxAmount',getTruckFormValue('tax-amt'));
+  appendTruckFormData(formData,'taxAmount',getTruckNumericValue('tax-amt'));
   appendTruckFormData(formData,'taxExpiry',getTruckFormValue('tax-val'));
   return formData;
 }
@@ -1222,20 +1274,35 @@ function setFieldValue(id,value,transform){
   return true;
 }
 
-function applyTruckOcrData(data){
+function applyTruckOcrData(data, options={}){
   const payload=data||{};
-  setFieldValue('reg-no',chooseFirstValue(payload,['regNo','Reg No','Registration Number','Registration No','Vehicle Number','Vehicle No']),normalizeRegNo);
+  const sourceType=String(options.sourceType || payload.documentType || '').toLowerCase();
+  const allowRegOverride=sourceType==='rc' || sourceType==='registration certificate' || sourceType==='indian union vehicle registration certificate';
+  const allowPurchaseFields=sourceType==='purchase_invoice' || sourceType==='purchase invoice';
+  if(allowRegOverride || !document.getElementById('reg-no')?.value.trim()){
+    setFieldValue('reg-no',chooseFirstValue(payload,['regNo','Reg No','Registration Number','Registration No','Vehicle Number','Vehicle No']),normalizeRegNo);
+  }
   setFieldValue('vin',chooseFirstValue(payload,['chassisNo','Chassis Number','Chassis No','VIN','VIN / Chassis No']),sanitizeChassisNo);
   setFieldValue('eng-no',chooseFirstValue(payload,['engineNo','Engine No','Engine Number','Motor No','Motor Number']),sanitizeEngineNo);
-  setFieldValue('make',chooseFirstValue(payload,['make','Make',"Maker's Name",'Manufacturer','Brand']),sanitizeMake);
-  setFieldValue('model',chooseFirstValue(payload,['model','Model',"Maker's Model Name",'Variant']),sanitizeModel);
-  setFieldValue('purchase-date',chooseFirstValue(payload,['purchaseDate','Purchase Date','Invoice Date']),normalizeDateInput);
-  setFieldValue('purchase-price',chooseFirstValue(payload,['purchasePrice','Purchase Price','Invoice Value','Ex Showroom Price','Sale Amount']),normalizeDigits);
-  setFieldValue('capacity',chooseFirstValue(payload,['capacity','GCW','Gross Combination Weight','GVW']),normalizeDigits);
+  setFieldValue('make',chooseFirstValue(payload,['make','Make','Maker',"Maker's Name",'Manufacturer','Brand','Vehicle Make']),sanitizeMake);
+  setFieldValue('model',chooseFirstValue(payload,['model','Model',"Maker's Model Name",'Variant','Vehicle Model','Maker Model Name']),sanitizeModel);
+  setFieldValue('reg-date',chooseFirstValue(payload,['registrationDate','Registration Date','Date of Registration','Date of Regn']),normalizeDateInput);
+  setFieldValue('reg-validity',chooseFirstValue(payload,['registrationValidity','Regn. Validity','Regn Validity','Registration Validity','Registration Valid Upto']),normalizeDateInput);
+  setFieldValue('body-type',chooseFirstValue(payload,['bodyType','Body Type','Type of Body']),sanitizeModel);
+  if(allowPurchaseFields || !document.getElementById('purchase-date')?.value.trim()){
+    setFieldValue('purchase-date',chooseFirstValue(payload,['purchaseDate','Purchase Date','Invoice Date','Sale Date']),normalizeDateInput);
+  }
+  if(allowPurchaseFields || !document.getElementById('purchase-price')?.value.trim()){
+    setFieldValue('purchase-price',chooseFirstValue(payload,['purchasePrice','Purchase Price','Invoice Value','Ex Showroom Price','Sale Amount','Invoice Amount']),formatIndianIntegerString);
+  }
+  setFieldValue('capacity',chooseFirstValue(payload,['capacity','Gross Combination Weight','GCW','GVW']),formatIndianIntegerString);
   setFieldValue('fuel',chooseFirstValue(payload,['fuelType','Fuel Type','Fuel']),normalizeFuelType);
-  setFieldValue('ins-prov',chooseFirstValue(payload,['insuranceProvider','Insurance Provider','Insurer','Insurance Company']),sanitizePersonOrgName);
-  setFieldValue('ins-pol',chooseFirstValue(payload,['policyNo','Policy No','Policy Number']),sanitizePolicyNo);
-  setFieldValue('ins-exp',chooseFirstValue(payload,['insuranceExpiry','Insurance Expiry','Expiry Date','Policy Expiry']),normalizeDateInput);
+  const insuranceProviderValue=chooseFirstValue(payload,['insuranceProvider','Insurance Provider','Insurer','Insurance Company','Company Name']);
+  const policyNumberValue=chooseFirstValue(payload,['policyNo','Policy No','Policy Number','Policy No.']);
+  const insuranceExpiryValue=chooseFirstValue(payload,['insuranceExpiry','Insurance Expiry','Expiry Date','Policy Expiry']);
+  setFieldValue('ins-prov',insuranceProviderValue,sanitizePersonOrgName);
+  setFieldValue('ins-pol',policyNumberValue,sanitizePolicyNo);
+  setFieldValue('ins-exp',insuranceExpiryValue,normalizeDateInput);
   setFieldValue('ins-cov',chooseFirstValue(payload,['coverageType','Coverage Type','Insurance Type']),normalizeCoverageType);
   setFieldValue('fit-no',chooseFirstValue(payload,['fitnessCertNo','Fitness Cert No.','Fitness Cert No','Fitness Certificate No']),sanitizeDocNumber);
   setFieldValue('fit-exp',chooseFirstValue(payload,['fitnessExpiry','Fitness Expiry','Certificate expiry','Certificate will expire on']),normalizeDateInput);
@@ -1243,6 +1310,7 @@ function applyTruckOcrData(data){
   setFieldValue('puc-exp',chooseFirstValue(payload,['pucExpiry','PUC Expiry','Validity Upto']),normalizeDateInput);
   setFieldValue('permit-no',chooseFirstValue(payload,['permitNo','Permit No','Route Permit No','Permit Number']),sanitizeDocNumber);
   setFieldValue('permit-exp',chooseFirstValue(payload,['permitExpiry','Permit Expiry','Validity Upto']),normalizeDateInput);
+  setFieldValue('tax-amt',chooseFirstValue(payload,['roadTaxAmount','Tax Amount','Road Tax Amount','Invoice Value','Purchase Price']),formatIndianIntegerString);
   setFieldValue('tax-val',chooseFirstValue(payload,['roadTaxExpiry','Road Tax Expiry','Road Tax Validity','Tax Validity Until']),normalizeDateInput);
 }
 
@@ -1266,9 +1334,12 @@ function applyTruckBackendData(truck){
   setFieldValue('eng-no',truck.engine_no || truck.engineNo,sanitizeEngineNo);
   setFieldValue('make',truck.make,sanitizeMake);
   setFieldValue('model',truck.model,sanitizeModel);
+  setFieldValue('reg-date',truck.registration_date || truck.registrationDate,normalizeDateInput);
+  setFieldValue('reg-validity',truck.registration_validity || truck.registrationValidity,normalizeDateInput);
+  setFieldValue('body-type',truck.body_type || truck.bodyType,sanitizeModel);
   setFieldValue('purchase-date',truck.purchase_date || truck.purchaseDate,normalizeDateInput);
-  setFieldValue('purchase-price',truck.purchase_price || truck.purchasePrice,normalizeDigits);
-  setFieldValue('capacity',truck.gvw || truck.payload || truck.load_capacity || truck.loadCapacity,normalizeDigits);
+  setFieldValue('purchase-price',truck.purchase_price || truck.purchasePrice,formatIndianIntegerString);
+  setFieldValue('capacity',truck.gvw || truck.payload || truck.load_capacity || truck.loadCapacity,formatIndianIntegerString);
   setFieldValue('fuel',truck.fuel_type || truck.fuelType,normalizeFuelType);
   setFieldValue('status',truck.status);
   setFieldValue('ins-prov',truck.insurance_provider || truck.insurer,sanitizePersonOrgName);
@@ -1281,19 +1352,26 @@ function applyTruckBackendData(truck){
   setFieldValue('puc-exp',truck.puc_expiry_date || truck.pucExpiry,normalizeDateInput);
   setFieldValue('permit-no',truck.permit_no || truck.permitNo,sanitizeDocNumber);
   setFieldValue('permit-exp',truck.permit_expiry_date || truck.permitExpiry,normalizeDateInput);
-  setFieldValue('tax-amt',truck.road_tax_amount || truck.taxAmount,normalizeDigits);
+  setFieldValue('tax-amt',truck.road_tax_amount || truck.taxAmount,formatIndianIntegerString);
   setFieldValue('tax-val',truck.road_tax_expiry_date || truck.taxExpiry,normalizeDateInput);
 }
 
 function applyTruckDocumentPayloads(documents){
   if(!Array.isArray(documents)) return;
-  for(const doc of documents){
-    if(doc?.extractedData) applyTruckOcrData(doc.extractedData);
+  const priority={rc:1,purchase_invoice:2,insurance:3,fitness:4,puc:5,permit:6};
+  const sorted=[...documents].sort((a,b)=>{
+    const left=priority[String(a?.documentType||'').toLowerCase()] || 99;
+    const right=priority[String(b?.documentType||'').toLowerCase()] || 99;
+    return left-right;
+  });
+  for(const doc of sorted){
+    const sourceType=String(doc?.documentType || '').toLowerCase();
+    if(doc?.extractedData) applyTruckOcrData(doc.extractedData,{ sourceType });
     const fieldPayload=buildTruckPayloadFromFieldRows(doc?.fieldRows);
-    if(fieldPayload) applyTruckOcrData(fieldPayload);
+    if(fieldPayload) applyTruckOcrData(fieldPayload,{ sourceType });
     if(Array.isArray(doc?.fields) && doc.fields.length){
       const registerPayload=buildTruckPayloadFromFieldRows(doc.fields);
-      if(registerPayload) applyTruckOcrData(registerPayload);
+      if(registerPayload) applyTruckOcrData(registerPayload,{ sourceType });
     }
   }
 }
@@ -1487,7 +1565,7 @@ async function runTruckOcr(k,file,options={}){
 
 function scanDoc(k){
   activeTruckDocKey=k;
-  if(k==='rc' || k==='ins' || k==='fit'){
+  if(k==='rc' || k==='ins' || k==='fit' || k==='tax'){
     pendingRcFollowup=false;
     if(k==='rc' && !(truckDocUploads.rc.frontFile && truckDocUploads.rc.backFile)){
       openRcUploadSheetForMissingSide();
@@ -1589,6 +1667,9 @@ document.getElementById('ocr-file-input').addEventListener('change', handleTruck
 window.addEventListener('beforeunload', stopTruckCameraCapture);
 
 async function goNext(){
+  const now=Date.now();
+  if(now < truckNextNavLockUntil) return;
+  truckNextNavLockUntil=now+500;
   if(mode==='scan' && isTruckScanViewVisible()){
     await hydrateTruckFormFromBackend();
     setTab('basic');
@@ -1677,12 +1758,12 @@ async function submitTruck(){
     const mk=document.getElementById('make').value||'—';
     const md=document.getElementById('model').value;
     document.getElementById('s-reg').textContent=reg;
-    document.getElementById('s-make').textContent=mk+(md?' / '+md:'');
+    document.getElementById('s-make').innerHTML=md ? `${mk}<br>${md}` : mk;
     document.getElementById('s-status').textContent=document.getElementById('status').value||'—';
     document.getElementById('s-fuel').textContent=document.getElementById('fuel').value||'—';
     const cap=document.getElementById('capacity').value;
-    document.getElementById('s-cap').textContent=cap?cap+' T':'—';
-    document.getElementById('s-docs').textContent=cnt()+' / 6 scanned';
+    document.getElementById('s-cap').textContent=cap?cap+' Kgs':'—';
+    document.getElementById('s-docs').innerHTML='✓ '+cnt()+' / 6 scanned';
     document.getElementById('tab-bar').style.display='none';
     showView('view-success');
     document.getElementById('footer').style.display='none';
