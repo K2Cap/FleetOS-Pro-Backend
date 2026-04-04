@@ -664,6 +664,8 @@ async function initializeDatabase() {
         await pool.query(`CREATE TABLE IF NOT EXISTS trucks (
             id SERIAL PRIMARY KEY,
             reg_no TEXT UNIQUE NOT NULL,
+            owner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            owner_user_name TEXT,
             chassis_no TEXT,
             engine_no TEXT,
             truck_type TEXT,
@@ -706,6 +708,8 @@ async function initializeDatabase() {
             doc_puc_path TEXT,
             doc_permit_path TEXT,
             doc_roadtax_path TEXT,
+            account_status TEXT DEFAULT 'Active',
+            deleted_at TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
@@ -713,6 +717,8 @@ async function initializeDatabase() {
         await pool.query(`CREATE TABLE IF NOT EXISTS drivers (
             id SERIAL PRIMARY KEY,
             full_name TEXT NOT NULL,
+            transporter_id INTEGER,
+            owner_user_name TEXT,
             dob TEXT,
             blood_group TEXT,
             phone TEXT UNIQUE NOT NULL,
@@ -750,7 +756,8 @@ async function initializeDatabase() {
             location_enabled INTEGER DEFAULT 1,
             location_alert TEXT,
             is_onboarded INTEGER DEFAULT 0,
-            transporter_id INTEGER,
+            account_status TEXT DEFAULT 'Active',
+            deleted_at TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
 
@@ -819,6 +826,7 @@ async function initializeDatabase() {
 
         const migrations = [
             `ALTER TABLE trucks ADD COLUMN IF NOT EXISTS owner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`,
+            `ALTER TABLE trucks ADD COLUMN IF NOT EXISTS owner_user_name TEXT`,
             `ALTER TABLE trucks ADD COLUMN IF NOT EXISTS chassis_no TEXT`,
             `ALTER TABLE trucks ADD COLUMN IF NOT EXISTS engine_no TEXT`,
             `ALTER TABLE trucks ADD COLUMN IF NOT EXISTS truck_type TEXT`,
@@ -861,6 +869,8 @@ async function initializeDatabase() {
             `ALTER TABLE trucks ADD COLUMN IF NOT EXISTS doc_puc_path TEXT`,
             `ALTER TABLE trucks ADD COLUMN IF NOT EXISTS doc_permit_path TEXT`,
             `ALTER TABLE trucks ADD COLUMN IF NOT EXISTS doc_roadtax_path TEXT`,
+            `ALTER TABLE trucks ADD COLUMN IF NOT EXISTS account_status TEXT DEFAULT 'Active'`,
+            `ALTER TABLE trucks ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`,
             `ALTER TABLE trucks ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
             `ALTER TABLE trucks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS dob TEXT`,
@@ -900,6 +910,9 @@ async function initializeDatabase() {
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS location_alert TEXT`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS is_onboarded INTEGER DEFAULT 0`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS transporter_id INTEGER`,
+            `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS owner_user_name TEXT`,
+            `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS account_status TEXT DEFAULT 'Active'`,
+            `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
             `ALTER TABLE trips ADD COLUMN IF NOT EXISTS inv_id TEXT`,
             `ALTER TABLE trips ADD COLUMN IF NOT EXISTS truck_text TEXT`,
@@ -1593,6 +1606,7 @@ function buildFleetTruckPayload(req, existing = {}) {
     const files = req.files || {};
     return {
         owner_user_id: existing.owner_user_id || req.user?.id || null,
+        owner_user_name: cleanString(existing.owner_user_name) || cleanString(req.user?.name) || cleanString(req.user?.full_name) || cleanString(d.ownerUserName),
         reg_no: cleanString(d.regNo) || cleanString(existing.reg_no),
         chassis_no: cleanString(d.chassis) || cleanString(existing.chassis_no),
         engine_no: cleanString(d.engine) || cleanString(existing.engine_no),
@@ -1606,6 +1620,7 @@ function buildFleetTruckPayload(req, existing = {}) {
         axle_config: cleanString(d.axle) || cleanString(existing.axle_config),
         tyres_count: toNumberOrNull(d.tyres) ?? toNumberOrNull(existing.tyres_count) ?? 0,
         status: cleanString(d.status) || cleanString(existing.status) || 'Active',
+        account_status: cleanString(existing.account_status) || 'Active',
         driver_assigned: cleanString(d.driver) || cleanString(existing.driver_assigned),
         odometer: toNumberOrNull(d.odometer) ?? toNumberOrNull(existing.odometer) ?? 0,
         purchase_date: cleanString(d.purchaseDate) || cleanString(existing.purchase_date),
@@ -1631,6 +1646,7 @@ function buildFleetTruckPayload(req, existing = {}) {
         doc_puc_path: getFleetUploadPath(files, 'file_puc', existing.doc_puc_path || null),
         doc_permit_path: getFleetUploadPath(files, 'file_permit', existing.doc_permit_path || null),
         doc_roadtax_path: getFleetUploadPath(files, 'file_roadtax', existing.doc_roadtax_path || null),
+        deleted_at: cleanString(existing.deleted_at) || null,
     };
 }
 
@@ -1713,7 +1729,8 @@ app.get('/api/fleet', async (req, res) => {
         const result = await pool.query(
             `SELECT *
              FROM trucks
-             WHERE owner_user_id = $1 OR owner_user_id IS NULL
+             WHERE (owner_user_id = $1 OR owner_user_id IS NULL)
+               AND COALESCE(account_status, 'Active') = 'Active'
              ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC`,
             [req.user?.id || null]
         );
@@ -1732,6 +1749,7 @@ app.get('/api/fleet/:id', async (req, res) => {
              FROM trucks
              WHERE id = $1
                AND (owner_user_id = $2 OR owner_user_id IS NULL)
+               AND COALESCE(account_status, 'Active') = 'Active'
              LIMIT 1`,
             [id, req.user?.id || null]
         );
@@ -1790,11 +1808,17 @@ app.put('/api/fleet/:id', upload.fields([{ name: 'file_rc' }, { name: 'file_insu
 
 app.delete('/api/fleet/:id', async (req, res) => {
     try {
-        // Absolute Deletion: Purge from registry and AI audit trails
-        const truck = await new Promise((resolve, reject) => {
-            db.get('SELECT reg_no FROM trucks WHERE id = ?', [req.params.id], (err, row) => err ? reject(err) : resolve(row));
-        });
-
+        const truckId = toNumberOrNull(req.params.id);
+        if (!truckId) return res.status(400).json({ error: 'Valid truck id is required' });
+        const truckRes = await pool.query(
+            `SELECT id, reg_no
+             FROM trucks
+             WHERE id = $1
+               AND (owner_user_id = $2 OR owner_user_id IS NULL)
+             LIMIT 1`,
+            [truckId, req.user?.id || null]
+        );
+        const truck = truckRes.rows[0];
         if (!truck) {
             return res.status(404).json({ error: 'Truck not found' });
         }
@@ -1818,28 +1842,69 @@ app.delete('/api/fleet/:id', async (req, res) => {
             });
         }
 
-        if (truck && truck.reg_no) {
-            await new Promise((resolve, reject) => {
-                db.run('DELETE FROM ocr_scans WHERE reg_no = ?', [truck.reg_no], (err) => err ? reject(err) : resolve());
-            });
-        }
+        await pool.query(
+            `UPDATE trucks
+             SET account_status = 'Inactive',
+                 deleted_at = NOW(),
+                 updated_at = NOW()
+             WHERE id = $1`,
+            [truckId]
+        );
 
-        await new Promise((resolve, reject) => {
-            db.run('DELETE FROM trucks WHERE id = ?', [req.params.id], (err) => err ? reject(err) : resolve());
-        });
-
-        res.json({ message: 'Deleted entirely from records' });
+        res.json({ message: 'Truck removed from user account', account_status: 'Inactive' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
 // --- DRIVERS API ---
-app.get('/api/drivers', (req, res) => {
-    db.all('SELECT * FROM drivers ORDER BY created_at DESC', (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows.map((row) => sanitizeDriverRow(row, { includeTransporterOtp: true })));
+let driverAccountColumnsReady = false;
+
+function sqliteRun(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        db.run(sql, params, function(err) {
+            if (err) return reject(err);
+            resolve(this);
+        });
     });
+}
+
+async function ensureDriverAccountColumns() {
+    if (driverAccountColumnsReady) return;
+    const statements = [
+        `ALTER TABLE drivers ADD COLUMN owner_user_name TEXT`,
+        `ALTER TABLE drivers ADD COLUMN account_status TEXT DEFAULT 'Active'`,
+        `ALTER TABLE drivers ADD COLUMN deleted_at TEXT`,
+        `ALTER TABLE drivers ADD COLUMN transporter_id INTEGER`
+    ];
+    for (const sql of statements) {
+        try {
+            await sqliteRun(sql);
+        } catch (err) {
+            const message = String(err?.message || '');
+            if (!/duplicate column name/i.test(message)) throw err;
+        }
+    }
+    driverAccountColumnsReady = true;
+}
+
+app.get('/api/drivers', (req, res) => {
+    ensureDriverAccountColumns()
+        .then(() => {
+            db.all(
+                `SELECT *
+                 FROM drivers
+                 WHERE COALESCE(account_status, 'Active') = 'Active'
+                   AND (transporter_id = ? OR transporter_id IS NULL)
+                 ORDER BY created_at DESC`,
+                [req.user?.id || null],
+                (err, rows) => {
+                    if (err) return res.status(500).json({ error: err.message });
+                    res.json(rows.map((row) => sanitizeDriverRow(row, { includeTransporterOtp: true })));
+                }
+            );
+        })
+        .catch((err) => res.status(500).json({ error: err.message }));
 });
 
 app.post('/api/drivers', upload.fields([{ name: 'file_dl' }, { name: 'file_aadhar' }, { name: 'file_pan' }, { name: 'file_photo' }]), async (req, res) => {
@@ -1862,9 +1927,10 @@ app.post('/api/drivers', upload.fields([{ name: 'file_dl' }, { name: 'file_aadha
     }
 
     try {
+        await ensureDriverAccountColumns();
         const tempPass = await generateUniqueDriverOtp();
-        const cols = ['full_name', 'dob', 'blood_group', 'phone', 'emergency_phone', 'join_date', 'status', 'emp_type', 'assigned_truck', 'salary', 'pay_freq', 'address', 'city', 'state', 'pin', 'dl_no', 'dl_issue', 'dl_expiry', 'rto', 'dl_state', 'license_type', 'vehicle_category', 'hazmat', 'experience', 'aadhar', 'pan', 'doc_dl_path', 'doc_aadhar_path', 'doc_pan_path', 'doc_photo_path', 'temp_password', 'is_onboarded'];
-        const p = [d.fullName, d.dob, d.bloodGroup, phone, normalizePhone(d.emergencyPhone), d.joinDate, d.status || 'Active', d.empType || 'Full-time', d.assignedTruck, d.salary || 0, d.payFreq, d.address, d.city, d.state, d.pin, dlNo, d.dlIssue, d.dlExpiry, d.rto, d.dlState, d.licenseType, d.vehicleCategory, d.hazmat, d.experience || 0, d.aadhar, pan.toUpperCase(), getPath('file_dl'), getPath('file_aadhar'), getPath('file_pan'), getPath('file_photo'), tempPass, 0];
+        const cols = ['full_name', 'dob', 'blood_group', 'phone', 'emergency_phone', 'join_date', 'status', 'emp_type', 'assigned_truck', 'salary', 'pay_freq', 'address', 'city', 'state', 'pin', 'dl_no', 'dl_issue', 'dl_expiry', 'rto', 'dl_state', 'license_type', 'vehicle_category', 'hazmat', 'experience', 'aadhar', 'pan', 'doc_dl_path', 'doc_aadhar_path', 'doc_pan_path', 'doc_photo_path', 'temp_password', 'is_onboarded', 'transporter_id', 'owner_user_name', 'account_status', 'deleted_at'];
+        const p = [d.fullName, d.dob, d.bloodGroup, phone, normalizePhone(d.emergencyPhone), d.joinDate, d.status || 'Active', d.empType || 'Full-time', d.assignedTruck, d.salary || 0, d.payFreq, d.address, d.city, d.state, d.pin, dlNo, d.dlIssue, d.dlExpiry, d.rto, d.dlState, d.licenseType, d.vehicleCategory, d.hazmat, d.experience || 0, d.aadhar, pan.toUpperCase(), getPath('file_dl'), getPath('file_aadhar'), getPath('file_pan'), getPath('file_photo'), tempPass, 0, req.user?.id || null, req.user?.name || req.user?.full_name || null, 'Active', null];
 
         db.run(`INSERT INTO drivers (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`, p, function(err) {
             if (err) {
@@ -2053,15 +2119,20 @@ app.put('/api/drivers/:id', (req, res) => {
     if (cleanString(d.emergencyPhone) && emergencyPhone.length !== 10) {
         return res.status(400).json({ error: 'Emergency phone must be a valid 10-digit number' });
     }
-    const sql = `UPDATE drivers SET full_name=?, dob=?, blood_group=?, phone=?, emergency_phone=?, join_date=?, status=?, emp_type=?, assigned_truck=?, salary=?, pay_freq=?, address=?, city=?, state=?, pin=?, dl_no=?, dl_issue=?, dl_expiry=?, rto=?, dl_state=?, license_type=?, vehicle_category=?, hazmat=?, experience=?, aadhar=?, pan=? WHERE id=?`;
-    const p = [d.fullName, d.dob, d.bloodGroup, phone, emergencyPhone, d.joinDate, d.status, d.empType, d.assignedTruck, d.salary, d.payFreq, d.address, d.city, d.state, d.pin, d.dlNo, d.dlIssue, d.dlExpiry, d.rto, d.dlState, d.licenseType, d.vehicleCategory, d.hazmat, d.experience, d.aadhar, d.pan, req.params.id];
-    db.run(sql, p, (err) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: 'Updated' });
-    });
+    ensureDriverAccountColumns()
+        .then(() => {
+            const sql = `UPDATE drivers SET full_name=?, dob=?, blood_group=?, phone=?, emergency_phone=?, join_date=?, status=?, emp_type=?, assigned_truck=?, salary=?, pay_freq=?, address=?, city=?, state=?, pin=?, dl_no=?, dl_issue=?, dl_expiry=?, rto=?, dl_state=?, license_type=?, vehicle_category=?, hazmat=?, experience=?, aadhar=?, pan=?, owner_user_name=COALESCE(owner_user_name, ?), account_status=COALESCE(account_status, 'Active') WHERE id=?`;
+            const p = [d.fullName, d.dob, d.bloodGroup, phone, emergencyPhone, d.joinDate, d.status, d.empType, d.assignedTruck, d.salary, d.payFreq, d.address, d.city, d.state, d.pin, d.dlNo, d.dlIssue, d.dlExpiry, d.rto, d.dlState, d.licenseType, d.vehicleCategory, d.hazmat, d.experience, d.aadhar, d.pan, req.user?.name || req.user?.full_name || null, req.params.id];
+            db.run(sql, p, (err) => {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ message: 'Updated' });
+            });
+        })
+        .catch((err) => res.status(500).json({ error: err.message }));
 });
 
 app.delete('/api/drivers/:id', (req, res) => {
+    ensureDriverAccountColumns().then(() => {
     db.get('SELECT id, full_name FROM drivers WHERE id = ?', [req.params.id], async (err, driver) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!driver) return res.status(404).json({ error: 'Driver not found' });
@@ -2087,14 +2158,19 @@ app.delete('/api/drivers/:id', (req, res) => {
                 });
             }
 
-            db.run('DELETE FROM drivers WHERE id = ?', [req.params.id], (deleteErr) => {
+            db.run(`UPDATE drivers
+                    SET account_status = 'Inactive',
+                        deleted_at = ?,
+                        owner_user_name = COALESCE(owner_user_name, ?)
+                    WHERE id = ?`, [new Date().toISOString(), req.user?.name || req.user?.full_name || null, req.params.id], (deleteErr) => {
                 if (deleteErr) return res.status(500).json({ error: deleteErr.message });
-                res.json({ message: 'Deleted' });
+                res.json({ message: 'Driver removed from user account', account_status: 'Inactive' });
             });
         } catch (tripErr) {
             return res.status(500).json({ error: tripErr.message });
         }
     });
+    }).catch((err) => res.status(500).json({ error: err.message }));
 });
 
 // --- DASHBOARD STATS API ---
