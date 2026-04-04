@@ -501,6 +501,7 @@ let uploadedDocs = {};      // which docs uploaded in manual mode
 let activeScanDoc = null;   // currently scanning doc key
 let pendingDriverFileKey = null;
 let driverRecordId = null;
+let driverDraftName = '';
 const latestDriverOcrByDoc = {};
 const driverScanInFlight = {};
 const driverDocUploads = {
@@ -580,8 +581,8 @@ function updateFooterManual() {
 /* ─── NEXT / BACK ───────────────────────────── */
 function goNext() {
   if (mode === 'scan') {
-    // Move to manual entry pre-filled
     setMode('manual');
+    hydrateDriverFormFromBackend();
     return;
   }
   const idx = tabOrder.indexOf(currentTab);
@@ -627,14 +628,14 @@ const docMeta = {
   avatar: { icon:'🤳', scanLabel:'Capture', scanDesc:'Take a photo using camera',      camSub:'Position face clearly in the centre of frame' },
 };
 
-function completeAvatar(fileName) {
+function completeAvatar() {
   const circle = document.getElementById('avatar-circle');
   circle.textContent = '🧑';
   circle.classList.add('filled');
   const btn = circle.nextElementSibling?.querySelector('.avatar-btn');
   if(btn) btn.textContent = '✓ Photo Added';
   const sub = document.querySelector('.avatar-sub');
-  if(sub) sub.textContent = fileName ? `${fileName} added` : '✓ Photo added';
+  if(sub) sub.textContent = '1 photo uploaded';
   const actionBtn = document.querySelector('.avatar-btn');
   if(actionBtn) {
     actionBtn.textContent = 'Change Photo';
@@ -686,6 +687,11 @@ function getDriverBucket(key) {
   return driverDocUploads[key] || null;
 }
 
+function getOrCreateDriverDraftName() {
+  if(!driverDraftName) driverDraftName = `PENDING_DRIVER_${Date.now()}`;
+  return driverDraftName;
+}
+
 function buildDriverFileSignature(file) {
   if(!file) return '';
   return [file.name, file.size, file.lastModified, file.type].join('|');
@@ -728,7 +734,7 @@ function getCurrentDriverName() {
       return resolved;
     }
   }
-  return '';
+  return getOrCreateDriverDraftName();
 }
 
 function getDriverDocumentPageLabels(key) {
@@ -801,17 +807,85 @@ function setDriverFieldValue(id, value, transform) {
 
 function applyDriverOcrData(payload) {
   const data = payload || {};
-  setDriverFieldValue('full-name', data['Full Name'] || data.fullName || data['Name'] || data.name || data['Driver Name']);
-  setDriverFieldValue('dob', data['DOB'] || data.dob, normalizeDateInput);
-  setDriverFieldValue('mobile', data['Phone'] || data.phone || data['Mobile'], digitsOnly);
-  setDriverFieldValue('address', data['Address']);
-  setDriverFieldValue('city', data['City']);
-  setDriverFieldValue('pin', data['PIN Code'], digitsOnly);
-  setDriverFieldValue('dl-number', data['DL Number'] || data['DL No'] || data.dlNo, formatDlNumber);
-  setDriverFieldValue('dl-expiry', data['DL Expiry'] || data.dlExpiry || data.expiry, normalizeDateInput);
-  setDriverFieldValue('lic-type', data['Document Type'] === 'Driving License' ? 'HMV' : normalizeLicenseType(data['License Type'] || data['Vehicle Class']));
-  setDriverFieldValue('aadhaar', data['Aadhaar Number'] || data['Aadhaar'] || data['Aadhar'] || data.aadhar, formatAadhaar);
-  setDriverFieldValue('pan', data['PAN Number'] || data['PAN'] || data.pan, formatPan);
+  setDriverFieldValue('full-name', data['Full Name'] || data.fullName || data['Name'] || data.name || data['Driver Name'] || data['Card Holder Name']);
+  setDriverFieldValue('dob', data['DOB'] || data.dob || data['Date of Birth'] || data['Birth Date'], normalizeDateInput);
+  setDriverFieldValue('mobile', data['Phone'] || data.phone || data['Mobile'] || data['Contact Number'], digitsOnly);
+  setDriverFieldValue('address', data['Address'] || data.address);
+  setDriverFieldValue('city', data['City'] || data.city);
+  setDriverFieldValue('pin', data['PIN Code'] || data.pin, digitsOnly);
+  setDriverFieldValue('dl-number', data['DL Number'] || data['DL No'] || data.dlNo || data['License Number'], formatDlNumber);
+  setDriverFieldValue('dl-expiry', data['DL Expiry'] || data.dlExpiry || data.expiry || data['Expiry Date'] || data['Valid Till'], normalizeDateInput);
+  setDriverFieldValue('lic-type', data['Document Type'] === 'Driving License' ? 'HMV' : normalizeLicenseType(data['License Type'] || data['Vehicle Class'] || data['Class of Vehicle']));
+  setDriverFieldValue('aadhaar', data['Aadhaar Number'] || data['Aadhaar'] || data['Aadhar'] || data.aadhar || data.aadhaar, formatAadhaar);
+  setDriverFieldValue('pan', data['PAN Number'] || data['PAN'] || data.pan || data.panNumber, formatPan);
+}
+
+function buildDriverPayloadFromFieldRows(fieldRows) {
+  if(!Array.isArray(fieldRows) || !fieldRows.length) return null;
+  const payload = {};
+  for(const row of fieldRows) {
+    const key = String(row?.fieldName || row?.field || '').trim();
+    const value = row?.fieldValue ?? row?.value;
+    if(!key || value === null || value === undefined || !String(value).trim()) continue;
+    payload[key] = value;
+  }
+  return Object.keys(payload).length ? payload : null;
+}
+
+function applyDriverBackendData(driver) {
+  if(!driver) return;
+  if(driver.id) driverRecordId = driver.id;
+  setDriverFieldValue('full-name', driver.full_name || driver.fullName);
+  setDriverFieldValue('dob', driver.dob, normalizeDateInput);
+  setDriverFieldValue('mobile', driver.phone, digitsOnly);
+  setDriverFieldValue('emergency', driver.emergency_phone || driver.emergencyPhone, digitsOnly);
+  setDriverFieldValue('blood-group', driver.blood_group || driver.bloodGroup);
+  setDriverFieldValue('status', driver.status);
+  setDriverFieldValue('emp-type', driver.emp_type || driver.empType);
+  setDriverFieldValue('address', driver.address);
+  setDriverFieldValue('city', driver.city);
+  setDriverFieldValue('pin', driver.pin, digitsOnly);
+  setDriverFieldValue('dl-number', driver.dl_no || driver.dlNo, formatDlNumber);
+  setDriverFieldValue('dl-expiry', driver.dl_expiry || driver.dlExpiry, normalizeDateInput);
+  setDriverFieldValue('lic-type', driver.license_type || driver.licenseType, normalizeLicenseType);
+  setDriverFieldValue('aadhaar', driver.aadhar || driver.aadhaar, formatAadhaar);
+  setDriverFieldValue('pan', driver.pan, formatPan);
+}
+
+function applyDriverDocumentPayloads(documents) {
+  if(!Array.isArray(documents)) return;
+  const priority = { dl:1, aadhar:2, pan:3, photo:4 };
+  const sorted = [...documents].sort((a,b) => (priority[String(a?.documentType || '').toLowerCase()] || 99) - (priority[String(b?.documentType || '').toLowerCase()] || 99));
+  for(const doc of sorted) {
+    if(doc?.extractedData) applyDriverOcrData(doc.extractedData);
+    const fieldPayload = buildDriverPayloadFromFieldRows(doc?.fieldRows);
+    if(fieldPayload) applyDriverOcrData(fieldPayload);
+    if(Array.isArray(doc?.fields) && doc.fields.length) {
+      const registerPayload = buildDriverPayloadFromFieldRows(doc.fields);
+      if(registerPayload) applyDriverOcrData(registerPayload);
+    }
+  }
+}
+
+async function hydrateDriverFormFromBackend() {
+  const token = getFleetAuthToken();
+  const fullName = getCurrentDriverName();
+  if(!token || (!driverRecordId && !fullName)) return false;
+  try {
+    const endpoint = driverRecordId
+      ? `${getFleetApiBase()}/api/drivers/${encodeURIComponent(driverRecordId)}/documents`
+      : `${getFleetApiBase()}/api/drivers/prefill/${encodeURIComponent(fullName)}`;
+    const response = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+    if(!response.ok) return false;
+    const data = await response.json().catch(() => null);
+    if(!data) return false;
+    if(data.driver) applyDriverBackendData(data.driver);
+    if(data.documents) applyDriverDocumentPayloads(data.documents);
+    return true;
+  } catch (error) {
+    console.warn('Driver prefill sync failed:', error);
+    return false;
+  }
 }
 
 function updateDriverDocUi(key, state, meta = {}) {
@@ -875,7 +949,7 @@ async function scanStoredDriverDocument(key, documentId, fullName) {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify({ fullName })
+      body: JSON.stringify({ fullName, driverId: driverRecordId || null })
     });
     const data = await response.json().catch(() => ({}));
     if(!response.ok) {
@@ -915,8 +989,7 @@ async function persistDriverDocumentUpload(key, file, { scanAfterUpload = true }
   if(!token) throw new Error('Please log in again before saving documents.');
   if(!file) return null;
 
-  let fullName = getCurrentDriverName();
-  if(!fullName) fullName = `PENDING_DRIVER_${Date.now()}`;
+  const fullName = getCurrentDriverName();
 
   const bucket = getDriverBucket(key);
   const signature = buildDriverFileSignature(file);
@@ -934,6 +1007,7 @@ async function persistDriverDocumentUpload(key, file, { scanAfterUpload = true }
     formData.append('documentType', driverBackendDocTypeMap[key] || key);
     const ownerUserId = getFleetUserId();
     if(ownerUserId) formData.append('ownerUserId', ownerUserId);
+    if(driverRecordId) formData.append('driverId', String(driverRecordId));
     formData.append('pageLabels', JSON.stringify(getDriverDocumentPageLabels(key)));
     formData.append('documents', file, file.name);
 
@@ -1106,7 +1180,7 @@ function captureDoc() {
 
 async function processDriverFile(key, file) {
   if(key === 'avatar') {
-    completeAvatar(file.name);
+    completeAvatar();
     await processDriverFile('photo', file);
     return;
   }
@@ -1122,16 +1196,16 @@ async function processDriverFile(key, file) {
   try {
     if(key === 'photo') {
       await persistDriverDocumentUpload('photo', file, { scanAfterUpload: false });
-      completeAvatar(file.name);
-      updateDriverDocUi(key, 'done', { message: '✓ Photo saved to backend' });
+      completeAvatar();
+      updateDriverDocUi(key, 'done', { message: '1 photo saved to backend' });
       return;
     }
 
     const data = await persistDriverDocumentUpload(key, file, { scanAfterUpload: true });
     const extracted = latestDriverOcrByDoc[key] || data?.extracted || null;
     if(extracted) applyDriverOcrData(extracted);
-    if(!handleDriverDeferredScan(key, data, `✓ ${file.name} saved to backend. OCR retry later`)) {
-      updateDriverDocUi(key, 'done', { message: `✓ ${file.name} scanned & saved` });
+    if(!handleDriverDeferredScan(key, data, '1 page saved to backend. OCR retry later')) {
+      updateDriverDocUi(key, 'done', { message: '1 page scanned & saved' });
     }
   } catch (error) {
     console.error('Driver OCR failed:', error);
@@ -1286,6 +1360,7 @@ function resetForm() {
   document.querySelectorAll('input, textarea').forEach(el => { if(el.type !== 'date') el.value = ''; });
   scannedDocs = {}; uploadedDocs = {};
   driverRecordId = null;
+  driverDraftName = '';
   Object.keys(latestDriverOcrByDoc).forEach(key => delete latestDriverOcrByDoc[key]);
   Object.values(driverDocUploads).forEach((bucket) => {
     bucket.file = null;
