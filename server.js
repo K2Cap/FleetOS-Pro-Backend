@@ -1978,27 +1978,34 @@ async function ensureDriverAccountColumns() {
     driverAccountColumnsReady = true;
 }
 
-app.get('/api/drivers', authenticateTransporter, (req, res) => {
-    ensureDriverAccountColumns()
-        .then(() => {
-            db.all(
-                `SELECT *
-                 FROM drivers
-                 WHERE COALESCE(account_status, 'Active') = 'Active'
-                   AND (
-                     owner_user_id = ?
-                     OR transporter_id = ?
-                     OR (owner_user_id IS NULL AND transporter_id IS NULL)
-                   )
-                 ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC`,
-                [req.user?.id || null, req.user?.id || null],
-                (err, rows) => {
-                    if (err) return res.status(500).json({ error: err.message });
-                    res.json(rows.map((row) => sanitizeDriverRow(row, { includeTransporterOtp: true })));
-                }
-            );
-        })
-        .catch((err) => res.status(500).json({ error: err.message }));
+app.get('/api/drivers', authenticateTransporter, async (req, res) => {
+    try {
+        await ensureDriverAccountColumns();
+        const ownerId = req.user?.id || null;
+        const result = await pool.query(
+            `SELECT
+                d.*,
+                COALESCE(NULLIF(TRIM(d.full_name), ''), r.full_name) AS full_name,
+                r.dl_document,
+                r.aadhar_document,
+                r.pan_document,
+                r.photo_document
+             FROM drivers d
+             LEFT JOIN driver_document_registers r
+               ON r.driver_id = d.id
+             WHERE COALESCE(d.account_status, 'Active') = 'Active'
+               AND (
+                 d.owner_user_id = $1
+                 OR d.transporter_id = $1
+                 OR (d.owner_user_id IS NULL AND d.transporter_id IS NULL)
+               )
+             ORDER BY COALESCE(d.updated_at, d.created_at) DESC NULLS LAST, d.id DESC`,
+            [ownerId]
+        );
+        res.json(result.rows.map((row) => sanitizeDriverRow(row, { includeTransporterOtp: true })));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.post('/api/drivers', upload.fields([{ name: 'file_dl' }, { name: 'file_aadhar' }, { name: 'file_pan' }, { name: 'file_photo' }]), async (req, res) => {
