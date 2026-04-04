@@ -182,7 +182,7 @@ function normalizeDriverPayload(payload) {
 function mergeTruckPayloads(documentType, payloads) {
   const normalized = payloads.map(normalizeTruckPayload);
   return {
-    regNo: firstNonEmpty(...normalized.map((p) => p.regNo)),
+    regNo: documentType === 'rc' ? firstNonEmpty(...normalized.map((p) => p.regNo)) : null,
     ownerName: firstNonEmpty(...normalized.map((p) => p.ownerName)),
     chassisNo: firstNonEmpty(...normalized.map((p) => p.chassisNo)),
     engineNo: firstNonEmpty(...normalized.map((p) => p.engineNo)),
@@ -592,7 +592,7 @@ async function upsertTruckDocumentRegister(client, payload) {
   if (!column) return;
   const safeRegNo = payload.documentType === 'rc'
     ? (formatTruckRegNo(payload.regNo) || null)
-    : (isResolvableTruckRegNo(payload.regNo) ? formatTruckRegNo(payload.regNo) : null);
+    : null;
   await client.query(
     `INSERT INTO truck_document_registers (truck_id, owner_user_id, reg_no, ${column}, updated_at)
      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
@@ -773,7 +773,7 @@ async function upsertTruckFromDocument(client, mergedPayload, documentType, merg
   const existingTruckRegNo = isResolvableTruckRegNo(row?.reg_no) ? normalizeTruckRegNo(row?.reg_no) : null;
   const rawRegNo = documentType === 'rc'
     ? firstNonEmpty(mergedPayload.regNo, regNoHint, row?.reg_no)
-    : firstNonEmpty(existingTruckRegNo, hintedRegNo, row?.reg_no, isResolvableTruckRegNo(mergedPayload.regNo) ? mergedPayload.regNo : null);
+    : firstNonEmpty(existingTruckRegNo, row?.reg_no, hintedTruckId ? hintedRegNo : null);
   const regNo = isResolvableTruckRegNo(rawRegNo) ? formatTruckRegNo(rawRegNo) : null;
 
   if (!row && regNo) {
@@ -1679,27 +1679,17 @@ function registerDocumentWorkflow({
     const document = docRes.rows[0];
     if (!document) return res.status(404).json({ error: 'Truck document not found' });
 
-    let pdfAbsolutePath = null;
-    let pdfDownloadName = sanitizeStorageToken(document.display_name || document.document_type || `truck-document-${documentId}`) || `truck-document-${documentId}`;
+    const pdfDownloadName = sanitizeStorageToken(document.display_name || document.document_type || `truck-document-${documentId}`) || `truck-document-${documentId}`;
+    const pageRes = await pool.query(
+      `SELECT page_number, page_label, original_name, stored_name, stored_path, mime_type
+       FROM document_pages
+       WHERE document_id = $1
+       ORDER BY page_number ASC`,
+      [documentId]
+    );
+    const pages = pageRes.rows || [];
 
-    if (document.storage_key) {
-      const storedPdf = path.join(UPLOADS_DIR, document.storage_key);
-      if (fs.existsSync(storedPdf)) {
-        pdfAbsolutePath = storedPdf;
-      }
-    }
-
-    if (!pdfAbsolutePath) {
-      const pageRes = await pool.query(
-        `SELECT page_number, page_label, original_name, stored_name, stored_path, mime_type
-         FROM document_pages
-         WHERE document_id = $1
-         ORDER BY page_number ASC`,
-        [documentId]
-      );
-      const pages = pageRes.rows || [];
-      if (!pages.length) return res.status(404).json({ error: 'No stored pages found for this document' });
-
+    if (pages.length) {
       const mergeSourcePages = pages
         .map((page) => {
           const absolutePath = path.join(UPLOADS_DIR, page.stored_name);
@@ -1711,14 +1701,22 @@ function registerDocumentWorkflow({
         })
         .filter(Boolean);
 
-      if (!mergeSourcePages.length) return res.status(404).json({ error: 'Stored page files could not be found' });
-
-      const mergedFileName = `${pdfDownloadName}_${documentId}.pdf`;
-      pdfAbsolutePath = path.join(UPLOADS_DIR, mergedFileName);
-      await createMergedPdfFromPages(mergeSourcePages, pdfAbsolutePath);
+      if (mergeSourcePages.length) {
+        const mergedFileName = `${pdfDownloadName}_${documentId}_download.pdf`;
+        const pdfAbsolutePath = path.join(UPLOADS_DIR, mergedFileName);
+        await createMergedPdfFromPages(mergeSourcePages, pdfAbsolutePath);
+        return res.download(pdfAbsolutePath, `${pdfDownloadName}.pdf`);
+      }
     }
 
-    return res.download(pdfAbsolutePath, `${pdfDownloadName}.pdf`);
+    if (document.storage_key) {
+      const storedPdf = path.join(UPLOADS_DIR, document.storage_key);
+      if (fs.existsSync(storedPdf)) {
+        return res.download(storedPdf, `${pdfDownloadName}.pdf`);
+      }
+    }
+
+    return res.status(404).json({ error: 'Stored page files could not be found for this document' });
   });
 
   app.get('/api/fleet/document-register', authenticateTransporter, async (req, res) => {
