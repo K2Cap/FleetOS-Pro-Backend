@@ -1759,6 +1759,63 @@ function registerDocumentWorkflow({
     res.json({ driver, documents });
   });
 
+  app.get('/api/drivers/documents/:documentId/download-pdf', authenticateTransporter, async (req, res) => {
+    const documentId = toNumberOrNull(req.params.documentId);
+    if (!documentId) return res.status(400).json({ error: 'Valid documentId is required' });
+
+    const docRes = await pool.query(
+      `SELECT d.*
+       FROM documents d
+       LEFT JOIN drivers dr ON d.entity_type = 'driver' AND d.entity_id = dr.id
+       WHERE d.id = $1
+         AND d.entity_type = 'driver'
+         AND (d.owner_user_id = $2 OR d.owner_user_id IS NULL OR dr.owner_user_id = $2 OR dr.owner_user_id IS NULL)
+       LIMIT 1`,
+      [documentId, req.user?.id || null]
+    );
+    const document = docRes.rows[0];
+    if (!document) return res.status(404).json({ error: 'Driver document not found' });
+
+    const pdfDownloadName = sanitizeStorageToken(document.display_name || document.document_type || `driver-document-${documentId}`) || `driver-document-${documentId}`;
+    const pageRes = await pool.query(
+      `SELECT page_number, page_label, original_name, stored_name, stored_path, mime_type
+       FROM document_pages
+       WHERE document_id = $1
+       ORDER BY page_number ASC`,
+      [documentId]
+    );
+    const pages = pageRes.rows || [];
+
+    if (pages.length) {
+      const mergeSourcePages = pages
+        .map((page) => {
+          const absolutePath = path.join(UPLOADS_DIR, page.stored_name);
+          if (!fs.existsSync(absolutePath)) return null;
+          return {
+            absolutePath,
+            mimeType: page.mime_type || null,
+          };
+        })
+        .filter(Boolean);
+
+      if (mergeSourcePages.length) {
+        const mergedFileName = `${pdfDownloadName}_${documentId}_download.pdf`;
+        const pdfAbsolutePath = path.join(UPLOADS_DIR, mergedFileName);
+        await createMergedPdfFromPages(mergeSourcePages, pdfAbsolutePath);
+        return res.download(pdfAbsolutePath, `${pdfDownloadName}.pdf`);
+      }
+    }
+
+    if (document.storage_key) {
+      const storedPdf = path.join(UPLOADS_DIR, document.storage_key);
+      if (fs.existsSync(storedPdf)) {
+        return res.download(storedPdf, `${pdfDownloadName}.pdf`);
+      }
+    }
+
+    return res.status(404).json({ error: 'Stored page files could not be found for this document' });
+  });
+
   app.get('/api/drivers/document-register', authenticateTransporter, async (req, res) => {
     const result = await pool.query(
       `SELECT *
