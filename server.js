@@ -980,6 +980,7 @@ async function initializeDatabase() {
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS account_status TEXT DEFAULT 'Active'`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
+            `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
             `ALTER TABLE trips ADD COLUMN IF NOT EXISTS inv_id TEXT`,
             `ALTER TABLE trips ADD COLUMN IF NOT EXISTS truck_text TEXT`,
             `ALTER TABLE trips ADD COLUMN IF NOT EXISTS driver_text TEXT`,
