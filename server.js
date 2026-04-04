@@ -166,8 +166,49 @@ function isSixDigitCode(value) {
 
 function toNumberOrNull(value) {
     if (value === undefined || value === null || value === '') return null;
-    const parsed = Number(value);
+    const normalized = typeof value === 'string'
+        ? value.replace(/,/g, '').trim()
+        : value;
+    if (normalized === '') return null;
+    const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatIndianNumber(value, { prefix = '', suffix = '', maxFractionDigits = 2, fixedFractionDigits = null } = {}) {
+    const parsed = toNumberOrNull(value);
+    if (parsed === null) return cleanString(value);
+    const minimumFractionDigits = fixedFractionDigits === null ? 0 : fixedFractionDigits;
+    const maximumFractionDigits = fixedFractionDigits === null
+        ? (Number.isInteger(parsed) ? 0 : maxFractionDigits)
+        : fixedFractionDigits;
+    return `${prefix}${parsed.toLocaleString('en-IN', { minimumFractionDigits, maximumFractionDigits })}${suffix}`;
+}
+
+function decorateTruckRow(row) {
+    if (!row) return row;
+    return {
+        ...row,
+        gvw_display: formatIndianNumber(row.gvw),
+        tyres_count_display: formatIndianNumber(row.tyres_count),
+        odometer_display: formatIndianNumber(row.odometer),
+        purchase_price_display: formatIndianNumber(row.purchase_price, { prefix: '₹ ' }),
+        ins_value_display: formatIndianNumber(row.ins_value, { prefix: '₹ ' }),
+        road_tax_amount_display: formatIndianNumber(row.road_tax_amount, { prefix: '₹ ' })
+    };
+}
+
+function decorateTripRow(row) {
+    if (!row) return row;
+    return {
+        ...row,
+        freight_display: formatIndianNumber(row.freight, { prefix: '₹ ' }),
+        advance_display: formatIndianNumber(row.advance, { prefix: '₹ ' }),
+        balance_display: formatIndianNumber(row.balance, { prefix: '₹ ' }),
+        bhatta_display: formatIndianNumber(row.bhatta, { prefix: '₹ ' }),
+        distance_km_display: formatIndianNumber(row.distanceKm ?? row.distance_km),
+        total_expenses_display: formatIndianNumber(row.totalExpenses ?? row.total_expenses, { prefix: '₹ ' }),
+        truck_purchase_price_display: formatIndianNumber(row.truckPurchasePrice ?? row.truck_purchase_price, { prefix: '₹ ' })
+    };
 }
 
 function sanitizeDownloadName(value, fallback) {
@@ -296,7 +337,10 @@ function serializeExpenseRow(row) {
         place: row?.place || metadata?.place || null,
         bill_image_data: row?.bill_image_data || metadata?.receiptImageDataUrl || null,
         total_paise: totalPaise,
-        total_rupees: Number((totalPaise / 100).toFixed(2))
+        total_rupees: Number((totalPaise / 100).toFixed(2)),
+        amount_display: formatIndianNumber(row?.amount, { prefix: '₹ ' }),
+        total_paise_display: formatIndianNumber(totalPaise),
+        total_rupees_display: formatIndianNumber(totalPaise / 100, { prefix: '₹ ' })
     };
 }
 
@@ -1438,7 +1482,7 @@ app.get('/api/fleet/trips', async (req, res) => {
     `;
     try {
         const result = await pool.query(sql);
-        const trips = result.rows.map(r => ({
+        const trips = result.rows.map(r => decorateTripRow({
             id: r.id, 
             invId: r.inv_id, 
             truckText: r.truck_text, 
@@ -1734,7 +1778,7 @@ app.get('/api/fleet', async (req, res) => {
              ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC`,
             [req.user?.id || null]
         );
-        res.json(result.rows);
+        res.json(result.rows.map(decorateTruckRow));
     } catch (err) {
         res.status(500).json({ error: err.message || 'Could not load fleet' });
     }
@@ -1755,7 +1799,7 @@ app.get('/api/fleet/:id', async (req, res) => {
         );
         const row = result.rows[0];
         if (!row) return res.status(404).json({ error: 'Truck not found' });
-        res.json(row);
+        res.json(decorateTruckRow(row));
     } catch (err) {
         res.status(500).json({ error: err.message || 'Could not load truck' });
     }
