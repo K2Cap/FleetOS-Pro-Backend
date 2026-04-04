@@ -1680,6 +1680,14 @@ function registerDocumentWorkflow({
     if (!document) return res.status(404).json({ error: 'Truck document not found' });
 
     const pdfDownloadName = sanitizeStorageToken(document.display_name || document.document_type || `truck-document-${documentId}`) || `truck-document-${documentId}`;
+
+    if (document.storage_key) {
+      const storedPdf = path.join(UPLOADS_DIR, document.storage_key);
+      if (fs.existsSync(storedPdf)) {
+        return res.download(storedPdf, `${pdfDownloadName}.pdf`);
+      }
+    }
+
     const pageRes = await pool.query(
       `SELECT page_number, page_label, original_name, stored_name, stored_path, mime_type
        FROM document_pages
@@ -1702,21 +1710,18 @@ function registerDocumentWorkflow({
         .filter(Boolean);
 
       if (mergeSourcePages.length) {
-        const mergedFileName = `${pdfDownloadName}_${documentId}_download.pdf`;
-        const pdfAbsolutePath = path.join(UPLOADS_DIR, mergedFileName);
-        await createMergedPdfFromPages(mergeSourcePages, pdfAbsolutePath);
-        return res.download(pdfAbsolutePath, `${pdfDownloadName}.pdf`);
+        try {
+          const mergedFileName = `${pdfDownloadName}_${documentId}_download.pdf`;
+          const pdfAbsolutePath = path.join(UPLOADS_DIR, mergedFileName);
+          await createMergedPdfFromPages(mergeSourcePages, pdfAbsolutePath);
+          return res.download(pdfAbsolutePath, `${pdfDownloadName}.pdf`);
+        } catch (error) {
+          console.error(`[DOWNLOAD][truck][document:${documentId}] rebuild failed: ${error?.message || error}`);
+        }
       }
     }
 
-    if (document.storage_key) {
-      const storedPdf = path.join(UPLOADS_DIR, document.storage_key);
-      if (fs.existsSync(storedPdf)) {
-        return res.download(storedPdf, `${pdfDownloadName}.pdf`);
-      }
-    }
-
-    return res.status(404).json({ error: 'Stored page files could not be found for this document' });
+    return res.status(404).json({ error: 'Stored PDF or page files could not be found for this document' });
   });
 
   app.get('/api/fleet/document-register', authenticateTransporter, async (req, res) => {
@@ -1858,3 +1863,5 @@ module.exports = {
   ensureDocumentTables,
   createTempMulterStorage,
 };
+
+
