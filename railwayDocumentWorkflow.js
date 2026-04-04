@@ -1582,7 +1582,11 @@ function registerDocumentWorkflow({
     if (pages.length === 1) {
       const page = pages[0];
       const safeName = sanitizeStorageToken(page.page_label || page.original_name || page.stored_name || document.display_name || 'document');
-      return res.redirect(`/api/download/${encodeURIComponent(page.stored_name)}?name=${encodeURIComponent(safeName)}`);
+      const absolutePath = path.join(UPLOADS_DIR, page.stored_name);
+      if (!fs.existsSync(absolutePath)) {
+        return res.status(404).json({ error: 'Stored upload file could not be found' });
+      }
+      return res.download(absolutePath, page.page_label || page.original_name || `${safeName}${path.extname(page.stored_name || '') || ''}`);
     }
 
     const zipBase = sanitizeStorageToken(document.display_name || document.document_type || `truck-document-${documentId}`);
