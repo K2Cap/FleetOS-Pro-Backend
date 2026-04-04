@@ -1715,7 +1715,7 @@ function buildFleetTruckPayload(req, existing = {}) {
         doc_puc_path: getFleetUploadPath(files, 'file_puc', existing.doc_puc_path || null),
         doc_permit_path: getFleetUploadPath(files, 'file_permit', existing.doc_permit_path || null),
         doc_roadtax_path: getFleetUploadPath(files, 'file_roadtax', existing.doc_roadtax_path || null),
-        deleted_at: cleanString(existing.deleted_at) || null,
+        deleted_at: existing.deleted_at ?? null,
     };
 }
 
