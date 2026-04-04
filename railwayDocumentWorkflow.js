@@ -41,6 +41,14 @@ function normalizeTruckRegNo(regNo) {
     .trim();
 }
 
+function isResolvableTruckRegNo(regNo) {
+  const normalized = normalizeTruckRegNo(regNo);
+  if (!normalized) return false;
+  if (normalized === 'NEW') return false;
+  if (normalized.startsWith('PENDING')) return false;
+  return true;
+}
+
 function appendPageSuffix(baseName, pageIndex) {
   return pageIndex === 0 ? baseName : `${baseName} (${pageIndex})`;
 }
@@ -562,6 +570,9 @@ function getDriverRegisterColumn(documentType) {
 async function upsertTruckDocumentRegister(client, payload) {
   const column = getTruckRegisterColumn(payload.documentType);
   if (!column) return;
+  const safeRegNo = payload.documentType === 'rc'
+    ? (normalizeTruckRegNo(payload.regNo) || null)
+    : (isResolvableTruckRegNo(payload.regNo) ? normalizeTruckRegNo(payload.regNo) : null);
   await client.query(
     `INSERT INTO truck_document_registers (truck_id, owner_user_id, reg_no, ${column}, updated_at)
      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
@@ -574,7 +585,7 @@ async function upsertTruckDocumentRegister(client, payload) {
     [
       payload.truckId,
       payload.ownerUserId || null,
-      normalizeTruckRegNo(payload.regNo) || null,
+      safeRegNo,
       payload.snapshot,
     ]
   );
@@ -738,15 +749,14 @@ async function upsertTruckFromDocument(client, mergedPayload, documentType, merg
     row = hinted.rows[0] || null;
   }
 
-  const hintedRegNo = normalizeTruckRegNo(regNoHint);
-  const existingTruckRegNo = normalizeTruckRegNo(row?.reg_no);
+  const hintedRegNo = isResolvableTruckRegNo(regNoHint) ? normalizeTruckRegNo(regNoHint) : null;
+  const existingTruckRegNo = isResolvableTruckRegNo(row?.reg_no) ? normalizeTruckRegNo(row?.reg_no) : null;
   const rawRegNo = documentType === 'rc'
     ? firstNonEmpty(mergedPayload.regNo, regNoHint, row?.reg_no)
-    : firstNonEmpty(existingTruckRegNo, hintedRegNo, row?.reg_no, mergedPayload.regNo);
-  const regNo = normalizeTruckRegNo(rawRegNo);
-  if (!regNo) throw new Error('Truck registration number could not be resolved from OCR');
+    : firstNonEmpty(existingTruckRegNo, hintedRegNo, row?.reg_no, isResolvableTruckRegNo(mergedPayload.regNo) ? mergedPayload.regNo : null);
+  const regNo = isResolvableTruckRegNo(rawRegNo) ? normalizeTruckRegNo(rawRegNo) : null;
 
-  if (!row) {
+  if (!row && regNo) {
     const existing = await client.query(
       `SELECT *
          FROM trucks
@@ -811,6 +821,10 @@ async function upsertTruckFromDocument(client, mergedPayload, documentType, merg
 
   if (row?.owner_user_id && !patch.owner_user_id) {
     patch.owner_user_id = row.owner_user_id;
+  }
+
+  if (!regNo) {
+    delete patch.reg_no;
   }
 
   if (documentType === 'rc') patch.doc_rc_path = mergedStoredPath;
