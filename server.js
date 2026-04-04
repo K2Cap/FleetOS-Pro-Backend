@@ -1978,16 +1978,20 @@ async function ensureDriverAccountColumns() {
     driverAccountColumnsReady = true;
 }
 
-app.get('/api/drivers', (req, res) => {
+app.get('/api/drivers', authenticateTransporter, (req, res) => {
     ensureDriverAccountColumns()
         .then(() => {
             db.all(
                 `SELECT *
                  FROM drivers
                  WHERE COALESCE(account_status, 'Active') = 'Active'
-                   AND (transporter_id = ? OR transporter_id IS NULL)
-                 ORDER BY created_at DESC`,
-                [req.user?.id || null],
+                   AND (
+                     owner_user_id = ?
+                     OR transporter_id = ?
+                     OR (owner_user_id IS NULL AND transporter_id IS NULL)
+                   )
+                 ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC`,
+                [req.user?.id || null, req.user?.id || null],
                 (err, rows) => {
                     if (err) return res.status(500).json({ error: err.message });
                     res.json(rows.map((row) => sanitizeDriverRow(row, { includeTransporterOtp: true })));
