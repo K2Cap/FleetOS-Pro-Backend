@@ -1734,7 +1734,7 @@ function resolveUploadAbsolutePath(uploadsDir, tokenOrPath) {
     );
     const truck = truckRes.rows[0];
     if (!truck) return res.status(404).json({ error: 'Truck not found' });
-    const documents = await getDocumentsForEntity('truck', truck.id);
+    const documents = keepLatestDocumentPerType(await getDocumentsForEntity('truck', truck.id));
     res.json({ truck, documents });
   });
 
