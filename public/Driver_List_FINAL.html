@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+  (function(){
+    const BUILD = 'v5.5.0';
+    const params = new URLSearchParams(window.location.search);
+    if(params.get('v') !== BUILD){
+      console.log('NUCLEAR SYNC ACTIVATED: Redirecting to ' + BUILD);
+      params.set('v', BUILD);
+      window.location.search = params.toString();
+    }
+  })();
+</script>
+
+<meta charset="UTF-8">
+<script src="config.js?v=2.5.1"></script>
+<script>
+    (function() {
+        const token = localStorage.getItem('fleetToken') || localStorage.getItem('token');
+        console.log("🔐 Session v2.6.1 Driver Checking - Token:", !!token);
+        if (!token) {
+            console.warn("No active driver session - staying on page for debugging v2.6.1");
+            // window.location.href = "index.html";
+        }
+    })();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>FleetOS — Driver Roster</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,900;1,9..144,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --g:#1a5c3a;--g2:#236b47;--glt:#e8f5ee;--glt2:#d1ead9;
+  --s:#e8671a;--slt:#fdf0e8;--slt2:#fcd9c0;
+  --go:#c9930a;--golt:#fdf6e3;
+  --cr:#c0392b;--crlt:#fdecea;
+  --bg:#f5f2ec;--bg2:#edeae2;--wh:#ffffff;
+  --ink:#1a1814;--ink2:#3d3a34;--mu:#7a7570;--mu2:#b0aca4;--bd:#ddd9d0;--bd2:#c8c4bb;
+  --ff:'DM Sans',sans-serif;--fd:'Fraunces',serif;--fm:'JetBrains Mono',monospace;
+  --r:18px;--r-lg:22px;
+  --sh-sm:0 2px 8px rgba(26,24,20,.07);--sh-md:0 6px 24px rgba(26,24,20,.11);
+}
+html,body{height:100%;margin:0;padding:0;overflow:hidden;background:var(--bg);}
+body{display:flex;flex-direction:column;}
+.phone{width:100%; max-width:none; margin:0; background:var(--bg); flex:1; display:flex; flex-direction:column; overflow:hidden; position:relative; padding-bottom:env(safe-area-inset-bottom, 20px);}
+
+/* STATUS BAR */
+.sbar{background:var(--g);padding:12px 22px 5px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.sbar-time{font-family:var(--fm);font-size:11px;font-weight:700;color:#fff;}
+.sbar-pill{width:80px;height:16px;background:#0d3626;border-radius:18px;display:flex;align-items:center;justify-content:center;}
+.sbar-dot{width:7px;height:7px;border-radius:50%;background:#0a2c1d;}
+
+/* HEADER */
+.header{background:var(--g);padding:30px 22px 14px;flex-shrink:0;}
+.hdr-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;}
+.hdr-title{font-family:var(--fd);font-weight:900;font-size:22px;color:#fff;letter-spacing:-.3px;line-height:1;}
+.hdr-title em{color:var(--s);font-style:italic;font-weight:400;}
+.hdr-sub{font-size:11px;color:rgba(255,255,255,.6);font-weight:500;margin-top:3px;}
+.add-btn{display:flex;align-items:center;gap:5px;background:var(--s);color:#fff;border:none;border-radius:11px;padding:9px 15px;font-family:var(--ff);font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;box-shadow:0 4px 14px rgba(232,103,26,.38);}
+
+/* SEARCH BAR */
+.search-wrap{position:relative;}
+.search-input{width:100%;height:40px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:0 14px 0 36px;font-family:var(--ff);font-size:13px;color:#fff;outline:none;}
+.search-input::placeholder{color:rgba(255,255,255,.45);}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.5;pointer-events:none;}
+
+/* STATS ROW */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--bd);flex-shrink:0;}
+.stat-cell{background:var(--wh);padding:10px 0;text-align:center;}
+.stat-num{font-family:'Fraunces',serif;font-size:20px;font-weight:900;color:var(--ink);line-height:1;}
+.stat-lbl{font-size:9.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--mu);margin-top:2px;}
+.stat-num.on-duty{color:var(--g);}
+.stat-num.off{color:var(--go);}
+.stat-num.leave{color:var(--cr);}
+
+/* FILTER PILLS */
+.filter-bar{display:flex;gap:7px;padding:12px 16px;justify-content:center;flex-shrink:0;background:var(--wh);border-bottom:1px solid var(--bd);}
+.fpill{padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;border:1.5px solid var(--bd);background:var(--bg);color:var(--mu);cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0;letter-spacing:.2px;}
+.fpill.active{background:var(--g);color:#fff;border-color:var(--g);}
+.fpill.off-pill.active{background:var(--go);border-color:var(--go);color:#fff;}
+.fpill.leave-pill.active{background:var(--cr);border-color:var(--cr);color:#fff;}
+
+.scroll-body{flex:1;overflow-y:auto;padding:14px 14px 180px;-webkit-overflow-scrolling:touch;}
+.scroll-body::-webkit-scrollbar{display:none;}
+
+/* SECTION LABEL */
+.section-lbl{font-size:9.5px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--mu);margin-bottom:9px;margin-top:4px;}
+
+/* DRIVER CARD */
+.driver-card{background:var(--wh);border:1.5px solid var(--bd);border-radius:var(--r);overflow:hidden;display:flex;margin-bottom:10px;transition:all .18s;cursor:pointer;box-shadow:var(--sh-sm);}
+.driver-card:active{transform:scale(.985);}
+.dc-strip{width:5px;flex-shrink:0;}
+.dc-strip.on-duty{background:var(--g);}
+.dc-strip.off{background:var(--go);}
+.dc-strip.leave{background:var(--cr);}
+.dc-body{flex:1;padding:13px 14px;display:flex;align-items:center;gap:12px;min-width:0;}
+
+/* AVATAR */
+.dc-avatar{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;font-family:var(--ff);}
+.dc-avatar.on-duty{background:var(--glt);color:var(--g);}
+.dc-avatar.off{background:var(--golt);color:#7a5200;}
+.dc-avatar.leave{background:var(--crlt);color:var(--cr);}
+
+.dc-info{flex:1;min-width:0;}
+.dc-name{font-size:13.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dc-sub{font-size:10.5px;color:var(--mu);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dc-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;}
+.status-badge{font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;letter-spacing:.3px;}
+.status-badge.on-duty{background:var(--glt);color:var(--g);}
+.status-badge.off{background:var(--golt);color:#7a5200;}
+.status-badge.leave{background:var(--crlt);color:var(--cr);}
+.dc-arrow{width:28px;height:28px;border-radius:8px;background:var(--bg);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--mu);}
+
+/* BOTTOM NAV — LUXE DASHBOARD STYLE */
+.bnav{
+  position:sticky;bottom:0;flex-shrink:0;z-index:300;
+  background:rgba(245,242,236,.94);
+  backdrop-filter:blur(24px) saturate(1.5);
+  -webkit-backdrop-filter:blur(24px) saturate(1.5);
+  border-top:1.5px solid var(--bd);
+  padding-bottom:env(safe-area-inset-bottom, 0px);
+}
+.bnav-inner{display:flex;align-items:stretch;min-height:64px;padding:0 4px;}
+
+.nt{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;position:relative;border:none;background:transparent;padding:0;-webkit-tap-highlight-color:transparent;transition:transform .15s}
+.nt:active{transform:scale(.9)}
+
+/* active indicator */
+.nt.on::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:26px;height:2.5px;border-radius:0 0 3px 3px;background:linear-gradient(90deg,var(--g),var(--s))}
+
+.ni{width:40px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;transition:background .2s}
+.nt.on .ni{background:rgba(26,92,58,.11)}
+
+.nsvg{width:22px;height:22px;stroke:var(--mu);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s}
+.nt.on .nsvg{stroke:var(--g)}
+
+.nl{font-size:10px;font-weight:600;color:var(--mu);line-height:1;transition:color .2s;letter-spacing:.2px}
+.nt.on .nl{color:var(--g)}
+
+/* FAB */
+.nfab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;border:none;background:transparent;margin-top:-16px;-webkit-tap-highlight-color:transparent}
+.fab-circle{width:52px;height:52px;border-radius:16px;background:#1a5c3a;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(26,92,58,.42),0 2px 6px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.1);transition:all .2s}
+.fab-circle:hover{transform:scale(1.08);box-shadow:0 8px 28px rgba(26,92,58,.52)}
+.fab-circle:active{transform:scale(.94)}
+.fab-lbl{font-size:10px;font-weight:700;color:var(--g);letter-spacing:.3px}
+
+/* DETAIL BOTTOM SHEET */
+.sheet-backdrop{position:absolute;inset:0;background:rgba(26,24,20,.55);z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;}
+.sheet-backdrop.active{opacity:1;pointer-events:all;}
+.detail-sheet{position:absolute;bottom:0;left:0;right:0;background:var(--bg);border-radius:26px 26px 0 0;z-index:201;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);}
+.detail-sheet.active{transform:translateY(0);}
+.ds-handle{width:36px;height:4px;border-radius:2px;background:var(--bd2);margin:12px auto 0;}
+.ds-header{padding:16px 18px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px;}
+.ds-avatar{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;flex-shrink:0;font-family:var(--ff);}
+.ds-name{font-family:var(--fd);font-size:18px;font-weight:700;color:var(--ink);}
+.ds-type{font-size:11.5px;color:var(--mu);margin-top:2px;}
+.ds-rows{padding:14px 18px;}
+.ds-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bg2);}
+.ds-row:last-child{border-bottom:none;}
+.ds-key{font-size:12px;color:var(--mu);font-weight:600;}
+.ds-val{font-size:12.5px;color:var(--ink);font-weight:700;}
+.ds-val.mono{font-family:var(--fm);font-size:12px;letter-spacing:.4px;}
+.ds-actions{display:flex;gap:9px;padding:0 18px 28px;}
+.ds-btn-g{flex:1;padding:12px;border-radius:var(--r);border:1.5px solid var(--bd);background:var(--bg);font-family:var(--ff);font-size:13px;font-weight:700;color:var(--ink2);cursor:pointer;}
+.ds-btn-p{flex:1;padding:12px;border-radius:var(--r);border:none;background:var(--g);color:#fff;font-family:var(--ff);font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(26,92,58,.32);}
+
+@keyframes fuA{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.driver-card{animation:fuA .4s ease both;}
+.driver-card:nth-child(1){animation-delay:.04s}
+.driver-card:nth-child(2){animation-delay:.08s}
+.driver-card:nth-child(3){animation-delay:.12s}
+.driver-card:nth-child(4){animation-delay:.16s}
+.driver-card:nth-child(5){animation-delay:.20s}
+.driver-card:nth-child(6){animation-delay:.24s}
+.driver-card:nth-child(7){animation-delay:.28s}
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="hdr-row">
+      <div>
+        <div class="hdr-title">Driver <em>Roster</em></div>
+        <div class="hdr-sub">Live driver data will appear here</div>
+      </div>
+      <button class="add-btn" onclick="window.location.href='/Fleetos_Add_Driver.html'">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+        Add Driver
+      </button>
+    </div>
+    <div class="search-wrap">
+      <svg class="search-icon" width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="white" stroke-width="1.5"/><path d="M10.5 10.5L13 13" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <input class="search-input" type="text" placeholder="Search by name, license, truck…" oninput="filterCards(this.value)">
+    </div>
+  </div>
+
+  <!-- STATS ROW -->
+  <div class="stats-row">
+    <div class="stat-cell"><div class="stat-num on-duty">0</div><div class="stat-lbl">On Duty</div></div>
+    <div class="stat-cell"><div class="stat-num off">0</div><div class="stat-lbl">Off Duty</div></div>
+    <div class="stat-cell"><div class="stat-num leave">0</div><div class="stat-lbl">On Leave</div></div>
+  </div>
+
+  <!-- FILTER PILLS -->
+  <div class="filter-bar">
+    <div class="fpill active" onclick="setFilter('all',this)">All (0)</div>
+    <div class="fpill" onclick="setFilter('on-duty',this)">● On Duty</div>
+    <div class="fpill off-pill" onclick="setFilter('off',this)">● Off Duty</div>
+    <div class="fpill leave-pill" onclick="setFilter('leave',this)">● On Leave</div>
+  </div>
+
+  <!-- DRIVER LIST -->
+  <div class="scroll-body" id="driver-list">
+    <div id="driver-container">
+        <!-- Live Cloud Data will populate here -->
+    </div>
+    <div id="driver-empty-state" style="margin-top:12px;background:var(--wh);border:1.5px solid var(--bd);border-radius:var(--r);padding:18px;text-align:center;color:var(--mu);font-size:12px;line-height:1.5;">
+      No driver records yet. Add drivers or connect live roster data to populate this page.
+    </div>
+
+  </div><!-- /scroll-body -->
+    <div style="font-size:10px;color:var(--mu);text-align:center;padding:15px;opacity:0.6;">
+      Build: CLOUD-PRO-v5.5.0 (FINAL-RELEASE) | <a onclick="location.reload(true)" style="text-decoration:underline; cursor:pointer">Force Update</a>
+    </div>
+
+  <!-- BOTTOM NAV — identical to BASE -->
+  <nav class="bnav">
+    <div class="bnav-inner">
+
+      <button class="nt" id="nt-home" onclick="window.location.href='/transporter_dashboard_FINAL.html?v=4.4.0'">
+        <div class="ni">
+          <svg class="nsvg" viewBox="0 0 24 24"><path d="M3 10L12 3l9 7v11h-6v-5H9v5H3z"/></svg>
+        </div>
+        <span class="nl">Home</span>
+      </button>
+
+      <button class="nt" id="nt-trips">
+        <div class="ni">
+          <svg class="nsvg" viewBox="0 0 24 24"><rect x="1" y="9" width="22" height="11" rx="2.5"/><path d="M6 9V7a3 3 0 016 0v2M16 9V6a2 2 0 014 0v3"/><circle cx="7" cy="20" r="2"/><circle cx="17" cy="20" r="2"/></svg>
+        </div>
+        <span class="nl">Trips</span>
+      </button>
+
+      <!-- FAB -->
+      <button class="nfab" id="newTripFab" type="button" onclick="window.location.href='/Fleetos_Log_Trip.html'">
+        <div class="fab-circle">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </div>
+        <span class="fab-lbl">New Trip</span>
+      </button>
+
+      <button class="nt" id="nt-finance">
+        <div class="ni">
+          <svg class="nsvg" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="15" rx="2"/><path d="M2 10h20"/><path d="M7 15h.01M11 15h4"/></svg>
+        </div>
+        <span class="nl">Finance</span>
+      </button>
+
+      <button class="nt" id="nt-insights">
+        <div class="ni">
+          <svg class="nsvg" viewBox="0 0 24 24"><path d="M2 20h20M6 20V12M10 20V8M14 20V4M18 20v-6"/></svg>
+        </div>
+        <span class="nl">Insights</span>
+      </button>
+
+    </div>
+  </nav>
+
+  <!-- DETAIL BOTTOM SHEET -->
+  <div class="sheet-backdrop" id="sheet-backdrop" onclick="closeDetail()"></div>
+  <div class="detail-sheet" id="detail-sheet">
+    <div class="ds-handle"></div>
+    <div class="ds-header">
+      <div class="ds-avatar" id="ds-avatar"></div>
+      <div>
+        <div class="ds-name" id="ds-name">—</div>
+        <div class="ds-type" id="ds-type">—</div>
+      </div>
+      <div style="flex:1"></div>
+      <div class="status-badge" id="ds-badge">—</div>
+    </div>
+    <div class="ds-rows">
+      <div class="ds-row"><span class="ds-key">Assigned Truck</span><span class="ds-val mono" id="ds-truck">—</span></div>
+      <div class="ds-row"><span class="ds-key">Current Route</span><span class="ds-val" id="ds-route">—</span></div>
+      <div class="ds-row"><span class="ds-key">DL Number</span><span class="ds-val mono" id="ds-dl">—</span></div>
+      <div class="ds-row"><span class="ds-key">DL Expiry</span><span class="ds-val" id="ds-dlexp">—</span></div>
+    </div>
+    <div class="ds-actions">
+      <button class="ds-btn-g" onclick="closeDetail()">Close</button>
+      <button class="ds-btn-p">Full Profile →</button>
+    </div>
+  </div>
+
+</div><!-- /phone -->
+
+<script>
+const FLEET_API_BASE = window.FLEET_API_BASE || window.APP_API_BASE || 'https://fleetos-pro-backend-production.up.railway.app';
+let driverRows = [];
+let currentFilter = 'all';
+let currentSearch = '';
+
+const statusMeta = {
+  'on-duty': { bg:'var(--glt)', color:'var(--g)', label:'● On Duty' },
+  'off':     { bg:'var(--golt)', color:'#7a5200', label:'● Off Duty' },
+  'leave':   { bg:'var(--crlt)', color:'var(--cr)', label:'● On Leave' },
+};
+
+function getFleetAuthToken() {
+  return localStorage.getItem('fleetToken') || localStorage.getItem('token') || '';
+}
+
+async function authFetch(path, options = {}) {
+  const token = getFleetAuthToken();
+  const headers = new Headers(options.headers || {});
+  if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
+  return fetch(path.startsWith('http') ? path : `${FLEET_API_BASE}${path}`, { cache:'no-store', ...options, headers });
+}
+
+function normalizeDriverStatus(value) {
+  const raw = String(value || '').trim().toLowerCase();
+  if (raw.includes('leave')) return 'leave';
+  if (raw.includes('off')) return 'off';
+  if (raw.includes('idle')) return 'off';
+  return 'on-duty';
+}
+
+function humanizeStatus(statusKey) {
+  return ({
+    'on-duty': 'On Duty',
+    'off': 'Off Duty',
+    'leave': 'On Leave'
+  })[statusKey] || 'On Duty';
+}
+
+function getInitials(name) {
+  return String(name || '').trim().split(/\s+/).map((w) => w[0] || '').join('').slice(0, 2).toUpperCase() || 'DR';
+}
+
+function updateStats(rows) {
+  const onDuty = rows.filter((row) => normalizeDriverStatus(row.status) === 'on-duty').length;
+  const offDuty = rows.filter((row) => normalizeDriverStatus(row.status) === 'off').length;
+  const onLeave = rows.filter((row) => normalizeDriverStatus(row.status) === 'leave').length;
+  const statNums = document.querySelectorAll('.stat-num');
+  if (statNums[0]) statNums[0].textContent = onDuty;
+  if (statNums[1]) statNums[1].textContent = offDuty;
+  if (statNums[2]) statNums[2].textContent = onLeave;
+  const allPill = document.querySelector('.filter-bar .fpill');
+  if (allPill) allPill.textContent = `All (${rows.length})`;
+}
+
+function getFilteredDriverRows() {
+  return driverRows.filter((row) => {
+    const status = normalizeDriverStatus(row.status);
+    const searchPool = [
+      row.full_name,
+      row.phone,
+      row.dl_no,
+      row.assigned_truck,
+      row.license_type,
+      row.vehicle_category
+    ].map((value) => String(value || '').toLowerCase());
+    const matchesFilter = currentFilter === 'all' ? true : status === currentFilter;
+    const normalizedSearch = String(currentSearch || '').toLowerCase().replace(/\s+/g, '');
+    const matchesSearch = !normalizedSearch || searchPool.some((value) => value.includes(currentSearch) || value.replace(/\s+/g, '').includes(normalizedSearch));
+    return matchesFilter && matchesSearch;
+  });
+}
+
+function renderDriverCards() {
+  const container = document.getElementById('driver-container');
+  const emptyState = document.getElementById('driver-empty-state');
+  const rows = getFilteredDriverRows();
+  container.innerHTML = '';
+  if (!rows.length) {
+    emptyState.style.display = '';
+    return;
+  }
+  emptyState.style.display = 'none';
+
+  const fragment = document.createDocumentFragment();
+  rows.forEach((row) => {
+    const status = normalizeDriverStatus(row.status);
+    const meta = statusMeta[status] || statusMeta['off'];
+    const card = document.createElement('div');
+    card.className = 'driver-card';
+    card.dataset.status = status;
+    card.dataset.name = String(row.full_name || '');
+    card.dataset.dl = String(row.dl_no || '');
+    card.innerHTML = `
+      <div class="dc-strip ${status}"></div>
+      <div class="dc-body">
+        <div class="dc-avatar ${status}">${getInitials(row.full_name)}</div>
+        <div class="dc-info">
+          <div class="dc-name">${row.full_name || 'Unnamed Driver'}</div>
+          <div class="dc-sub">${[row.license_type, row.assigned_truck || 'No truck assigned'].filter(Boolean).join(' · ')}</div>
+        </div>
+        <div class="dc-right">
+          <div class="status-badge ${status}">${humanizeStatus(status)}</div>
+          <div class="dc-arrow">›</div>
+        </div>
+      </div>
+    `;
+    card.addEventListener('click', () => {
+      window.location.href = `/Driver_Detail.html?id=${encodeURIComponent(row.id)}`;
+    });
+    fragment.appendChild(card);
+  });
+
+  container.appendChild(fragment);
+}
+
+async function loadDriverRows() {
+  try {
+    const response = await authFetch('/api/drivers');
+    if (!response.ok) throw new Error('Could not load drivers right now.');
+    const rows = await response.json().catch(() => []);
+    driverRows = Array.isArray(rows) ? rows : [];
+    updateStats(driverRows);
+    renderDriverCards();
+  } catch (error) {
+    console.error('Driver load failed:', error);
+    const emptyState = document.getElementById('driver-empty-state');
+    emptyState.style.display = '';
+    emptyState.innerHTML = `Could not load driver roster right now.`;
+  }
+}
+
+function closeDetail() {
+  document.getElementById('sheet-backdrop').classList.remove('active');
+  document.getElementById('detail-sheet').classList.remove('active');
+}
+
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.fpill').forEach((p) => p.classList.remove('active'));
+  el.classList.add('active');
+  renderDriverCards();
+}
+
+function filterCards(q) {
+  currentSearch = String(q || '').trim().toLowerCase();
+  renderDriverCards();
+}
+
+loadDriverRows();
+</script>
+
+<script>
+  (function(){
+    const BUILD = 'v5.5.0';
+    if(localStorage.getItem('fleetos_v') !== BUILD){
+      localStorage.setItem('fleetos_v', BUILD);
+      console.log('Syncing Build ' + BUILD + '...');
+      location.reload(true);
+    }
+  })();
+</script>
+
+<script>
+  (function(){
+    const BUILD = 'v5.5.0';
+    if(localStorage.getItem('fleetos_v') !== BUILD){
+      localStorage.setItem('fleetos_v', BUILD);
+      console.log('Forcing Global Sync ' + BUILD + '...');
+      // APPEND CACHE BUSTER TO URL
+      const sep = location.href.includes('?') ? '&' : '?';
+      location.href = location.pathname + sep + 'v=' + BUILD;
+    }
+  })();
+</script>
+</body>
+</html>

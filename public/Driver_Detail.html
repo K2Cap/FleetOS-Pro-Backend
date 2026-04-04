@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+  (function(){
+    const BUILD = 'v1.0.0';
+    const params = new URLSearchParams(window.location.search);
+    if(params.get('v') !== BUILD){
+      params.set('v', BUILD);
+      window.location.search = params.toString();
+    }
+  })();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<script src="config.js?v=2.5.1"></script>
+<title>FleetOS — Driver Detail</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,900;1,9..144,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --g:#1a5c3a;--g2:#236b47;--glt:#e8f5ee;--glt2:#d1ead9;
+  --s:#e8671a;--cr:#c0392b;--crlt:#fdecea;
+  --bg:#f5f2ec;--bg2:#edeae2;--wh:#ffffff;--ink:#1a1814;--ink2:#3d3a34;--mu:#7a7570;--bd:#ddd9d0;--bd2:#c8c4bb;
+  --ff:'DM Sans',sans-serif;--fd:'Fraunces',serif;--fm:'JetBrains Mono',monospace;
+}
+html,body{min-height:100%;background:var(--bg);overflow:auto}
+body{font-family:var(--ff);color:var(--ink)}
+.page{min-height:100%;display:flex;flex-direction:column}
+.hero{background:linear-gradient(180deg,var(--g) 0%,var(--g2) 100%);padding:22px 18px 14px;color:#fff}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.topbar-actions{display:flex;align-items:center;gap:10px}
+.back-btn,.action-btn{border:none;cursor:pointer}
+.back-btn{width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.12);color:#fff;font-size:18px;font-weight:700}
+.action-btn{padding:8px 14px;border-radius:20px;background:var(--s);color:#fff;font-size:12px;font-weight:700;font-family:var(--ff);box-shadow:0 4px 14px rgba(232,103,26,.35)}
+.hero-card{margin-top:14px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:14px 16px}
+.hero-name{font-family:var(--fd);font-size:24px;font-weight:800;line-height:1.05}
+.hero-sub{margin-top:6px;font-size:12px;color:rgba(255,255,255,.75);font-weight:600}
+.content{flex:1;overflow:visible;padding:14px}
+.section{background:var(--wh);border:1.5px solid var(--bd);border-radius:18px;padding:14px;margin-bottom:12px}
+.section h3{font-family:var(--fd);font-size:18px;color:var(--ink);margin-bottom:10px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.field{background:var(--bg);border:1px solid var(--bd);border-radius:12px;padding:10px}
+.field b{display:block;font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--mu);margin-bottom:4px}
+.field span{display:block;font-size:12px;font-weight:700;color:var(--ink2);word-break:break-word}
+.doc-list{display:flex;flex-direction:column;gap:10px}
+.doc-item{background:var(--bg);border:1px solid var(--bd);border-radius:14px;padding:12px}
+.doc-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.doc-name{font-size:13px;font-weight:800;color:var(--ink)}
+.doc-meta{font-size:11px;color:var(--mu);margin-top:4px}
+.doc-badge{font-size:10px;font-weight:800;padding:4px 8px;border-radius:999px;background:var(--glt);color:var(--g)}
+.doc-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.doc-btn{padding:8px 10px;border-radius:10px;border:1px solid var(--bd);background:#fff;font:700 11px var(--ff);color:var(--ink2);cursor:pointer}
+.doc-btn.primary{background:var(--g);border-color:var(--g);color:#fff}
+.doc-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.doc-field{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:8px}
+.doc-field b{display:block;font-size:9px;letter-spacing:.7px;text-transform:uppercase;color:var(--mu);margin-bottom:3px}
+.doc-field span{display:block;font-size:11px;font-weight:700;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.empty{padding:18px;border-radius:14px;border:1.5px dashed var(--bd);text-align:center;color:var(--mu);font-size:12px;background:var(--wh)}
+.loading{padding:22px;text-align:center;color:var(--mu)}
+.confirm-backdrop{position:fixed;inset:0;background:rgba(26,24,20,.56);display:flex;align-items:flex-end;justify-content:center;padding:20px;z-index:400;opacity:0;pointer-events:none;transition:opacity .22s ease}
+.confirm-backdrop.active{opacity:1;pointer-events:auto}
+.confirm-sheet{width:100%;max-width:390px;background:var(--bg);border-radius:24px;padding:14px 16px calc(20px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 36px rgba(26,24,20,.24);transform:translateY(24px);transition:transform .24s ease}
+.confirm-backdrop.active .confirm-sheet{transform:translateY(0)}
+.confirm-handle{width:38px;height:4px;border-radius:999px;background:var(--bd2);margin:0 auto 14px}
+.confirm-icon{width:58px;height:58px;border-radius:18px;background:var(--crlt);color:var(--cr);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:28px}
+.confirm-title{font-family:var(--fd);font-size:24px;font-weight:800;color:var(--ink);text-align:center}
+.confirm-sub{font-size:12.5px;color:var(--mu);line-height:1.6;text-align:center;margin:8px 0 16px}
+.confirm-card{background:var(--wh);border:1.5px solid var(--bd);border-radius:16px;padding:12px 14px;margin-bottom:14px}
+.confirm-card b{display:block;font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--mu);margin-bottom:5px}
+.confirm-card span{display:block;font-size:13px;font-weight:800;color:var(--ink)}
+.confirm-actions{display:flex;flex-direction:column;gap:10px}
+.confirm-btn{width:100%;border:none;border-radius:14px;padding:14px 16px;font-family:var(--ff);font-size:14px;font-weight:800;cursor:pointer}
+.confirm-btn.delete{background:var(--s);color:#fff;box-shadow:0 8px 22px rgba(232,103,26,.24)}
+.confirm-btn.cancel{background:transparent;color:var(--ink2);border:1.5px solid var(--bd)}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="hero">
+    <div class="topbar">
+      <button class="back-btn" type="button" onclick="window.location.href='/Driver_List_FINAL.html'">←</button>
+      <div class="topbar-actions">
+        <button class="action-btn" type="button" onclick="deleteCurrentDriver()">Delete Entry</button>
+      </div>
+    </div>
+    <div class="hero-card">
+      <div class="hero-name" id="hero-name">Loading…</div>
+      <div class="hero-sub" id="hero-sub">Driver profile</div>
+    </div>
+  </div>
+  <div class="content">
+    <div id="loading" class="loading">Loading driver details…</div>
+    <div id="detail-content" style="display:none">
+      <div class="section">
+        <h3>Personal Info</h3>
+        <div class="grid">
+          <div class="field"><b>Full Name</b><span id="f-name">—</span></div>
+          <div class="field"><b>Mobile</b><span id="f-phone">—</span></div>
+          <div class="field"><b>Date of Birth</b><span id="f-dob">—</span></div>
+          <div class="field"><b>Blood Group</b><span id="f-blood">—</span></div>
+          <div class="field"><b>Emergency Phone</b><span id="f-emergency">—</span></div>
+          <div class="field"><b>Assigned Truck</b><span id="f-truck">—</span></div>
+          <div class="field"><b>Join Date</b><span id="f-join">—</span></div>
+          <div class="field"><b>Status</b><span id="f-status">—</span></div>
+          <div class="field"><b>City</b><span id="f-city">—</span></div>
+          <div class="field"><b>PIN Code</b><span id="f-pin">—</span></div>
+        </div>
+      </div>
+      <div class="section">
+        <h3>License & Identity</h3>
+        <div class="grid">
+          <div class="field"><b>DL Number</b><span id="f-dl">—</span></div>
+          <div class="field"><b>DL Expiry</b><span id="f-dl-exp">—</span></div>
+          <div class="field"><b>License Type</b><span id="f-lic">—</span></div>
+          <div class="field"><b>Vehicle Category</b><span id="f-veh-cat">—</span></div>
+          <div class="field"><b>Aadhaar</b><span id="f-aadhaar">—</span></div>
+          <div class="field"><b>PAN</b><span id="f-pan">—</span></div>
+          <div class="field"><b>Experience</b><span id="f-exp">—</span></div>
+          <div class="field"><b>Hazmat</b><span id="f-hazmat">—</span></div>
+        </div>
+      </div>
+      <div class="section">
+        <h3>Documents</h3>
+        <div id="doc-list" class="doc-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="confirm-backdrop" id="delete-confirm-backdrop">
+  <div class="confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
+    <div class="confirm-handle"></div>
+    <div class="confirm-icon">🗑️</div>
+    <div class="confirm-title" id="delete-confirm-title">Delete Entry?</div>
+    <div class="confirm-sub">This will remove the driver from this user account and hide them from Driver Roster.</div>
+    <div class="confirm-card">
+      <b>Driver</b>
+      <span id="delete-confirm-name">—</span>
+    </div>
+    <div class="confirm-actions">
+      <button class="confirm-btn delete" type="button" id="delete-confirm-submit">Yes, Delete Entry</button>
+      <button class="confirm-btn cancel" type="button" onclick="closeDeleteConfirm()">Keep Entry</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const FLEET_API_BASE = window.FLEET_API_BASE || window.APP_API_BASE || 'https://fleetos-pro-backend-production.up.railway.app';
+let currentDriverId = null;
+let currentDriverData = null;
+let deleteInFlight = false;
+
+function getFleetAuthToken() {
+  return localStorage.getItem('fleetToken') || localStorage.getItem('token') || '';
+}
+
+async function authFetch(path, options = {}) {
+  const token = getFleetAuthToken();
+  const headers = new Headers(options.headers || {});
+  if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
+  return fetch(path.startsWith('http') ? path : `${FLEET_API_BASE}${path}`, { cache:'no-store', ...options, headers });
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = value || '—';
+}
+
+function formatDate(value) {
+  if (!value) return '—';
+  const raw = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const [y,m,d] = raw.split('-');
+    return `${d}/${m}/${y}`;
+  }
+  return raw || '—';
+}
+
+function humanizeText(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '—';
+  return raw.replace(/_/g, ' ');
+}
+
+function driverDocTitle(documentType) {
+  const key = String(documentType || '').toLowerCase();
+  return ({
+    dl: 'Driving License',
+    aadhar: 'Aadhaar Card',
+    pan: 'PAN Card',
+    photo: 'Passport Photo'
+  })[key] || humanizeText(key).replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function renderDocFieldRows(doc) {
+  const rows = Array.isArray(doc.fieldRows) ? doc.fieldRows.filter((row) => row && row.field_name && row.field_value) : [];
+  if (!rows.length) return '';
+  return `
+    <div class="doc-fields">
+      ${rows.slice(0, 8).map((row) => `
+        <div class="doc-field">
+          <b>${row.field_name}</b>
+          <span title="${String(row.field_value || '').replace(/"/g, '&quot;')}">${row.field_value || '—'}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+async function downloadPdf(documentId, label) {
+  if (!documentId) return;
+  const response = await authFetch(`/api/drivers/documents/${encodeURIComponent(documentId)}/download-pdf`);
+  if (!response.ok) {
+    alert('Could not download this document right now.');
+    return;
+  }
+  const blob = await response.blob();
+  if (!blob || !blob.size) {
+    alert('Could not download this document right now.');
+    return;
+  }
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `${label || 'driver-document'}.pdf`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+function renderDocuments(documents) {
+  const list = document.getElementById('doc-list');
+  if (!list) return;
+  if (!Array.isArray(documents) || !documents.length) {
+    list.innerHTML = `<div class="empty">No documents have been saved for this driver yet.</div>`;
+    return;
+  }
+  list.innerHTML = documents.map((doc) => {
+    const title = driverDocTitle(doc.documentType || doc.document_type);
+    const status = humanizeText(doc.status || 'saved');
+    const pageCount = Number(doc.pageCount || doc.page_count || 0);
+    const metaBits = [status];
+    if (pageCount > 0) metaBits.push(`${pageCount} page${pageCount === 1 ? '' : 's'}`);
+    return `
+      <div class="doc-item">
+        <div class="doc-top">
+          <div>
+            <div class="doc-name">${title}</div>
+            <div class="doc-meta">${metaBits.join(' · ')}</div>
+          </div>
+          <div class="doc-badge">${status}</div>
+        </div>
+        <div class="doc-actions">
+          <button class="doc-btn primary" type="button" onclick="downloadPdf(${Number(doc.id)}, '${title.replace(/'/g, "\\'")}')">Download PDF</button>
+        </div>
+        ${renderDocFieldRows(doc)}
+      </div>
+    `;
+  }).join('');
+}
+
+async function loadDriverDetail() {
+  const params = new URLSearchParams(window.location.search);
+  const id = Number(params.get('id'));
+  if (!id) {
+    document.getElementById('loading').textContent = 'Driver id is missing.';
+    return;
+  }
+  currentDriverId = id;
+  try {
+    const response = await authFetch(`/api/drivers/${encodeURIComponent(id)}/documents`);
+    if (!response.ok) throw new Error('Could not load driver details right now.');
+    const data = await response.json().catch(() => ({}));
+    const driver = data.driver || {};
+    currentDriverData = driver;
+
+    setText('hero-name', driver.full_name || driver.fullName || 'Driver');
+    setText('hero-sub', [driver.license_type, driver.assigned_truck].filter(Boolean).join(' · ') || 'Driver profile');
+    setText('f-name', driver.full_name || driver.fullName);
+    setText('f-phone', driver.phone);
+    setText('f-dob', formatDate(driver.dob));
+    setText('f-blood', driver.blood_group || driver.bloodGroup);
+    setText('f-emergency', driver.emergency_phone || driver.emergencyPhone);
+    setText('f-truck', driver.assigned_truck || driver.assignedTruck);
+    setText('f-join', formatDate(driver.join_date || driver.joinDate));
+    setText('f-status', driver.status);
+    setText('f-city', driver.city);
+    setText('f-pin', driver.pin);
+    setText('f-dl', driver.dl_no || driver.dlNo);
+    setText('f-dl-exp', formatDate(driver.dl_expiry || driver.dlExpiry));
+    setText('f-lic', driver.license_type || driver.licenseType);
+    setText('f-veh-cat', driver.vehicle_category || driver.vehicleCategory);
+    setText('f-aadhaar', driver.aadhar);
+    setText('f-pan', driver.pan);
+    setText('f-exp', driver.experience);
+    setText('f-hazmat', driver.hazmat);
+
+    renderDocuments(data.documents || []);
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('detail-content').style.display = 'block';
+  } catch (error) {
+    console.error('Driver detail load failed:', error);
+    document.getElementById('loading').textContent = error.message || 'Could not load driver details.';
+  }
+}
+
+function deleteCurrentDriver() {
+  if (!currentDriverId) {
+    alert('Driver entry is not loaded yet.');
+    return;
+  }
+  document.getElementById('delete-confirm-name').textContent =
+    document.getElementById('hero-name')?.textContent || 'This driver';
+  document.getElementById('delete-confirm-backdrop').classList.add('active');
+}
+
+function closeDeleteConfirm() {
+  if (deleteInFlight) return;
+  document.getElementById('delete-confirm-backdrop').classList.remove('active');
+}
+
+async function confirmDeleteCurrentDriver() {
+  if (!currentDriverId || deleteInFlight) return;
+  deleteInFlight = true;
+  const submitBtn = document.getElementById('delete-confirm-submit');
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = 'Deleting…';
+  submitBtn.disabled = true;
+  try {
+    const response = await authFetch(`/api/drivers/${encodeURIComponent(currentDriverId)}`, { method: 'DELETE' });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'Could not delete this driver right now.');
+    window.location.href = '/Driver_List_FINAL.html';
+  } catch (error) {
+    alert(error.message || 'Could not delete this driver right now.');
+  } finally {
+    deleteInFlight = false;
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+    closeDeleteConfirm();
+  }
+}
+
+document.getElementById('delete-confirm-submit').addEventListener('click', confirmDeleteCurrentDriver);
+document.getElementById('delete-confirm-backdrop').addEventListener('click', (event) => {
+  if (event.target === event.currentTarget) closeDeleteConfirm();
+});
+
+loadDriverDetail();
+</script>
+</body>
+</html>

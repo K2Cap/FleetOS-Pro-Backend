@@ -17,10 +17,14 @@
   --ink:#1a1814;--ink2:#3d3a34;--mu:#7a7570;--mu2:#b0aca4;--bd:#ddd9d0;--bd2:#c8c4bb;
   --ff:'DM Sans',sans-serif;--fm:'JetBrains Mono',monospace;
   --r:18px;--r-lg:22px;
+  --app-footer-height:96px;
+  --app-visible-height:100dvh;
+  --app-footer-offset:0px;
   --sh-sm:0 2px 8px rgba(26,24,20,.07);--sh-md:0 6px 24px rgba(26,24,20,.11);
 }
-body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:20px 0;}
-.phone{width:390px;background:var(--bg);border-radius:44px;overflow:hidden;box-shadow:0 32px 80px rgba(26,24,20,.35),0 0 0 9px #181510;border:5px solid #232018;display:flex;flex-direction:column;height:820px;position:relative;}
+html,body{width:100%;height:100%;margin:0;padding:0;overflow:hidden;background:var(--bg);}
+body{font-family:var(--ff);color:var(--ink);}
+.phone{width:100%;max-width:none;min-height:var(--app-visible-height);height:var(--app-visible-height);background:var(--bg);overflow:hidden;display:flex;flex-direction:column;position:relative;}
 
 /* STATUS BAR */
 .sbar{background:var(--g);padding:12px 22px 5px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
@@ -29,7 +33,7 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
 .sbar-dot{width:7px;height:7px;border-radius:50%;background:#0a2c1d;}
 
 /* HEADER */
-.modal-header{background:var(--g);padding:14px 18px 16px;flex-shrink:0;}
+.modal-header{background:var(--g);padding:calc(14px + env(safe-area-inset-top,0px)) 18px 16px;flex-shrink:0;}
 .mh-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;}
 .mh-title{font-family:'Fraunces',serif;font-weight:900;font-size:22px;color:#fff;letter-spacing:-.5px;line-height:1;}
 .mh-title em{color:var(--s);font-style:italic;font-weight:400;}
@@ -48,7 +52,7 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
 .tab-check{display:none;font-size:9px;}
 
 /* SCROLL BODY */
-.scroll-body{flex:1;overflow-y:auto;padding:16px 16px 0;-webkit-overflow-scrolling:touch;}
+.scroll-body{flex:1;overflow-y:auto;padding:16px 16px calc(var(--app-footer-height) + var(--app-footer-offset) + 16px);-webkit-overflow-scrolling:touch;}
 .scroll-body::-webkit-scrollbar{display:none;}
 
 /* FORM ELEMENTS */
@@ -113,11 +117,11 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
 .prog-bar{height:3px;background:linear-gradient(90deg,var(--g),var(--s));transition:width .4s cubic-bezier(.4,0,.2,1);}
 
 /* FOOTER */
-.footer{background:var(--wh);border-top:1px solid var(--bd);padding:11px 16px 13px;flex-shrink:0;box-shadow:0 -4px 16px rgba(26,24,20,.07);}
-.footer-inner{display:flex;align-items:center;justify-content:space-between;}
-.f-count{font-size:11.5px;color:var(--mu);font-weight:600;}
-.f-btns{display:flex;gap:9px;}
-.btn{padding:11px 18px;border-radius:var(--r);font-family:var(--ff);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;border:none;}
+.footer{position:fixed;left:0;right:0;bottom:var(--app-footer-offset);z-index:30;background:var(--wh);border-top:1px solid var(--bd);padding:11px 16px calc(13px + env(safe-area-inset-bottom,0px));flex-shrink:0;box-shadow:0 -4px 16px rgba(26,24,20,.07);}
+.footer-inner{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;}
+.f-count{flex:1;min-width:0;font-size:11.5px;color:var(--mu);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.f-btns{display:flex;gap:9px;flex-shrink:0;}
+.btn{padding:11px 16px;border-radius:var(--r);font-family:var(--ff);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;border:none;white-space:nowrap;}
 .btn-g{border:1.5px solid var(--bd);background:var(--bg);color:var(--ink2);}
 .btn-p{background:var(--s);color:#fff;box-shadow:0 3px 14px rgba(232,103,26,.35);}
 .btn-p:active{transform:scale(.98);}
@@ -135,7 +139,7 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
 .s-lbl{color:var(--mu);font-weight:600;}
 .s-val{color:var(--ink);font-weight:700;}
 
-.phone{width:390px;background:var(--bg);border-radius:44px;overflow:hidden;transform:translate3d(0,0,0);box-shadow:0 32px 80px rgba(26,24,20,.35),0 0 0 9px #181510;border:5px solid #232018;display:flex;flex-direction:column;height:820px;position:relative;}
+.phone{transform:translate3d(0,0,0);}
 
 /* BOTTOM SHEET PICKER */
 .sheet-backdrop{position:absolute;inset:0;background:rgba(26,24,20,.55);z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;}
@@ -198,15 +202,6 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
 <div class="phone">
 
   <!-- STATUS BAR -->
-  <div class="sbar">
-    <span class="sbar-time">9:41</span>
-    <div class="sbar-pill"><div class="sbar-dot"></div></div>
-    <div style="display:flex;gap:5px;align-items:center">
-      <svg width="14" height="10" viewBox="0 0 14 10"><rect x="0" y="7.6" width="2.5" height="2.4" fill="white" opacity=".8" rx=".5"/><rect x="3.5" y="5.2" width="2.5" height="4.8" fill="white" opacity=".8" rx=".5"/><rect x="7" y="2.6" width="2.5" height="7.4" fill="white" opacity=".8" rx=".5"/><rect x="10.5" y="0" width="2.5" height="10" fill="white" opacity=".3" rx=".5"/></svg>
-      <svg width="16" height="10" viewBox="0 0 16 10"><rect x="1" y="2.5" width="10.5" height="6.5" rx="1.5" fill="none" stroke="white" stroke-width="1" opacity=".8"/><rect x="2" y="3.5" width="7.5" height="4.5" rx=".5" fill="white" opacity=".8"/><rect x="12" y="4.5" width="2" height="3" rx=".8" fill="white" opacity=".45"/></svg>
-    </div>
-  </div>
-
   <!-- HEADER -->
   <div class="modal-header">
     <div class="mh-row">
@@ -214,7 +209,7 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
         <div class="mh-title">Add New <em>Driver</em></div>
         <div class="mh-sub" id="mh-sub">Gravity Vision Engine active — auto-extracting details</div>
       </div>
-      <div class="close-btn">✕</div>
+      <div class="close-btn" onclick="closeScreen('/Driver_List_FINAL.html')">✕</div>
     </div>
     <div class="mode-toggle">
       <button class="mode-btn active" id="btn-scan" onclick="setMode('scan')">📄 Scan Documents</button>
@@ -449,7 +444,10 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
       <div class="s-row"><span class="s-lbl">License Type</span><span class="s-val" id="s-lictype">—</span></div>
       <div class="s-row"><span class="s-lbl">Status</span><span class="s-val" style="color:var(--g)">Active ●</span></div>
     </div>
-    <button class="btn btn-reg" onclick="resetForm()">+ Add Another Driver</button>
+    <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:320px">
+      <button class="btn btn-reg" onclick="window.location.href='/Driver_List_FINAL.html'">Go to Driver Register</button>
+      <button class="btn btn-g" style="justify-content:center" onclick="resetForm()">+ Add Another Driver</button>
+    </div>
   </div>
 
   <!-- FOOTER -->
@@ -487,10 +485,12 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
         </div>
         <div class="sheet-opt-arrow">›</div>
       </button>
-    </div>
+</div>
   </div>
 
 </div><!-- end .phone -->
+<input type="file" id="driver-camera-input" accept="image/*" style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
+<input type="file" id="driver-file-input" accept="image/*,application/pdf" style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
 <script>
 /* ─── STATE ─────────────────────────────────── */
 let mode = 'scan';          // 'scan' | 'manual'
@@ -499,6 +499,22 @@ let tabOrder = ['personal','license'];
 let scannedDocs = {};       // which docs have been scanned/captured
 let uploadedDocs = {};      // which docs uploaded in manual mode
 let activeScanDoc = null;   // currently scanning doc key
+let pendingDriverFileKey = null;
+let driverRecordId = null;
+const latestDriverOcrByDoc = {};
+const driverScanInFlight = {};
+const driverDocUploads = {
+  dl: { file:null, serverDocumentId:null, uploadSignature:'', mergedFile:null, storedPages:[] },
+  aadhar: { file:null, serverDocumentId:null, uploadSignature:'', mergedFile:null, storedPages:[] },
+  pan: { file:null, serverDocumentId:null, uploadSignature:'', mergedFile:null, storedPages:[] },
+  photo: { file:null, serverDocumentId:null, uploadSignature:'', mergedFile:null, storedPages:[] }
+};
+const driverBackendDocTypeMap = {
+  dl: 'dl',
+  aadhar: 'aadhar',
+  pan: 'pan',
+  photo: 'photo'
+};
 
 /* ─── MODE TOGGLE ───────────────────────────── */
 function setMode(m) {
@@ -516,6 +532,7 @@ function setMode(m) {
     document.getElementById('btn-next').textContent = 'Next →';
     document.getElementById('f-count').textContent = 'Scan Documents';
     updateProgress(0);
+    syncAddDriverFooterHeight();
   } else {
     showView('personal');
     document.getElementById('tab-bar').style.display = 'flex';
@@ -523,6 +540,7 @@ function setMode(m) {
     activateTab('personal');
     updateFooterManual();
     updateProgress(50);
+    syncAddDriverFooterHeight();
   }
 }
 
@@ -534,6 +552,7 @@ function setTab(tab) {
   updateFooterManual();
   const idx = tabOrder.indexOf(tab);
   updateProgress(50 * (idx + 1));
+  syncAddDriverFooterHeight();
 }
 
 function activateTab(tab) {
@@ -553,8 +572,7 @@ function showView(id) {
 
 function updateFooterManual() {
   const idx = tabOrder.indexOf(currentTab);
-  document.getElementById('f-count').textContent = 'Tab ' + (idx+1) + ' of 2 — ' +
-    currentTab.charAt(0).toUpperCase() + currentTab.slice(1);
+  document.getElementById('f-count').textContent = 'Step ' + (idx+1) + ' of 2';
   document.getElementById('btn-back').style.display = (idx > 0) ? 'flex' : 'none';
   document.getElementById('btn-next').textContent = (idx === 1) ? '✓ Register' : 'Next →';
 }
@@ -583,6 +601,18 @@ function goBack() {
   if (idx > 0) setTab(tabOrder[idx - 1]);
 }
 
+function closeScreen(fallbackUrl) {
+  try {
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+  } catch (error) {
+    console.warn('Could not navigate back:', error);
+  }
+  window.location.href = fallbackUrl || '/Driver_List_FINAL.html';
+}
+
 /* ─── PROGRESS ───────────────────────────────── */
 function updateProgress(pct) {
   document.getElementById('prog-bar').style.width = pct + '%';
@@ -597,16 +627,435 @@ const docMeta = {
   avatar: { icon:'🤳', scanLabel:'Capture', scanDesc:'Take a photo using camera',      camSub:'Position face clearly in the centre of frame' },
 };
 
-function completeAvatar() {
+function completeAvatar(fileName) {
   const circle = document.getElementById('avatar-circle');
   circle.textContent = '🧑';
   circle.classList.add('filled');
   const btn = circle.nextElementSibling?.querySelector('.avatar-btn');
   if(btn) btn.textContent = '✓ Photo Added';
+  const sub = document.querySelector('.avatar-sub');
+  if(sub) sub.textContent = fileName ? `${fileName} added` : '✓ Photo added';
+  const actionBtn = document.querySelector('.avatar-btn');
+  if(actionBtn) {
+    actionBtn.textContent = 'Change Photo';
+    actionBtn.style.color = 'var(--g)';
+  }
 }
 
 let pickerDoc = null;
 let pickerTitle = '';
+
+function getFleetApiBase() {
+  return window.FLEETOS_API_BASE || 'https://fleetos-pro-backend-production.up.railway.app';
+}
+
+function getFleetAuthToken() {
+  return localStorage.getItem('fleetToken') || localStorage.getItem('gravityToken') || localStorage.getItem('token') || '';
+}
+
+function getFleetUserId() {
+  const raw = localStorage.getItem('fleetUser') || localStorage.getItem('gravityUser') || localStorage.getItem('user') || '';
+  if(!raw) return '';
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed?.id ? String(parsed.id) : '';
+  } catch (_error) {
+    return '';
+  }
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || '');
+      const commaIndex = result.indexOf(',');
+      resolve(commaIndex >= 0 ? result.slice(commaIndex + 1) : result);
+    };
+    reader.onerror = () => reject(new Error('Could not read the selected file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function rememberDriverOcrPayload(key, payload) {
+  if(!payload) return;
+  latestDriverOcrByDoc[key] = payload;
+}
+
+function getDriverBucket(key) {
+  return driverDocUploads[key] || null;
+}
+
+function buildDriverFileSignature(file) {
+  if(!file) return '';
+  return [file.name, file.size, file.lastModified, file.type].join('|');
+}
+
+function extractDriverNameFromPayload(payload) {
+  if(!payload) return '';
+  if(Array.isArray(payload)) {
+    for(const entry of payload) {
+      const resolved = extractDriverNameFromPayload(entry);
+      if(resolved) return resolved;
+    }
+    return '';
+  }
+  const directKeys = [
+    'fullName','name','driverName',
+    'Full Name','Name','Driver Name'
+  ];
+  for(const key of directKeys) {
+    const value = payload?.[key];
+    if(typeof value === 'string' && value.trim()) return value.trim();
+  }
+  for(const value of Object.values(payload || {})) {
+    if(value && typeof value === 'object') {
+      const nested = extractDriverNameFromPayload(value);
+      if(nested) return nested;
+    }
+  }
+  return '';
+}
+
+function getCurrentDriverName() {
+  const typed = String(document.getElementById('full-name')?.value || '').trim();
+  if(typed) return typed;
+  for(const payload of Object.values(latestDriverOcrByDoc)) {
+    const resolved = extractDriverNameFromPayload(payload);
+    if(resolved) {
+      const nameInput = document.getElementById('full-name');
+      if(nameInput && !nameInput.value.trim()) nameInput.value = resolved;
+      return resolved;
+    }
+  }
+  return '';
+}
+
+function getDriverDocumentPageLabels(key) {
+  if(key === 'photo') return ['Photo'];
+  if(key === 'dl') return ['Front Side'];
+  if(key === 'aadhar') return ['Front Side'];
+  if(key === 'pan') return ['Front Side'];
+  return ['Page 1'];
+}
+
+function normalizeDateInput(value) {
+  if(!value) return '';
+  const raw = String(value).trim();
+  if(!raw) return '';
+  const cleaned = raw.replace(/\./g, '/').replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) return cleaned;
+  const slashMatch = cleaned.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);
+  if(slashMatch) {
+    let [, d, m, y] = slashMatch;
+    if(y.length === 2) y = `20${y}`;
+    return `${y.padStart(4, '0')}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+  const parsed = new Date(cleaned);
+  if(!Number.isNaN(parsed.getTime())) {
+    return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
+  }
+  return '';
+}
+
+function digitsOnly(value) {
+  return String(value || '').replace(/[^\d]/g, '');
+}
+
+function formatAadhaar(value) {
+  const digits = digitsOnly(value).slice(0, 12);
+  return digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+}
+
+function formatPan(value) {
+  return String(value || '').replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 10);
+}
+
+function formatDlNumber(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim().toUpperCase();
+}
+
+function normalizeLicenseType(value) {
+  const text = String(value || '').trim().toLowerCase();
+  if(!text) return '';
+  if(text.includes('hmv')) return 'HMV';
+  if(text.includes('lmv')) return 'LMV';
+  if(text.includes('transport')) return 'Transport';
+  return value;
+}
+
+function setDriverFieldValue(id, value, transform) {
+  const el = document.getElementById(id);
+  if(!el || value === null || value === undefined) return false;
+  let next = typeof transform === 'function' ? transform(value) : String(value).trim();
+  if(next === null || next === undefined) return false;
+  next = String(next).trim();
+  if(!next) return false;
+  el.value = next;
+  const wrap = el.closest('.finput') || el.closest('.ftextarea') || el;
+  wrap.style.transition = 'background .3s';
+  wrap.style.background = 'var(--glt)';
+  setTimeout(() => { wrap.style.background = ''; }, 1000);
+  return true;
+}
+
+function applyDriverOcrData(payload) {
+  const data = payload || {};
+  setDriverFieldValue('full-name', data['Full Name'] || data.fullName || data['Name'] || data.name || data['Driver Name']);
+  setDriverFieldValue('dob', data['DOB'] || data.dob, normalizeDateInput);
+  setDriverFieldValue('mobile', data['Phone'] || data.phone || data['Mobile'], digitsOnly);
+  setDriverFieldValue('address', data['Address']);
+  setDriverFieldValue('city', data['City']);
+  setDriverFieldValue('pin', data['PIN Code'], digitsOnly);
+  setDriverFieldValue('dl-number', data['DL Number'] || data['DL No'] || data.dlNo, formatDlNumber);
+  setDriverFieldValue('dl-expiry', data['DL Expiry'] || data.dlExpiry || data.expiry, normalizeDateInput);
+  setDriverFieldValue('lic-type', data['Document Type'] === 'Driving License' ? 'HMV' : normalizeLicenseType(data['License Type'] || data['Vehicle Class']));
+  setDriverFieldValue('aadhaar', data['Aadhaar Number'] || data['Aadhaar'] || data['Aadhar'] || data.aadhar, formatAadhaar);
+  setDriverFieldValue('pan', data['PAN Number'] || data['PAN'] || data.pan, formatPan);
+}
+
+function updateDriverDocUi(key, state, meta = {}) {
+  if(key === 'avatar') return;
+  const card = document.getElementById('dc-' + key);
+  const stat = document.getElementById('ds-' + key);
+  const btn  = document.getElementById('sb-' + key);
+  if(!card || !stat || !btn) return;
+
+  card.classList.remove('scanning', 'scanned');
+  btn.disabled = false;
+  btn.className = 'scan-btn';
+
+  if(state === 'scanning') {
+    delete scannedDocs[key];
+    card.classList.add('scanning');
+    stat.className = 'doc-card-stat scanning';
+    stat.textContent = meta.message || 'Scanning…';
+    btn.textContent = '⏳';
+    btn.disabled = true;
+  } else if(state === 'done') {
+    scannedDocs[key] = true;
+    card.classList.add('scanned');
+    stat.className = 'doc-card-stat ok';
+    stat.textContent = meta.message || '✓ Added';
+    btn.textContent = '✓ Done';
+    btn.className = 'scan-btn done';
+  } else {
+    delete scannedDocs[key];
+    stat.className = 'doc-card-stat';
+    stat.textContent = meta.message || 'Retry with a clearer file';
+    btn.textContent = 'Retry';
+  }
+
+  checkScanComplete();
+}
+
+function chooseDriverFile(key, useCamera) {
+  pendingDriverFileKey = key;
+  const input = document.getElementById(useCamera ? 'driver-camera-input' : 'driver-file-input');
+  if(!input) return;
+  input.value = '';
+  if(useCamera) {
+    input.setAttribute('accept', 'image/*');
+    input.setAttribute('capture', key === 'avatar' ? 'user' : 'environment');
+  } else {
+    input.setAttribute('accept', key === 'photo' || key === 'avatar' ? 'image/*' : 'image/*,application/pdf');
+    input.removeAttribute('capture');
+  }
+  input.click();
+}
+
+async function scanStoredDriverDocument(key, documentId, fullName) {
+  const inFlightKey = `${key}:${documentId}`;
+  if(driverScanInFlight[inFlightKey]) return driverScanInFlight[inFlightKey];
+  driverScanInFlight[inFlightKey] = (async() => {
+    const token = getFleetAuthToken();
+    const response = await fetch(`${getFleetApiBase()}/api/drivers/documents/${documentId}/scan`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ fullName })
+    });
+    const data = await response.json().catch(() => ({}));
+    if(!response.ok) {
+      const err = new Error(data.error || 'Document was uploaded, but scan finalization failed.');
+      err.code = data.code || '';
+      throw err;
+    }
+    if(data.extracted) {
+      rememberDriverOcrPayload(key, data.extracted);
+      applyDriverOcrData(data.extracted);
+    }
+    if(data.driverId) driverRecordId = data.driverId;
+    return data;
+  })();
+  try {
+    return await driverScanInFlight[inFlightKey];
+  } finally {
+    delete driverScanInFlight[inFlightKey];
+  }
+}
+
+function isQuotaScanError(error) {
+  const code = String(error?.code || '').toUpperCase();
+  const message = String(error?.message || '');
+  return code === 'AI_QUOTA_EXCEEDED' || /quota exceeded|too many requests|\b429\b/i.test(message);
+}
+
+function handleDriverDeferredScan(key, data, fallbackMessage) {
+  if(!data?.scanError) return false;
+  const deferred = isQuotaScanError(data.scanError);
+  updateDriverDocUi(key, 'done', { message: fallbackMessage || (deferred ? 'Saved to backend. OCR retry needed later.' : 'Saved to backend. OCR review needed later.') });
+  return true;
+}
+
+async function persistDriverDocumentUpload(key, file, { scanAfterUpload = true } = {}) {
+  const token = getFleetAuthToken();
+  if(!token) throw new Error('Please log in again before saving documents.');
+  if(!file) return null;
+
+  let fullName = getCurrentDriverName();
+  if(!fullName) fullName = `PENDING_DRIVER_${Date.now()}`;
+
+  const bucket = getDriverBucket(key);
+  const signature = buildDriverFileSignature(file);
+  if(bucket && bucket.serverDocumentId && bucket.uploadSignature === signature) {
+    return {
+      documentId: bucket.serverDocumentId,
+      mergedFile: bucket.mergedFile,
+      storedPages: bucket.storedPages,
+      skipped: true
+    };
+  }
+
+    const formData = new FormData();
+    formData.append('fullName', fullName);
+    formData.append('documentType', driverBackendDocTypeMap[key] || key);
+    const ownerUserId = getFleetUserId();
+    if(ownerUserId) formData.append('ownerUserId', ownerUserId);
+    formData.append('pageLabels', JSON.stringify(getDriverDocumentPageLabels(key)));
+    formData.append('documents', file, file.name);
+
+  const response = await fetch(`${getFleetApiBase()}/api/drivers/documents/batch`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData
+  });
+  const data = await response.json().catch(() => ({}));
+  if(!response.ok) {
+    throw new Error(data.error || 'Document upload could not be saved to the backend.');
+  }
+
+  if(bucket) {
+    bucket.file = file;
+    bucket.serverDocumentId = data.documentId || null;
+    bucket.uploadSignature = signature;
+    bucket.mergedFile = data.mergedFile || null;
+    bucket.storedPages = data.storedPages || [];
+  }
+
+  if(scanAfterUpload && data.documentId) {
+    try {
+      const scanData = await scanStoredDriverDocument(key, data.documentId, fullName);
+      if(scanData?.extracted) data.extracted = scanData.extracted;
+    } catch(error) {
+      data.scanError = {
+        message: error.message || 'Document was uploaded, but scan finalization failed.',
+        code: error.code || ''
+      };
+    }
+  }
+
+  return data;
+}
+
+function getDriverFormValue(id) {
+  return String(document.getElementById(id)?.value || '').trim();
+}
+
+function normalizeDriverPhone(value) {
+  const digits = digitsOnly(value);
+  return digits.length > 10 ? digits.slice(-10) : digits;
+}
+
+async function resolveExistingDriverId() {
+  if(driverRecordId) return driverRecordId;
+  const token = getFleetAuthToken();
+  if(!token) return null;
+  const response = await fetch(`${getFleetApiBase()}/api/drivers`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if(!response.ok) return null;
+  const rows = await response.json().catch(() => []);
+  const normalizedName = getCurrentDriverName().toLowerCase();
+  const normalizedPhone = normalizeDriverPhone(getDriverFormValue('mobile'));
+  const normalizedDl = formatDlNumber(getDriverFormValue('dl-number'));
+  const match = Array.isArray(rows)
+    ? rows.find((row) => {
+        const rowName = String(row.full_name || row.fullName || '').trim().toLowerCase();
+        const rowPhone = normalizeDriverPhone(row.phone || '');
+        const rowDl = formatDlNumber(row.dl_no || row.dlNo || '');
+        return (normalizedName && rowName === normalizedName)
+          || (normalizedPhone && rowPhone === normalizedPhone)
+          || (normalizedDl && rowDl === normalizedDl);
+      })
+    : null;
+  if(match?.id) driverRecordId = match.id;
+  return driverRecordId;
+}
+
+function buildDriverCreateFormData() {
+  const formData = new FormData();
+  formData.append('fullName', getCurrentDriverName());
+  formData.append('dob', getDriverFormValue('dob'));
+  formData.append('bloodGroup', getDriverFormValue('blood-group'));
+  formData.append('phone', normalizeDriverPhone(getDriverFormValue('mobile')));
+  formData.append('emergencyPhone', normalizeDriverPhone(getDriverFormValue('emergency')));
+  formData.append('status', (() => {
+    const status = getDriverFormValue('status');
+    if(status === 'active') return 'Active';
+    if(status === 'inactive') return 'Inactive';
+    if(status === 'on-leave') return 'On Leave';
+    return status || 'Active';
+  })());
+  formData.append('empType', getDriverFormValue('emp-type'));
+  formData.append('address', getDriverFormValue('address'));
+  formData.append('city', getDriverFormValue('city'));
+  formData.append('pin', digitsOnly(getDriverFormValue('pin')).slice(0, 6));
+  formData.append('dlNo', formatDlNumber(getDriverFormValue('dl-number')));
+  formData.append('dlExpiry', getDriverFormValue('dl-expiry'));
+  formData.append('licenseType', getDriverFormValue('lic-type'));
+  formData.append('aadhar', digitsOnly(getDriverFormValue('aadhaar')).slice(0, 12));
+  formData.append('pan', formatPan(getDriverFormValue('pan')));
+  return formData;
+}
+
+function buildDriverUpdatePayload() {
+  return {
+    fullName: getCurrentDriverName(),
+    dob: getDriverFormValue('dob'),
+    bloodGroup: getDriverFormValue('blood-group'),
+    phone: normalizeDriverPhone(getDriverFormValue('mobile')),
+    emergencyPhone: normalizeDriverPhone(getDriverFormValue('emergency')),
+    status: (() => {
+      const status = getDriverFormValue('status');
+      if(status === 'active') return 'Active';
+      if(status === 'inactive') return 'Inactive';
+      if(status === 'on-leave') return 'On Leave';
+      return status || 'Active';
+    })(),
+    empType: getDriverFormValue('emp-type'),
+    address: getDriverFormValue('address'),
+    city: getDriverFormValue('city'),
+    pin: digitsOnly(getDriverFormValue('pin')).slice(0, 6),
+    dlNo: formatDlNumber(getDriverFormValue('dl-number')),
+    dlExpiry: getDriverFormValue('dl-expiry'),
+    licenseType: getDriverFormValue('lic-type'),
+    aadhar: digitsOnly(getDriverFormValue('aadhaar')).slice(0, 12),
+    pan: formatPan(getDriverFormValue('pan'))
+  };
+}
 
 function openPicker(key, title, camSub) {
   pickerDoc   = key;
@@ -626,41 +1075,13 @@ function closePicker() {
 }
 
 function sheetPrimary() {
-  closePicker();
-  if(pickerDoc === 'avatar') {
-    setTimeout(() => completeAvatar(), 200);
-    return;
-  }
-  const meta = docMeta[pickerDoc];
-  setTimeout(() => startScan(pickerDoc, pickerTitle, meta.camSub), 200);
+  chooseDriverFile(pickerDoc, true);
+  setTimeout(() => closePicker(), 120);
 }
 
 function sheetUpload() {
-  closePicker();
-  if(pickerDoc === 'avatar') {
-    setTimeout(() => completeAvatar(), 400);
-    return;
-  }
-  const key = pickerDoc;
-  const card = document.getElementById('dc-' + key);
-  const stat = document.getElementById('ds-' + key);
-  const btn  = document.getElementById('sb-' + key);
-  if(!card) return;
-  card.classList.add('scanning');
-  stat.className = 'doc-card-stat scanning';
-  stat.textContent = 'Uploading…';
-  btn.textContent = '⏳'; btn.disabled = true;
-  setTimeout(() => {
-    card.classList.remove('scanning');
-    card.classList.add('scanned');
-    stat.className = 'doc-card-stat ok';
-    stat.textContent = '✓ Uploaded';
-    btn.textContent = '✓ Done';
-    btn.className = 'scan-btn done'; btn.disabled = false;
-    scannedDocs[key] = true;
-    autofillFromScan(key);
-    checkScanComplete();
-  }, 1200);
+  chooseDriverFile(pickerDoc, false);
+  setTimeout(() => closePicker(), 120);
 }
 
 /* ─── SCAN LOGIC ─────────────────────────────── */
@@ -668,12 +1089,7 @@ const scanIcons = {dl:'🪪', aadhar:'🪙', pan:'📄', photo:'📷'};
 
 function startScan(key, title, sub) {
   activeScanDoc = key;
-  document.getElementById('cam-title').textContent = title;
-  document.getElementById('cam-sub').textContent = sub;
-  // Update cam-icon
-  const vp = document.querySelector('.cam-viewport .cam-icon');
-  if(vp) vp.textContent = scanIcons[key] || '📄';
-  document.getElementById('cam-overlay').classList.add('active');
+  chooseDriverFile(key, true);
 }
 
 function closeCam(e) {
@@ -684,57 +1100,59 @@ function closeCam(e) {
 
 function captureDoc() {
   if(!activeScanDoc) return;
-  const key = activeScanDoc;
-  document.getElementById('cam-overlay').classList.remove('active');
-
-  // Simulate scanning
-  const card = document.getElementById('dc-' + key);
-  const stat = document.getElementById('ds-' + key);
-  const btn  = document.getElementById('sb-' + key);
-  if(!card) return;
-
-  card.classList.add('scanning');
-  stat.className = 'doc-card-stat scanning';
-  stat.textContent = 'Scanning…';
-  btn.textContent = '⏳';
-  btn.disabled = true;
-
-  setTimeout(() => {
-    card.classList.remove('scanning');
-    card.classList.add('scanned');
-    stat.className = 'doc-card-stat ok';
-    stat.textContent = '✓ Captured';
-    btn.textContent = '✓ Done';
-    btn.className = 'scan-btn done';
-    btn.disabled = false;
-    scannedDocs[key] = true;
-    autofillFromScan(key);
-    checkScanComplete();
-  }, 1600);
+  chooseDriverFile(activeScanDoc, true);
   activeScanDoc = null;
 }
 
-function autofillFromScan(key) {
-  // Simulate OCR autofill
-  const fills = {
-    dl:     { 'dl-number': 'MH01 20190034567', 'full-name': 'Ramesh Kumar Patil', 'dob': '1992-07-14', 'dl-issue':'2019-01-10','dl-expiry':'2039-01-09','lic-type':'HMV' },
-    aadhar: { 'aadhaar': '7845 3312 9900', 'full-name': 'Ramesh Kumar Patil', 'dob': '1992-07-14', 'city':'Mumbai','pin':'400072' },
-    pan:    { 'pan': 'BKRPK9832M' },
-    photo:  {}
-  };
-  const data = fills[key] || {};
-  Object.entries(data).forEach(([id, val]) => {
-    const el = document.getElementById(id);
-    if(el && !el.value) {
-      el.value = val;
-      // flash green
-      const wrap = el.closest('.finput') || el;
-      wrap.style.transition = 'background .3s';
-      wrap.style.background = 'var(--glt)';
-      setTimeout(() => { wrap.style.background = ''; }, 1000);
+async function processDriverFile(key, file) {
+  if(key === 'avatar') {
+    completeAvatar(file.name);
+    await processDriverFile('photo', file);
+    return;
+  }
+
+  const token = getFleetAuthToken();
+  if(!token) {
+    updateDriverDocUi(key, 'error', { message: 'Please log in again to scan.' });
+    alert('Please log in again before scanning documents.');
+    return;
+  }
+
+  updateDriverDocUi(key, 'scanning', { message: 'Scanning…' });
+  try {
+    if(key === 'photo') {
+      await persistDriverDocumentUpload('photo', file, { scanAfterUpload: false });
+      completeAvatar(file.name);
+      updateDriverDocUi(key, 'done', { message: '✓ Photo saved to backend' });
+      return;
     }
-  });
+
+    const data = await persistDriverDocumentUpload(key, file, { scanAfterUpload: true });
+    const extracted = latestDriverOcrByDoc[key] || data?.extracted || null;
+    if(extracted) applyDriverOcrData(extracted);
+    if(!handleDriverDeferredScan(key, data, `✓ ${file.name} saved to backend. OCR retry later`)) {
+      updateDriverDocUi(key, 'done', { message: `✓ ${file.name} scanned & saved` });
+    }
+  } catch (error) {
+    console.error('Driver OCR failed:', error);
+    updateDriverDocUi(key, 'error', { message: error.message || 'Retry with a clearer file' });
+    if(!error?.scanDeferred) {
+      alert(error.message || 'Scanning could not be completed right now.');
+    }
+  }
 }
+
+async function handleDriverInputChange(event) {
+  const file = event.target.files && event.target.files[0];
+  const key = pendingDriverFileKey;
+  event.target.value = '';
+  if(!file || !key) return;
+  await processDriverFile(key, file);
+  pendingDriverFileKey = null;
+}
+
+document.getElementById('driver-camera-input').addEventListener('change', handleDriverInputChange);
+document.getElementById('driver-file-input').addEventListener('change', handleDriverInputChange);
 
 function checkScanComplete() {
   const count = Object.keys(scannedDocs).length;
@@ -780,26 +1198,72 @@ function openAvatarPicker() {
   document.getElementById('bottom-sheet').classList.add('active');
 }
 
-function completeAvatar() {
-  const circle = document.getElementById('avatar-circle');
-  circle.classList.add('filled');
-  circle.textContent = '🧑';
-  document.querySelector('.avatar-sub').textContent = '✓ Photo added';
-  document.querySelector('.avatar-btn').textContent = 'Change Photo';
-  document.querySelector('.avatar-btn').style.color = 'var(--g)';
-}
-
 /* ─── REGISTER ───────────────────────────────── */
-function registerDriver() {
-  const name   = document.getElementById('full-name').value || 'Driver';
-  const mobile = document.getElementById('mobile').value    || '—';
-  const dlNum  = document.getElementById('dl-number').value || '—';
-  const licT   = document.getElementById('lic-type').value  || 'HMV';
+async function registerDriver() {
+  const btn = document.getElementById('btn-next');
+  const originalText = btn.textContent;
+  btn.textContent = 'Saving…';
+  btn.disabled = true;
 
-  document.getElementById('s-name').textContent   = name;
-  document.getElementById('s-mobile').textContent = mobile ? '+91 ' + mobile : '—';
-  document.getElementById('s-dl').textContent     = dlNum;
-  document.getElementById('s-lictype').textContent = licT;
+  try {
+    const token = getFleetAuthToken();
+    if(!token) {
+      throw new Error('Please log in again before saving the driver.');
+    }
+
+    const fullName = getCurrentDriverName();
+    const phone = normalizeDriverPhone(getDriverFormValue('mobile'));
+    const dlNum = formatDlNumber(getDriverFormValue('dl-number'));
+    const pan = formatPan(getDriverFormValue('pan'));
+    if(!fullName) throw new Error('Driver name is required.');
+    if(phone.length !== 10) throw new Error('A valid 10-digit mobile number is compulsory for driver registration.');
+    if(!dlNum) throw new Error('Driving License number is compulsory for driver registration.');
+    if(!pan) throw new Error('PAN Card number is compulsory for driver registration.');
+
+    for(const key of Object.keys(driverDocUploads)) {
+      const bucket = getDriverBucket(key);
+      if(bucket?.file) {
+        await persistDriverDocumentUpload(key, bucket.file, { scanAfterUpload: key !== 'photo' });
+      }
+    }
+
+    let existingDriverId = await resolveExistingDriverId();
+    let response;
+    let data;
+
+    if(existingDriverId) {
+      response = await fetch(`${getFleetApiBase()}/api/drivers/${existingDriverId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(buildDriverUpdatePayload())
+      });
+      data = await response.json().catch(() => ({}));
+    } else {
+      response = await fetch(`${getFleetApiBase()}/api/drivers`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: buildDriverCreateFormData()
+      });
+      data = await response.json().catch(() => ({}));
+      if(response.ok && data.id) driverRecordId = data.id;
+    }
+
+    if(!response.ok) {
+      throw new Error(data.error || 'Driver could not be saved right now.');
+    }
+
+  const successName = document.getElementById('full-name').value || 'Driver';
+  const successMobile = document.getElementById('mobile').value || '—';
+  const successDlNum = document.getElementById('dl-number').value || '—';
+  const successLicType = document.getElementById('lic-type').value || 'HMV';
+
+  document.getElementById('s-name').textContent   = successName;
+  document.getElementById('s-mobile').textContent = successMobile ? '+91 ' + successMobile : '—';
+  document.getElementById('s-dl').textContent     = successDlNum;
+  document.getElementById('s-lictype').textContent = successLicType;
   document.getElementById('s-driver-id').textContent = 'DRV-2026-' + String(Math.floor(Math.random()*900+100));
 
   // Hide tabs & footer
@@ -808,12 +1272,28 @@ function registerDriver() {
   document.getElementById('prog-bar').style.width   = '100%';
   showView('success');
   document.getElementById('view-success').style.display = 'flex';
+  } catch(error) {
+    console.error('Driver save failed:', error);
+    alert(error.message || 'Driver could not be saved right now.');
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
 }
 
 function resetForm() {
   // Reset everything
   document.querySelectorAll('input, textarea').forEach(el => { if(el.type !== 'date') el.value = ''; });
   scannedDocs = {}; uploadedDocs = {};
+  driverRecordId = null;
+  Object.keys(latestDriverOcrByDoc).forEach(key => delete latestDriverOcrByDoc[key]);
+  Object.values(driverDocUploads).forEach((bucket) => {
+    bucket.file = null;
+    bucket.serverDocumentId = null;
+    bucket.uploadSignature = '';
+    bucket.mergedFile = null;
+    bucket.storedPages = [];
+  });
   ['dl','aadhar','pan','photo'].forEach(k => {
     const card = document.getElementById('dc-' + k);
     const stat = document.getElementById('ds-' + k);
@@ -837,6 +1317,25 @@ function resetForm() {
   setMode('scan');
 }
 
+function syncAddDriverFooterHeight() {
+  const footer = document.getElementById('footer');
+  const viewport = window.visualViewport;
+  const visibleHeight = viewport ? viewport.height : window.innerHeight;
+  const footerOffset = viewport ? Math.max(0, window.innerHeight - (viewport.height + viewport.offsetTop)) : 0;
+  document.documentElement.style.setProperty('--app-visible-height', `${Math.round(visibleHeight)}px`);
+  document.documentElement.style.setProperty('--app-footer-offset', `${Math.round(footerOffset)}px`);
+  if(!footer || footer.style.display === 'none') return;
+  document.documentElement.style.setProperty('--app-footer-height', footer.offsetHeight + 'px');
+}
+
+window.addEventListener('resize', syncAddDriverFooterHeight);
+window.addEventListener('orientationchange', syncAddDriverFooterHeight);
+window.addEventListener('load', syncAddDriverFooterHeight);
+if(window.visualViewport) {
+  window.visualViewport.addEventListener('resize', syncAddDriverFooterHeight);
+  window.visualViewport.addEventListener('scroll', syncAddDriverFooterHeight);
+}
+
 /* ─── AADHAAR FORMAT ────────────────────────── */
 document.getElementById('aadhaar').addEventListener('input', function(){
   let v = this.value.replace(/\D/g,'').slice(0,12);
@@ -845,6 +1344,7 @@ document.getElementById('aadhaar').addEventListener('input', function(){
 
 /* ─── INIT ───────────────────────────────────── */
 setMode('scan');
+syncAddDriverFooterHeight();
 </script>
 </body>
 </html>
