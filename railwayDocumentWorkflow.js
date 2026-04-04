@@ -166,6 +166,24 @@ function normalizeTruckPayload(payload) {
 
 function normalizeDriverPayload(payload) {
   const flat = flattenOcrPayload(payload || {});
+  const address = firstNonEmpty(flat['Address'], flat.address);
+  const pin = firstNonEmpty(flat['PIN Code'], flat['Pin Code'], flat.pin, flat.pincode);
+  let city = firstNonEmpty(flat['City'], flat.city);
+  if (!city && address && pin) {
+    const addressText = String(address).replace(/\s+/g, ' ').trim();
+    const pinText = String(pin).replace(/\D/g, '');
+    const pinIdx = pinText ? addressText.toUpperCase().lastIndexOf(pinText.toUpperCase()) : -1;
+    if (pinIdx > 0) {
+      const beforePin = addressText.slice(0, pinIdx).replace(/[\s,/-]+$/g, '');
+      const parts = beforePin.split(/[,\-\/]+/).map((part) => part.trim()).filter(Boolean);
+      if (parts.length) {
+        city = parts[parts.length - 1]
+          .replace(/\b(?:DIST|DISTRICT|TEH|TEHSIL|PS|PO)\b/gi, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+      }
+    }
+  }
   return {
     fullName: firstNonEmpty(
       flat['Full Name'],
@@ -179,6 +197,10 @@ function normalizeDriverPayload(payload) {
     ),
     dob: parseDateToText(firstNonEmpty(flat['DOB'], flat.dob, flat.dateOfBirth)),
     phone: firstNonEmpty(flat['Mobile'], flat.phone, flat.mobile),
+    address,
+    city,
+    state: firstNonEmpty(flat['State'], flat.state),
+    pin,
     dlNo: firstNonEmpty(flat['DL No'], flat.dlNo, flat.licenseNumber),
     dlIssue: parseDateToText(firstNonEmpty(flat['DL Issue Date'], flat.dlIssue, flat.issueDate)),
     dlExpiry: parseDateToText(firstNonEmpty(flat['DL Expiry'], flat.dlExpiry, flat.expiry, flat.expiryDate)),
@@ -226,6 +248,10 @@ function mergeDriverPayloads(documentType, payloads) {
     fullName: firstNonEmpty(...normalized.map((p) => p.fullName)),
     dob: firstNonEmpty(...normalized.map((p) => p.dob)),
     phone: firstNonEmpty(...normalized.map((p) => p.phone)),
+    address: firstNonEmpty(...normalized.map((p) => p.address)),
+    city: firstNonEmpty(...normalized.map((p) => p.city)),
+    state: firstNonEmpty(...normalized.map((p) => p.state)),
+    pin: firstNonEmpty(...normalized.map((p) => p.pin)),
     dlNo: firstNonEmpty(...normalized.map((p) => p.dlNo)),
     dlIssue: firstNonEmpty(...normalized.map((p) => p.dlIssue)),
     dlExpiry: firstNonEmpty(...normalized.map((p) => p.dlExpiry)),
@@ -934,6 +960,10 @@ async function upsertDriverFromDocument(client, mergedPayload, documentType, mer
     full_name: fullName,
     dob: mergedPayload.dob,
     phone: phone || row?.phone || null,
+    address: mergedPayload.address || row?.address || null,
+    city: mergedPayload.city || row?.city || null,
+    state: mergedPayload.state || row?.state || null,
+    pin: mergedPayload.pin || row?.pin || null,
     dl_no: dlNo || row?.dl_no || null,
     dl_issue: mergedPayload.dlIssue,
     dl_expiry: mergedPayload.dlExpiry,
