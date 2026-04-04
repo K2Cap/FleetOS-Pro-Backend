@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const archiver = require('archiver');
 const { PDFDocument } = require('pdf-lib');
 const ExcelJS = require('exceljs');
 const { flattenOcrPayload, normalizeTruckOcrPayload } = require('./ocr-normalizers');
@@ -1549,6 +1550,63 @@ function registerDocumentWorkflow({
     if (!truck) return res.status(404).json({ error: 'Truck not found' });
     const documents = await getDocumentsForEntity('truck', truck.id);
     res.json({ truck, documents });
+  });
+
+  app.get('/api/fleet/documents/:documentId/download-originals', authenticateTransporter, async (req, res) => {
+    const documentId = toNumberOrNull(req.params.documentId);
+    if (!documentId) return res.status(400).json({ error: 'Valid documentId is required' });
+
+    const docRes = await pool.query(
+      `SELECT d.*
+       FROM documents d
+       LEFT JOIN trucks t ON d.entity_type = 'truck' AND d.entity_id = t.id
+       WHERE d.id = $1
+         AND d.entity_type = 'truck'
+         AND (d.owner_user_id = $2 OR d.owner_user_id IS NULL OR t.owner_user_id = $2 OR t.owner_user_id IS NULL)
+       LIMIT 1`,
+      [documentId, req.user?.id || null]
+    );
+    const document = docRes.rows[0];
+    if (!document) return res.status(404).json({ error: 'Truck document not found' });
+
+    const pageRes = await pool.query(
+      `SELECT page_number, page_label, original_name, stored_name, stored_path
+       FROM document_pages
+       WHERE document_id = $1
+       ORDER BY page_number ASC`,
+      [documentId]
+    );
+    const pages = pageRes.rows || [];
+    if (!pages.length) return res.status(404).json({ error: 'No stored upload pages found for this document' });
+
+    if (pages.length === 1) {
+      const page = pages[0];
+      const safeName = sanitizeStorageToken(page.page_label || page.original_name || page.stored_name || document.display_name || 'document');
+      return res.redirect(`/api/download/${encodeURIComponent(page.stored_name)}?name=${encodeURIComponent(safeName)}`);
+    }
+
+    const zipBase = sanitizeStorageToken(document.display_name || document.document_type || `truck-document-${documentId}`);
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${zipBase}.zip"`);
+
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    archive.on('error', (err) => {
+      if (!res.headersSent) {
+        res.status(500).json({ error: err.message || 'Could not prepare document download' });
+      } else {
+        res.end();
+      }
+    });
+    archive.pipe(res);
+
+    pages.forEach((page, index) => {
+      const absolutePath = path.join(UPLOADS_DIR, page.stored_name);
+      if (!fs.existsSync(absolutePath)) return;
+      const ext = path.extname(page.stored_name || page.original_name || '') || '.jpg';
+      const entryName = `${String(index + 1).padStart(2, '0')}_${sanitizeStorageToken(page.page_label || page.original_name || page.stored_name || `page_${index + 1}`)}${ext}`;
+      archive.file(absolutePath, { name: entryName });
+    });
+    await archive.finalize();
   });
 
   app.get('/api/fleet/document-register', authenticateTransporter, async (req, res) => {
