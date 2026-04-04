@@ -97,14 +97,12 @@ body{font-family:var(--ff);color:var(--ink)}
         <div class="grid">
           <div class="field"><b>Full Name</b><span id="f-name">—</span></div>
           <div class="field"><b>Mobile</b><span id="f-phone">—</span></div>
+          <div class="field"><b>Driver OTP</b><span id="f-driver-otp">—</span></div>
+          <div class="field"><b>Account Status</b><span id="f-account-status">—</span></div>
           <div class="field"><b>Date of Birth</b><span id="f-dob">—</span></div>
           <div class="field"><b>Blood Group</b><span id="f-blood">—</span></div>
           <div class="field"><b>Emergency Phone</b><span id="f-emergency">—</span></div>
-          <div class="field"><b>Assigned Truck</b><span id="f-truck">—</span></div>
-          <div class="field"><b>Join Date</b><span id="f-join">—</span></div>
           <div class="field"><b>Status</b><span id="f-status">—</span></div>
-          <div class="field"><b>City</b><span id="f-city">—</span></div>
-          <div class="field"><b>PIN Code</b><span id="f-pin">—</span></div>
         </div>
       </div>
       <div class="section">
@@ -113,11 +111,8 @@ body{font-family:var(--ff);color:var(--ink)}
           <div class="field"><b>DL Number</b><span id="f-dl">—</span></div>
           <div class="field"><b>DL Expiry</b><span id="f-dl-exp">—</span></div>
           <div class="field"><b>License Type</b><span id="f-lic">—</span></div>
-          <div class="field"><b>Vehicle Category</b><span id="f-veh-cat">—</span></div>
           <div class="field"><b>Aadhaar</b><span id="f-aadhaar">—</span></div>
           <div class="field"><b>PAN</b><span id="f-pan">—</span></div>
-          <div class="field"><b>Experience</b><span id="f-exp">—</span></div>
-          <div class="field"><b>Hazmat</b><span id="f-hazmat">—</span></div>
         </div>
       </div>
       <div class="section">
@@ -213,7 +208,8 @@ async function downloadPdf(documentId, label) {
   if (!documentId) return;
   const response = await authFetch(`/api/drivers/documents/${encodeURIComponent(documentId)}/download-pdf`);
   if (!response.ok) {
-    alert('Could not download this document right now.');
+    const data = await response.clone().json().catch(() => ({}));
+    alert(data.error || 'Could not download this document right now.');
     return;
   }
   const blob = await response.blob();
@@ -238,10 +234,24 @@ function renderDocuments(documents) {
     list.innerHTML = `<div class="empty">No documents have been saved for this driver yet.</div>`;
     return;
   }
-  list.innerHTML = documents.map((doc) => {
+  const latestByType = new Map();
+  for (const doc of documents) {
+    const typeKey = String(doc.documentType || doc.document_type || '').toLowerCase();
+    const existing = latestByType.get(typeKey);
+    const currentId = Number(doc.documentId || doc.id || 0);
+    const existingId = Number(existing?.documentId || existing?.id || 0);
+    if (!existing || currentId > existingId) latestByType.set(typeKey, doc);
+  }
+  const uniqueDocuments = [...latestByType.values()].sort((a, b) => {
+    const aId = Number(a.documentId || a.id || 0);
+    const bId = Number(b.documentId || b.id || 0);
+    return bId - aId;
+  });
+  list.innerHTML = uniqueDocuments.map((doc) => {
     const title = driverDocTitle(doc.documentType || doc.document_type);
     const status = humanizeText(doc.status || 'saved');
     const pageCount = Number(doc.pageCount || doc.page_count || 0);
+    const documentId = Number(doc.documentId || doc.id || 0);
     const metaBits = [status];
     if (pageCount > 0) metaBits.push(`${pageCount} page${pageCount === 1 ? '' : 's'}`);
     return `
@@ -254,7 +264,7 @@ function renderDocuments(documents) {
           <div class="doc-badge">${status}</div>
         </div>
         <div class="doc-actions">
-          <button class="doc-btn primary" type="button" onclick="downloadPdf(${Number(doc.id)}, '${title.replace(/'/g, "\\'")}')">Download PDF</button>
+          <button class="doc-btn primary" type="button" onclick="downloadPdf(${documentId}, '${title.replace(/'/g, "\\'")}')">Download PDF</button>
         </div>
         ${renderDocFieldRows(doc)}
       </div>
@@ -281,22 +291,17 @@ async function loadDriverDetail() {
     setText('hero-sub', [driver.license_type, driver.assigned_truck].filter(Boolean).join(' · ') || 'Driver profile');
     setText('f-name', driver.full_name || driver.fullName);
     setText('f-phone', driver.phone);
+    setText('f-driver-otp', driver.driver_otp || driver.temp_password);
+    setText('f-account-status', driver.account_status || 'Active');
     setText('f-dob', formatDate(driver.dob));
     setText('f-blood', driver.blood_group || driver.bloodGroup);
     setText('f-emergency', driver.emergency_phone || driver.emergencyPhone);
-    setText('f-truck', driver.assigned_truck || driver.assignedTruck);
-    setText('f-join', formatDate(driver.join_date || driver.joinDate));
     setText('f-status', driver.status);
-    setText('f-city', driver.city);
-    setText('f-pin', driver.pin);
     setText('f-dl', driver.dl_no || driver.dlNo);
     setText('f-dl-exp', formatDate(driver.dl_expiry || driver.dlExpiry));
     setText('f-lic', driver.license_type || driver.licenseType);
-    setText('f-veh-cat', driver.vehicle_category || driver.vehicleCategory);
     setText('f-aadhaar', driver.aadhar);
     setText('f-pan', driver.pan);
-    setText('f-exp', driver.experience);
-    setText('f-hazmat', driver.hazmat);
 
     renderDocuments(data.documents || []);
     document.getElementById('loading').style.display = 'none';
