@@ -1983,23 +1983,79 @@ app.get('/api/drivers', authenticateTransporter, async (req, res) => {
         await ensureDriverAccountColumns();
         const ownerId = req.user?.id || null;
         const result = await pool.query(
-            `SELECT
-                d.*,
-                COALESCE(NULLIF(TRIM(d.full_name), ''), r.full_name) AS full_name,
-                r.dl_document,
-                r.aadhar_document,
-                r.pan_document,
-                r.photo_document
-             FROM drivers d
-             LEFT JOIN driver_document_registers r
-               ON r.driver_id = d.id
-             WHERE COALESCE(d.account_status, 'Active') = 'Active'
-               AND (
-                 d.owner_user_id = $1
-                 OR d.transporter_id = $1
-                 OR (d.owner_user_id IS NULL AND d.transporter_id IS NULL)
-               )
-             ORDER BY COALESCE(d.updated_at, d.created_at) DESC NULLS LAST, d.id DESC`,
+            `WITH roster_rows AS (
+                SELECT
+                    d.id,
+                    COALESCE(d.owner_user_id, r.owner_user_id) AS owner_user_id,
+                    d.transporter_id,
+                    d.owner_user_name,
+                    COALESCE(NULLIF(TRIM(d.full_name), ''), NULLIF(TRIM(r.full_name), ''), 'Unnamed Driver') AS full_name,
+                    d.dob,
+                    d.blood_group,
+                    d.phone,
+                    d.emergency_phone,
+                    d.status,
+                    d.assigned_truck,
+                    d.dl_no,
+                    d.dl_expiry,
+                    d.license_type,
+                    d.vehicle_category,
+                    d.aadhar,
+                    d.pan,
+                    d.driver_otp,
+                    d.temp_password,
+                    COALESCE(d.account_status, 'Active') AS account_status,
+                    r.dl_document,
+                    r.aadhar_document,
+                    r.pan_document,
+                    r.photo_document,
+                    COALESCE(d.updated_at, d.created_at, r.updated_at) AS sort_updated_at
+                FROM drivers d
+                LEFT JOIN driver_document_registers r
+                  ON r.driver_id = d.id
+
+                UNION ALL
+
+                SELECT
+                    r.driver_id AS id,
+                    r.owner_user_id,
+                    NULL::INTEGER AS transporter_id,
+                    NULL::TEXT AS owner_user_name,
+                    COALESCE(NULLIF(TRIM(r.full_name), ''), 'Unnamed Driver') AS full_name,
+                    NULL::TEXT AS dob,
+                    NULL::TEXT AS blood_group,
+                    NULL::TEXT AS phone,
+                    NULL::TEXT AS emergency_phone,
+                    'Active'::TEXT AS status,
+                    NULL::TEXT AS assigned_truck,
+                    NULL::TEXT AS dl_no,
+                    NULL::TEXT AS dl_expiry,
+                    NULL::TEXT AS license_type,
+                    NULL::TEXT AS vehicle_category,
+                    NULL::TEXT AS aadhar,
+                    NULL::TEXT AS pan,
+                    NULL::TEXT AS driver_otp,
+                    NULL::TEXT AS temp_password,
+                    'Active'::TEXT AS account_status,
+                    r.dl_document,
+                    r.aadhar_document,
+                    r.pan_document,
+                    r.photo_document,
+                    r.updated_at AS sort_updated_at
+                FROM driver_document_registers r
+                LEFT JOIN drivers d
+                  ON d.id = r.driver_id
+                WHERE d.id IS NULL
+            )
+            SELECT *
+            FROM roster_rows
+            WHERE account_status = 'Active'
+              AND (
+                owner_user_id = $1
+                OR transporter_id = $1
+                OR (owner_user_id IS NULL AND transporter_id IS NULL)
+              )
+            ORDER BY sort_updated_at DESC NULLS LAST, id DESC`,
             [ownerId]
         );
         res.json(result.rows.map((row) => sanitizeDriverRow(row, { includeTransporterOtp: true })));
