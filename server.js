@@ -1972,7 +1972,7 @@ async function ensureDriverAccountColumns() {
             await sqliteRun(sql);
         } catch (err) {
             const message = String(err?.message || '');
-            if (!/duplicate column name/i.test(message)) throw err;
+            if (!/duplicate column name|already exists/i.test(message)) throw err;
         }
     }
     driverAccountColumnsReady = true;
