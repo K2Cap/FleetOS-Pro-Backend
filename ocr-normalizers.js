@@ -85,6 +85,20 @@ function sanitizeVehicleDescriptor(value) {
   return raw;
 }
 
+function extractLabeledValue(rawText, labels = []) {
+  const source = String(rawText || '');
+  if (!source) return null;
+  for (const label of labels) {
+    const escaped = String(label).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = source.match(new RegExp(`${escaped}\\s*[:\\-]?\\s*([^\\n\\r]+)`, 'i'));
+    if (match && match[1]) {
+      const value = String(match[1]).replace(/^[\\/|:-]+/, '').trim();
+      if (value) return value;
+    }
+  }
+  return null;
+}
+
 function cleanupIdentifierCandidate(token, kind) {
   if (!token) return null;
   let cleaned = String(token || '')
@@ -238,8 +252,19 @@ function normalizeTruckOcrPayload(payload) {
     purchasePrice: firstNonEmpty(flat['Purchase Price'], flat.purchasePrice, flat['Invoice Value'], flat.invoiceValue, flat['Ex Showroom Price'], flat['Sale Amount'], flat.saleAmount),
     registrationDate: firstNonEmpty(flat['Registration Date'], flat['Date of Registration'], flat['Date of Regn'], flat.registrationDate),
     registrationValidity: firstNonEmpty(flat['Regn. Validity'], flat['Regn Validity'], flat['Registration Validity'], flat['Registration Valid Upto'], flat.registrationValidity),
-    bodyType: sanitizeVehicleDescriptor(firstNonEmpty(flat['Body Type'], flat['Type of Body'], flat.bodyType)),
-    capacity: firstNonEmpty(flat['Gross Combination Weight'], flat['GCW'], flat['GVW'], flat.capacity),
+    bodyType: sanitizeVehicleDescriptor(firstNonEmpty(
+      flat['Body Type'],
+      flat['Type of Body'],
+      flat.bodyType,
+      extractLabeledValue(rawText, ['Body Type', 'Type of Body'])
+    )),
+    capacity: firstNonEmpty(
+      flat['Gross Combination Weight'],
+      flat['GCW'],
+      flat['GVW'],
+      flat.capacity,
+      extractLabeledValue(rawText, ['Gross Combination Weight', 'GCW', 'GVW'])
+    ),
     insuranceProvider: sanitizePersonOrgName(firstNonEmpty(flat['Insurance Provider'], flat['Insurer'], flat.insuranceProvider, flat.insurer)),
     policyNo: sanitizeDocNumber(firstNonEmpty(flat['Policy No'], flat['Policy Number'], flat.policyNo, flat.policy_number)),
     fitnessCertNo: sanitizeDocNumber(firstNonEmpty(flat['Fitness Cert No'], flat['Fitness Certificate No'], flat.fitnessCertNo, flat.certificateNo)),
