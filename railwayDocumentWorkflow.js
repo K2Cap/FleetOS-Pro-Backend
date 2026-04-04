@@ -41,6 +41,13 @@ function normalizeTruckRegNo(regNo) {
     .trim();
 }
 
+function formatTruckRegNo(regNo) {
+  const compact = normalizeTruckRegNo(regNo);
+  const match = compact.match(/^([A-Z]{2})(\d{1,2})([A-Z]{1,3})(\d{1,4})$/);
+  if (!match) return cleanString(regNo);
+  return `${match[1]} ${match[2].padStart(2, '0')} ${match[3]} ${match[4].padStart(4, '0')}`;
+}
+
 function isResolvableTruckRegNo(regNo) {
   const normalized = normalizeTruckRegNo(regNo);
   if (!normalized) return false;
@@ -582,8 +589,8 @@ async function upsertTruckDocumentRegister(client, payload) {
   const column = getTruckRegisterColumn(payload.documentType);
   if (!column) return;
   const safeRegNo = payload.documentType === 'rc'
-    ? (normalizeTruckRegNo(payload.regNo) || null)
-    : (isResolvableTruckRegNo(payload.regNo) ? normalizeTruckRegNo(payload.regNo) : null);
+    ? (formatTruckRegNo(payload.regNo) || null)
+    : (isResolvableTruckRegNo(payload.regNo) ? formatTruckRegNo(payload.regNo) : null);
   await client.query(
     `INSERT INTO truck_document_registers (truck_id, owner_user_id, reg_no, ${column}, updated_at)
      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
@@ -765,7 +772,7 @@ async function upsertTruckFromDocument(client, mergedPayload, documentType, merg
   const rawRegNo = documentType === 'rc'
     ? firstNonEmpty(mergedPayload.regNo, regNoHint, row?.reg_no)
     : firstNonEmpty(existingTruckRegNo, hintedRegNo, row?.reg_no, isResolvableTruckRegNo(mergedPayload.regNo) ? mergedPayload.regNo : null);
-  const regNo = isResolvableTruckRegNo(rawRegNo) ? normalizeTruckRegNo(rawRegNo) : null;
+  const regNo = isResolvableTruckRegNo(rawRegNo) ? formatTruckRegNo(rawRegNo) : null;
 
   if (!row && regNo) {
     const existing = await client.query(
@@ -773,7 +780,7 @@ async function upsertTruckFromDocument(client, mergedPayload, documentType, merg
          FROM trucks
         WHERE UPPER(REGEXP_REPLACE(COALESCE(reg_no, ''), '[^A-Z0-9]', '', 'g')) = $1
         LIMIT 1`,
-      [regNo]
+      [normalizeTruckRegNo(regNo)]
     );
     row = existing.rows[0] || null;
   }
@@ -1344,12 +1351,12 @@ function registerDocumentWorkflow({
         req.body.truckId
       );
       const truckRegRes = await client.query('SELECT reg_no FROM trucks WHERE id = $1 LIMIT 1', [truckId]);
-      const resolvedTruckRegNo = normalizeTruckRegNo(
-        truckRegRes.rows[0]?.reg_no ||
-        (document.document_type === 'rc' ? mergedPayload.regNo : null) ||
-        req.body.regNo ||
-        null
-      ) || null;
+        const resolvedTruckRegNo = formatTruckRegNo(
+          truckRegRes.rows[0]?.reg_no ||
+          (document.document_type === 'rc' ? mergedPayload.regNo : null) ||
+          req.body.regNo ||
+          null
+        ) || null;
       const sourceEngine = ocrResults.map((item) => item.engine).filter(Boolean).join(', ');
       const fieldRows = buildFieldRowsFromPayload(mergedPayload, document.document_type, sourceEngine);
 
@@ -1376,11 +1383,11 @@ function registerDocumentWorkflow({
         snapshot: buildRegisterDocumentSnapshot(document, mergedPayload, fieldRows, mergedStoredPath, sourceEngine),
       });
 
-      await client.query(
-        `INSERT INTO ocr_scans (doc_type, reg_no, owner_name, raw_data, status, error_msg)
-         VALUES ($1, $2, $3, $4, 'SUCCESS', NULL)`,
-        [document.document_type, resolvedTruckRegNo, mergedPayload.ownerName, mergedPayload]
-      );
+        await client.query(
+          `INSERT INTO ocr_scans (doc_type, reg_no, owner_name, raw_data, status, error_msg)
+           VALUES ($1, $2, $3, $4, 'SUCCESS', NULL)`,
+          [document.document_type, formatTruckRegNo(resolvedTruckRegNo) || resolvedTruckRegNo, mergedPayload.ownerName, mergedPayload]
+        );
 
       await client.query('COMMIT');
       res.json({
@@ -1410,11 +1417,11 @@ function registerDocumentWorkflow({
           [documentId]
         );
         await client.query('DELETE FROM document_field_values WHERE document_id = $1', [documentId]);
-        await client.query(
-          `INSERT INTO ocr_scans (doc_type, reg_no, owner_name, raw_data, status, error_msg)
-           VALUES ($1, $2, $3, NULL, 'FAILED', $4)`,
-          ['Unknown', req.body.regNo || null, null, classified.message]
-        );
+          await client.query(
+            `INSERT INTO ocr_scans (doc_type, reg_no, owner_name, raw_data, status, error_msg)
+             VALUES ($1, $2, $3, NULL, 'FAILED', $4)`,
+            ['Unknown', formatTruckRegNo(req.body.regNo) || req.body.regNo || null, null, classified.message]
+          );
       } catch (_innerErr) {}
       res.status(classified.status).json({ error: classified.message, code: classified.code });
     } finally {

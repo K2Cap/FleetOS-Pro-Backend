@@ -175,20 +175,36 @@ function toNumberOrNull(value) {
 }
 
 function formatIndianNumber(value, { prefix = '', suffix = '', maxFractionDigits = 2, fixedFractionDigits = null } = {}) {
-    const parsed = toNumberOrNull(value);
-    if (parsed === null) return cleanString(value);
-    const minimumFractionDigits = fixedFractionDigits === null ? 0 : fixedFractionDigits;
-    const maximumFractionDigits = fixedFractionDigits === null
-        ? (Number.isInteger(parsed) ? 0 : maxFractionDigits)
-        : fixedFractionDigits;
-    return `${prefix}${parsed.toLocaleString('en-IN', { minimumFractionDigits, maximumFractionDigits })}${suffix}`;
-}
+      const parsed = toNumberOrNull(value);
+      if (parsed === null) return cleanString(value);
+      const minimumFractionDigits = fixedFractionDigits === null ? 0 : fixedFractionDigits;
+      const maximumFractionDigits = fixedFractionDigits === null
+          ? (Number.isInteger(parsed) ? 0 : maxFractionDigits)
+          : fixedFractionDigits;
+      return `${prefix}${parsed.toLocaleString('en-IN', { minimumFractionDigits, maximumFractionDigits })}${suffix}`;
+  }
+
+function formatTruckRegNo(value) {
+      const compact = String(value || '')
+          .toUpperCase()
+          .replace(/[^A-Z0-9]/g, '')
+          .trim();
+      const match = compact.match(/^([A-Z]{2})(\d{1,2})([A-Z]{1,3})(\d{1,4})$/);
+      if (!match) return cleanString(value);
+      const state = match[1];
+      const rto = match[2].padStart(2, '0');
+      const series = match[3];
+      const number = match[4].padStart(4, '0');
+      return `${state} ${rto} ${series} ${number}`;
+  }
 
 function decorateTruckRow(row) {
-    if (!row) return row;
-    return {
-        ...row,
-        gvw_display: formatIndianNumber(row.gvw),
+      if (!row) return row;
+      return {
+          ...row,
+          reg_no: formatTruckRegNo(row.reg_no) || row.reg_no,
+          reg_no_display: formatTruckRegNo(row.reg_no) || row.reg_no,
+          gvw_display: formatIndianNumber(row.gvw),
         tyres_count_display: formatIndianNumber(row.tyres_count),
         odometer_display: formatIndianNumber(row.odometer),
         purchase_price_display: formatIndianNumber(row.purchase_price, { prefix: '₹ ' }),
@@ -1221,9 +1237,9 @@ async function generateMasterFleetExcel() {
     );
 
     result.rows.forEach((row) => {
-        fleetSheet.addRow({
-            ...row,
-            reg_no: row.reg_no || registerFieldValue(row.rc_document, ['Registration No','Vehicle No']),
+          fleetSheet.addRow({
+              ...row,
+              reg_no: formatTruckRegNo(row.reg_no || registerFieldValue(row.rc_document, ['Registration No','Vehicle No'])) || row.reg_no || registerFieldValue(row.rc_document, ['Registration No','Vehicle No']),
             truck_status: row.truck_status || 'Registered',
             owner_name: row.owner_name || registerFieldValue(row.rc_document, ['Owner Name']),
             chassis_no: row.chassis_no || registerFieldValue(row.rc_document, ['Chassis Number','Chassis No']),
@@ -1245,7 +1261,7 @@ async function generateMasterFleetExcel() {
 
     let docsRow = 1;
     result.rows.forEach((row, index) => {
-        const heading = `Truck ${row.truck_id} | ${row.reg_no || 'NO REG'} | ${row.transporter_name || 'Unknown Transporter'}${row.company_name ? ` | ${row.company_name}` : ''}`;
+          const heading = `Truck ${row.truck_id} | ${formatTruckRegNo(row.reg_no) || row.reg_no || 'NO REG'} | ${row.transporter_name || 'Unknown Transporter'}${row.company_name ? ` | ${row.company_name}` : ''}`;
         docsSheet.mergeCells(`A${docsRow}:B${docsRow}`);
         const headingCell = docsSheet.getCell(`A${docsRow}`);
         headingCell.value = `${index + 1}. ${heading}`;
@@ -1657,7 +1673,7 @@ function buildFleetTruckPayload(req, existing = {}) {
     return {
         owner_user_id: existing.owner_user_id || req.user?.id || null,
         owner_user_name: cleanString(existing.owner_user_name) || cleanString(req.user?.name) || cleanString(req.user?.full_name) || cleanString(d.ownerUserName),
-        reg_no: cleanString(d.regNo) || cleanString(existing.reg_no),
+        reg_no: formatTruckRegNo(d.regNo) || formatTruckRegNo(existing.reg_no) || cleanString(d.regNo) || cleanString(existing.reg_no),
         chassis_no: cleanString(d.chassis) || cleanString(existing.chassis_no),
         engine_no: cleanString(d.engine) || cleanString(existing.engine_no),
         truck_type: cleanString(d.truckType) || cleanString(existing.truck_type),
