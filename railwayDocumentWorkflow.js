@@ -167,7 +167,16 @@ function normalizeTruckPayload(payload) {
 function normalizeDriverPayload(payload) {
   const flat = flattenOcrPayload(payload || {});
   return {
-    fullName: firstNonEmpty(flat['Name'], flat['Driver Name'], flat.fullName, flat.name),
+    fullName: firstNonEmpty(
+      flat['Full Name'],
+      flat['Driver Name'],
+      flat['Name of Driver'],
+      flat['Card Holder Name'],
+      flat['Applicant Name'],
+      flat['Name'],
+      flat.fullName,
+      flat.name
+    ),
     dob: parseDateToText(firstNonEmpty(flat['DOB'], flat.dob, flat.dateOfBirth)),
     phone: firstNonEmpty(flat['Mobile'], flat.phone, flat.mobile),
     dlNo: firstNonEmpty(flat['DL No'], flat.dlNo, flat.licenseNumber),
@@ -938,6 +947,20 @@ async function upsertDriverFromDocument(client, mergedPayload, documentType, mer
   if (documentType === 'photo') patch.doc_photo_path = mergedStoredPath;
 
   if (row) {
+    if (!row.driver_otp && !row.temp_password) {
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        const candidate = Math.floor(100000 + Math.random() * 900000).toString();
+        const existingOtp = await client.query(
+          `SELECT id FROM drivers WHERE (driver_otp = $1 OR temp_password = $1) AND id != $2 LIMIT 1`,
+          [candidate, row.id]
+        );
+        if (existingOtp.rows.length === 0) {
+          patch.driver_otp = candidate;
+          patch.temp_password = candidate;
+          break;
+        }
+      }
+    }
     const columns = Object.keys(patch);
     const values = columns.map((key) => patch[key]);
     const setClause = columns.map((key, index) => `${key} = $${index + 1}`).join(', ');
@@ -947,10 +970,25 @@ async function upsertDriverFromDocument(client, mergedPayload, documentType, mer
   }
 
   const driverPhone = phone || `${Date.now()}`.slice(-10);
+  let driverOtp = null;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const candidate = Math.floor(100000 + Math.random() * 900000).toString();
+    const existingOtp = await client.query(
+      `SELECT id FROM drivers WHERE driver_otp = $1 OR temp_password = $1 LIMIT 1`,
+      [candidate]
+    );
+    if (existingOtp.rows.length === 0) {
+      driverOtp = candidate;
+      break;
+    }
+  }
+  if (!driverOtp) throw new Error('Unable to assign a unique 6-digit driver OTP');
   const insertPatch = {
     ...patch,
     phone: driverPhone,
     status: 'Active',
+    driver_otp: driverOtp,
+    temp_password: driverOtp,
   };
   const columns = Object.keys(insertPatch);
   const values = columns.map((key) => insertPatch[key] ?? null);

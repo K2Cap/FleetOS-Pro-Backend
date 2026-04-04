@@ -464,7 +464,10 @@ function getPublicBaseUrl(req) {
 async function generateUniqueDriverOtp() {
     for (let attempt = 0; attempt < 20; attempt += 1) {
         const candidate = Math.floor(100000 + Math.random() * 900000).toString();
-        const existing = await pool.query('SELECT id FROM drivers WHERE temp_password = $1 LIMIT 1', [candidate]);
+        const existing = await pool.query(
+            'SELECT id FROM drivers WHERE temp_password = $1 OR driver_otp = $1 LIMIT 1',
+            [candidate]
+        );
         if (existing.rows.length === 0) return candidate;
     }
     throw new Error('Unable to generate a unique 6-digit OTP right now');
@@ -813,6 +816,7 @@ async function initializeDatabase() {
             doc_pan_path TEXT,
             doc_photo_path TEXT,
             temp_password TEXT,
+            driver_otp TEXT,
             password TEXT,
             last_lat REAL,
             last_lng REAL,
@@ -969,6 +973,7 @@ async function initializeDatabase() {
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS doc_pan_path TEXT`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS doc_photo_path TEXT`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS temp_password TEXT`,
+            `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS driver_otp TEXT`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS password TEXT`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS last_lat REAL`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS last_lng REAL`,
@@ -1051,6 +1056,12 @@ async function initializeDatabase() {
             SET owner_user_id = transporter_id
             WHERE owner_user_id IS NULL
               AND transporter_id IS NOT NULL
+        `);
+        await pool.query(`
+            UPDATE drivers
+            SET driver_otp = temp_password
+            WHERE driver_otp IS NULL
+              AND temp_password ~ '^[0-9]{6}$'
         `);
 
         await ensureDocumentTables(pool);
@@ -2008,8 +2019,8 @@ app.post('/api/drivers', upload.fields([{ name: 'file_dl' }, { name: 'file_aadha
     try {
         await ensureDriverAccountColumns();
         const tempPass = await generateUniqueDriverOtp();
-        const cols = ['full_name', 'dob', 'blood_group', 'phone', 'emergency_phone', 'join_date', 'status', 'emp_type', 'assigned_truck', 'salary', 'pay_freq', 'address', 'city', 'state', 'pin', 'dl_no', 'dl_issue', 'dl_expiry', 'rto', 'dl_state', 'license_type', 'vehicle_category', 'hazmat', 'experience', 'aadhar', 'pan', 'doc_dl_path', 'doc_aadhar_path', 'doc_pan_path', 'doc_photo_path', 'temp_password', 'is_onboarded', 'transporter_id', 'owner_user_name', 'account_status', 'deleted_at'];
-        const p = [d.fullName, d.dob, d.bloodGroup, phone, normalizePhone(d.emergencyPhone), d.joinDate, d.status || 'Active', d.empType || 'Full-time', d.assignedTruck, d.salary || 0, d.payFreq, d.address, d.city, d.state, d.pin, dlNo, d.dlIssue, d.dlExpiry, d.rto, d.dlState, d.licenseType, d.vehicleCategory, d.hazmat, d.experience || 0, d.aadhar, pan.toUpperCase(), getPath('file_dl'), getPath('file_aadhar'), getPath('file_pan'), getPath('file_photo'), tempPass, 0, req.user?.id || null, req.user?.name || req.user?.full_name || null, 'Active', null];
+        const cols = ['full_name', 'dob', 'blood_group', 'phone', 'emergency_phone', 'join_date', 'status', 'emp_type', 'assigned_truck', 'salary', 'pay_freq', 'address', 'city', 'state', 'pin', 'dl_no', 'dl_issue', 'dl_expiry', 'rto', 'dl_state', 'license_type', 'vehicle_category', 'hazmat', 'experience', 'aadhar', 'pan', 'doc_dl_path', 'doc_aadhar_path', 'doc_pan_path', 'doc_photo_path', 'temp_password', 'driver_otp', 'is_onboarded', 'transporter_id', 'owner_user_id', 'owner_user_name', 'account_status', 'deleted_at'];
+        const p = [d.fullName, d.dob, d.bloodGroup, phone, normalizePhone(d.emergencyPhone), d.joinDate, d.status || 'Active', d.empType || 'Full-time', d.assignedTruck, d.salary || 0, d.payFreq, d.address, d.city, d.state, d.pin, dlNo, d.dlIssue, d.dlExpiry, d.rto, d.dlState, d.licenseType, d.vehicleCategory, d.hazmat, d.experience || 0, d.aadhar, pan.toUpperCase(), getPath('file_dl'), getPath('file_aadhar'), getPath('file_pan'), getPath('file_photo'), tempPass, tempPass, 0, req.user?.id || null, req.user?.id || null, req.user?.name || req.user?.full_name || null, 'Active', null];
 
         db.run(`INSERT INTO drivers (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`, p, function(err) {
             if (err) {
