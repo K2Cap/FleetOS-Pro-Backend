@@ -883,30 +883,53 @@ function normalizePhone(value) {
   return digits.length >= 10 ? digits.slice(-10) : digits;
 }
 
-async function upsertDriverFromDocument(client, mergedPayload, documentType, mergedStoredPath, fullNameHint = null) {
+async function upsertDriverFromDocument(client, mergedPayload, documentType, mergedStoredPath, fullNameHint = null, existingDriverIdHint = null, ownerUserId = null) {
   const fullName = firstNonEmpty(mergedPayload.fullName, fullNameHint);
   if (!fullName) throw new Error('Driver name could not be resolved from OCR');
 
   const phone = normalizePhone(mergedPayload.phone || '');
-  const existing = await client.query(
-    `SELECT * FROM drivers
-     WHERE full_name = $1
-        OR (phone = $2 AND $2 != '')
-        OR (dl_no = $3 AND $3 IS NOT NULL)
-     LIMIT 1`,
-    [fullName, phone, mergedPayload.dlNo]
-  );
-  const row = existing.rows[0];
+  const dlNo = cleanString(mergedPayload.dlNo);
+  const aadhar = cleanString(mergedPayload.aadhar);
+  const pan = cleanString(mergedPayload.pan);
+  const hintedDriverId = toNumberOrNull(existingDriverIdHint);
+
+  let row = null;
+  if (hintedDriverId) {
+    const hinted = await client.query(
+      `SELECT *
+         FROM drivers
+        WHERE id = $1
+        LIMIT 1`,
+      [hintedDriverId]
+    );
+    row = hinted.rows[0] || null;
+  }
+
+  if (!row) {
+    const existing = await client.query(
+      `SELECT * FROM drivers
+       WHERE full_name = $1
+          OR (phone = $2 AND $2 != '')
+          OR (dl_no = $3 AND $3 IS NOT NULL)
+          OR (aadhar = $4 AND $4 IS NOT NULL)
+          OR (pan = $5 AND $5 IS NOT NULL)
+       ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC
+       LIMIT 1`,
+      [fullName, phone, dlNo, aadhar, pan]
+    );
+    row = existing.rows[0] || null;
+  }
 
   const patch = {
+    owner_user_id: ownerUserId || row?.owner_user_id || null,
     full_name: fullName,
     dob: mergedPayload.dob,
-    phone: phone || null,
-    dl_no: mergedPayload.dlNo,
+    phone: phone || row?.phone || null,
+    dl_no: dlNo || row?.dl_no || null,
     dl_issue: mergedPayload.dlIssue,
     dl_expiry: mergedPayload.dlExpiry,
-    aadhar: mergedPayload.aadhar,
-    pan: mergedPayload.pan,
+    aadhar: aadhar || row?.aadhar || null,
+    pan: pan || row?.pan || null,
   };
 
   if (documentType === 'dl') patch.doc_dl_path = mergedStoredPath;
@@ -924,8 +947,13 @@ async function upsertDriverFromDocument(client, mergedPayload, documentType, mer
   }
 
   const driverPhone = phone || `${Date.now()}`.slice(-10);
-  const columns = ['full_name', 'phone', 'status', ...Object.keys(patch).filter((key) => !['full_name', 'phone'].includes(key))];
-  const values = [fullName, driverPhone, 'Active', ...Object.keys(patch).filter((key) => !['full_name', 'phone'].includes(key)).map((key) => patch[key] ?? null)];
+  const insertPatch = {
+    ...patch,
+    phone: driverPhone,
+    status: 'Active',
+  };
+  const columns = Object.keys(insertPatch);
+  const values = columns.map((key) => insertPatch[key] ?? null);
   const placeholders = values.map((_, index) => `$${index + 1}`).join(', ');
   const result = await client.query(
     `INSERT INTO drivers (${columns.join(', ')}) VALUES (${placeholders}) RETURNING id`,
@@ -1215,9 +1243,11 @@ function registerDocumentWorkflow({
       await client.query('BEGIN');
 
       const displayName = DRIVER_DOCUMENT_LABELS[documentType] || sanitizeStorageToken(documentType, 'Driver Document');
+      const entityDriverId = toNumberOrNull(req.body.driverId);
       const documentId = await createDocumentRecord(client, {
         ownerUserId,
         entityType: 'driver',
+        entityId: entityDriverId,
         documentType,
         displayName,
         storageKey: null,
@@ -1483,7 +1513,15 @@ function registerDocumentWorkflow({
 
       const mergedPayload = mergeDriverPayloads(document.document_type, ocrResults.map((item) => item.payload));
       const mergedStoredPath = document.storage_key ? `/uploads/${document.storage_key}` : null;
-      const driverId = await upsertDriverFromDocument(client, mergedPayload, document.document_type, mergedStoredPath, req.body.fullName);
+      const driverId = await upsertDriverFromDocument(
+        client,
+        mergedPayload,
+        document.document_type,
+        mergedStoredPath,
+        req.body.fullName,
+        req.body.driverId,
+        document.owner_user_id
+      );
       const sourceEngine = ocrResults.map((item) => item.engine).filter(Boolean).join(', ');
       const fieldRows = buildFieldRowsFromPayload(mergedPayload, document.document_type, sourceEngine);
 
@@ -1738,7 +1776,15 @@ function registerDocumentWorkflow({
 
   app.get('/api/drivers/prefill/:fullName', authenticateTransporter, async (req, res) => {
     const fullName = cleanString(req.params.fullName);
-    const driverRes = await pool.query('SELECT * FROM drivers WHERE full_name = $1 LIMIT 1', [fullName]);
+    const driverRes = await pool.query(
+      `SELECT *
+       FROM drivers
+       WHERE full_name = $1
+         AND (owner_user_id = $2 OR owner_user_id IS NULL)
+       ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC
+       LIMIT 1`,
+      [fullName, req.user?.id || null]
+    );
     const driver = driverRes.rows[0];
     if (!driver) return res.status(404).json({ error: 'Driver not found' });
 
