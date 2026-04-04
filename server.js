@@ -1814,7 +1814,7 @@ async function saveFleetTruckRecord(req, explicitId = null) {
     return { action: 'created', truck: result.rows[0] };
 }
 
-app.get('/api/fleet', async (req, res) => {
+app.get('/api/fleet', authenticateTransporter, async (req, res) => {
     try {
         const result = await pool.query(
             `SELECT *
@@ -1830,7 +1830,7 @@ app.get('/api/fleet', async (req, res) => {
     }
 });
 
-app.get('/api/fleet/:id', async (req, res) => {
+app.get('/api/fleet/:id', authenticateTransporter, async (req, res) => {
     try {
         const id = toNumberOrNull(req.params.id);
         if (!id) return res.status(400).json({ error: 'Valid truck id is required' });
@@ -2108,7 +2108,7 @@ app.post('/api/driver-auth/status', async (req, res) => {
     const phone = normalizePhone(req.body.phone);
     if (phone.length !== 10) return res.status(400).json({ error: 'Valid 10-digit phone number required' });
 
-    db.get('SELECT id, full_name, phone, is_onboarded, temp_password, assigned_truck FROM drivers WHERE phone = ?', [phone], (err, driver) => {
+    db.get('SELECT id, full_name, phone, is_onboarded, temp_password, driver_otp, assigned_truck FROM drivers WHERE phone = ?', [phone], (err, driver) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!driver) return res.status(404).json({ error: 'Driver not found' });
 
@@ -2121,13 +2121,14 @@ app.post('/api/driver-auth/status', async (req, res) => {
                 isOnboarded: Number(driver.is_onboarded || 0),
                 hasTransporterOtp: !!resolvedOtp,
                 assignedTruck: driver.assigned_truck
-            }
-        });
+                }
+            });
 
-        if (!driver.temp_password && Number(driver.is_onboarded || 0) === 0) {
+        const existingTransporterOtp = cleanString(driver.driver_otp || driver.temp_password);
+        if (!existingTransporterOtp && Number(driver.is_onboarded || 0) === 0) {
             generateUniqueDriverOtp()
                 .then((generatedOtp) => {
-                    db.run('UPDATE drivers SET temp_password = ? WHERE id = ?', [generatedOtp, driver.id], (updateErr) => {
+                    db.run('UPDATE drivers SET temp_password = ?, driver_otp = ? WHERE id = ?', [generatedOtp, generatedOtp, driver.id], (updateErr) => {
                         if (updateErr) return res.status(500).json({ error: updateErr.message });
                         finish(generatedOtp);
                     });
@@ -2136,7 +2137,7 @@ app.post('/api/driver-auth/status', async (req, res) => {
             return;
         }
 
-        finish(driver.temp_password);
+        finish(existingTransporterOtp);
     });
 });
 
@@ -2150,7 +2151,8 @@ app.post('/api/driver-auth/login-otp', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!driver) return res.status(404).json({ error: 'Driver not found' });
         
-        if (driver.temp_password !== otp) {
+        const transporterOtp = cleanString(driver.driver_otp || driver.temp_password);
+        if (transporterOtp !== otp) {
             return res.status(401).json({ error: 'Invalid OTP provided by transporter' });
         }
 
@@ -2167,11 +2169,23 @@ app.post('/api/driver-auth/login-otp', (req, res) => {
 app.post('/api/driver-auth/set-pin', (req, res) => {
     const phone = normalizePhone(req.body.phone);
     const pin = cleanString(req.body.pin);
-    if (phone.length !== 10 || !isSixDigitCode(pin)) return res.status(400).json({ error: 'Valid 10-digit phone and 6-digit PIN required' });
+    const otp = cleanString(req.body.otp);
+    if (phone.length !== 10 || !isSixDigitCode(pin) || !isSixDigitCode(otp)) {
+        return res.status(400).json({ error: 'Valid 10-digit phone, 6-digit Transporter OTP, and 6-digit PIN required' });
+    }
 
-    db.run('UPDATE drivers SET password = ?, is_onboarded = 1 WHERE phone = ?', [hashPassword(pin), phone], (err) => {
+    db.get('SELECT * FROM drivers WHERE phone = ?', [phone], (err, driver) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: 'PIN set successfully. You can now login using this PIN.' });
+        if (!driver) return res.status(404).json({ error: 'Driver not found' });
+        const transporterOtp = cleanString(driver.driver_otp || driver.temp_password);
+        if (transporterOtp !== otp) {
+            return res.status(401).json({ error: 'Invalid Transporter OTP' });
+        }
+
+        db.run('UPDATE drivers SET password = ?, is_onboarded = 1 WHERE phone = ?', [hashPassword(pin), phone], (updateErr) => {
+            if (updateErr) return res.status(500).json({ error: updateErr.message });
+            res.json({ message: 'PIN set successfully. You can now login using this PIN.' });
+        });
     });
 });
 
@@ -2221,7 +2235,8 @@ app.post('/api/driver-auth/forgot-pin', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!driver) return res.status(404).json({ error: 'Driver not found' });
         
-        if (driver.temp_password !== otp) {
+        const transporterOtp = cleanString(driver.driver_otp || driver.temp_password);
+        if (transporterOtp !== otp) {
             return res.status(401).json({ error: 'Invalid Transporter OTP' });
         }
 
