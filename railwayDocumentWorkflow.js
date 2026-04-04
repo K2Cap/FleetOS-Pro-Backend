@@ -1105,9 +1105,9 @@ function registerDocumentWorkflow({
     return documents;
   }
 
-  function keepLatestDocumentPerType(documents) {
-    if (!Array.isArray(documents) || !documents.length) return [];
-    const latestByType = new Map();
+function keepLatestDocumentPerType(documents) {
+  if (!Array.isArray(documents) || !documents.length) return [];
+  const latestByType = new Map();
     for (const doc of documents) {
       const typeKey = String(doc?.documentType || doc?.document_type || '').toLowerCase();
       const currentId = Number(doc?.documentId || doc?.id || 0);
@@ -1115,12 +1115,22 @@ function registerDocumentWorkflow({
       const existingId = Number(existing?.documentId || existing?.id || 0);
       if (!existing || currentId > existingId) latestByType.set(typeKey, doc);
     }
-    return [...latestByType.values()].sort((a, b) => {
-      const aId = Number(a?.documentId || a?.id || 0);
-      const bId = Number(b?.documentId || b?.id || 0);
-      return bId - aId;
-    });
-  }
+  return [...latestByType.values()].sort((a, b) => {
+    const aId = Number(a?.documentId || a?.id || 0);
+    const bId = Number(b?.documentId || b?.id || 0);
+    return bId - aId;
+  });
+}
+
+function resolveUploadAbsolutePath(uploadsDir, tokenOrPath) {
+  const raw = String(tokenOrPath || '').trim();
+  if (!raw) return null;
+  const normalized = raw.replace(/\\/g, '/').split('?')[0].split('#')[0];
+  const cleaned = normalized.replace(/^\/?uploads\//i, '');
+  const filename = path.basename(cleaned);
+  if (!filename) return null;
+  return path.join(uploadsDir, filename);
+}
 
   async function generateOcrWorkbook() {
     const workbook = new ExcelJS.Workbook();
@@ -1443,7 +1453,9 @@ function registerDocumentWorkflow({
 
       const ocrResults = [];
       for (const page of pages) {
-        const absolutePath = path.join(UPLOADS_DIR, page.stored_name);
+        const absolutePath =
+          resolveUploadAbsolutePath(UPLOADS_DIR, page.stored_name) ||
+          resolveUploadAbsolutePath(UPLOADS_DIR, page.stored_path);
         const ocr = await runStoredFileOcr(absolutePath, page.mime_type, document.document_type, {
           parseDocumentWithGemini,
           tryLocalGravityOcr,
@@ -1583,7 +1595,9 @@ function registerDocumentWorkflow({
 
       const ocrResults = [];
       for (const page of pages) {
-        const absolutePath = path.join(UPLOADS_DIR, page.stored_name);
+        const absolutePath =
+          resolveUploadAbsolutePath(UPLOADS_DIR, page.stored_name) ||
+          resolveUploadAbsolutePath(UPLOADS_DIR, page.stored_path);
         const ocr = await runStoredFileOcr(absolutePath, page.mime_type, document.document_type, {
           parseDocumentWithGemini,
           tryLocalGravityOcr,
@@ -1754,8 +1768,10 @@ function registerDocumentWorkflow({
     if (pages.length === 1) {
       const page = pages[0];
       const safeName = sanitizeStorageToken(page.page_label || page.original_name || page.stored_name || document.display_name || 'document');
-      const absolutePath = path.join(UPLOADS_DIR, page.stored_name);
-      if (!fs.existsSync(absolutePath)) {
+      const absolutePath =
+        resolveUploadAbsolutePath(UPLOADS_DIR, page.stored_name) ||
+        resolveUploadAbsolutePath(UPLOADS_DIR, page.stored_path);
+      if (!absolutePath || !fs.existsSync(absolutePath)) {
         return res.status(404).json({ error: 'Stored upload file could not be found' });
       }
       return res.download(absolutePath, page.page_label || page.original_name || `${safeName}${path.extname(page.stored_name || '') || ''}`);
@@ -1776,8 +1792,10 @@ function registerDocumentWorkflow({
     archive.pipe(res);
 
     pages.forEach((page, index) => {
-      const absolutePath = path.join(UPLOADS_DIR, page.stored_name);
-      if (!fs.existsSync(absolutePath)) return;
+      const absolutePath =
+        resolveUploadAbsolutePath(UPLOADS_DIR, page.stored_name) ||
+        resolveUploadAbsolutePath(UPLOADS_DIR, page.stored_path);
+      if (!absolutePath || !fs.existsSync(absolutePath)) return;
       const ext = path.extname(page.stored_name || page.original_name || '') || '.jpg';
       const entryName = `${String(index + 1).padStart(2, '0')}_${sanitizeStorageToken(page.page_label || page.original_name || page.stored_name || `page_${index + 1}`)}${ext}`;
       archive.file(absolutePath, { name: entryName });
@@ -1805,8 +1823,8 @@ function registerDocumentWorkflow({
     const pdfDownloadName = sanitizeStorageToken(document.display_name || document.document_type || `truck-document-${documentId}`) || `truck-document-${documentId}`;
 
     if (document.storage_key) {
-      const storedPdf = path.join(UPLOADS_DIR, document.storage_key);
-      if (fs.existsSync(storedPdf)) {
+      const storedPdf = resolveUploadAbsolutePath(UPLOADS_DIR, document.storage_key);
+      if (storedPdf && fs.existsSync(storedPdf)) {
         return res.download(storedPdf, `${pdfDownloadName}.pdf`);
       }
     }
@@ -1823,8 +1841,10 @@ function registerDocumentWorkflow({
     if (pages.length) {
       const mergeSourcePages = pages
         .map((page) => {
-          const absolutePath = path.join(UPLOADS_DIR, page.stored_name);
-          if (!fs.existsSync(absolutePath)) return null;
+          const absolutePath =
+            resolveUploadAbsolutePath(UPLOADS_DIR, page.stored_name) ||
+            resolveUploadAbsolutePath(UPLOADS_DIR, page.stored_path);
+            if (!absolutePath || !fs.existsSync(absolutePath)) return null;
           return {
             absolutePath,
             mimeType: page.mime_type || null,
@@ -1915,8 +1935,8 @@ function registerDocumentWorkflow({
     const pdfDownloadName = sanitizeStorageToken(document.display_name || document.document_type || `driver-document-${documentId}`) || `driver-document-${documentId}`;
 
     if (document.storage_key) {
-      const storedPdf = path.join(UPLOADS_DIR, document.storage_key);
-      if (fs.existsSync(storedPdf)) {
+      const storedPdf = resolveUploadAbsolutePath(UPLOADS_DIR, document.storage_key);
+      if (storedPdf && fs.existsSync(storedPdf)) {
         return res.download(storedPdf, `${pdfDownloadName}.pdf`);
       }
     }
@@ -1933,8 +1953,10 @@ function registerDocumentWorkflow({
     if (pages.length) {
       const mergeSourcePages = pages
         .map((page) => {
-          const absolutePath = path.join(UPLOADS_DIR, page.stored_name);
-          if (!fs.existsSync(absolutePath)) return null;
+          const absolutePath =
+            resolveUploadAbsolutePath(UPLOADS_DIR, page.stored_name) ||
+            resolveUploadAbsolutePath(UPLOADS_DIR, page.stored_path);
+            if (!absolutePath || !fs.existsSync(absolutePath)) return null;
           return {
             absolutePath,
             mimeType: page.mime_type || null,
