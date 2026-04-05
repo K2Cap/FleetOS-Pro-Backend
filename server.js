@@ -1983,12 +1983,13 @@ app.get('/api/fleet/trips', async (req, res) => {
             tr.tyres_count as truck_tyres_count,
             COALESCE((SELECT SUM(amount) FROM expenses WHERE trip_id = t.id AND COALESCE(status, 'In Process') != 'Rejected'), 0) as total_expenses
         FROM trips t
-        LEFT JOIN drivers d ON t.driver_text = d.full_name
-        LEFT JOIN trucks tr ON t.truck_text = tr.reg_no
+        LEFT JOIN drivers d ON d.id = t.driver_id
+        LEFT JOIN trucks tr ON tr.id = t.truck_id
+        WHERE t.owner_user_id = $1
         ORDER BY t.created_at DESC
     `;
     try {
-        const result = await pool.query(sql);
+        const result = await pool.query(sql, [req.user?.id || null]);
         const trips = result.rows.map(r => decorateTripRow({
             id: r.id, 
             invId: r.inv_id, 
@@ -2144,7 +2145,14 @@ app.post('/api/expenses', async (req, res) => {
 
 app.get('/api/expenses', async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM expenses ORDER BY created_at DESC');
+        const result = await pool.query(
+            `SELECT e.*
+             FROM expenses e
+             INNER JOIN trips t ON t.id = e.trip_id
+             WHERE t.owner_user_id = $1
+             ORDER BY e.created_at DESC`,
+            [req.user?.id || null]
+        );
         res.json(result.rows.map(serializeExpenseRow));
     } catch (err) {
         res.status(500).json({ error: err.message });
