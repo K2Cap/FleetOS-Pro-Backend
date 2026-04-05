@@ -6,6 +6,12 @@
 <title>!!! FleetOS LIVE !!!</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=Sora:wght@600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="/config.js"></script>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1a5c3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="FleetOS Driver">
+<link rel="apple-touch-icon" href="/icon.png">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
@@ -742,6 +748,11 @@ body{background:var(--bg);font-family:var(--ff);color:var(--ink);min-height:100d
     </div>
     <div class="sheet-form">
       <div id="selected-trip-pill" style="display:none;background:var(--glt);border:1px solid var(--glt2);border-radius:14px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--g);font-weight:700;"></div>
+      <div id="expense-trip-select-wrap" style="display:none;margin-bottom:12px;">
+        <label class="sf-label">Trip</label>
+        <select class="sf-input" id="expense-trip-select" onchange="handleExpenseTripSelection(this.value)"></select>
+        <div style="font-size:10px;color:var(--mu);margin-top:6px;">Active trip is preferred. Recently completed trips remain available for late receipt uploads.</div>
+      </div>
       <label class="sf-label">Amount (₹)</label>
       <input class="sf-input" type="number" placeholder="e.g. 1200">
       <label class="sf-label">Expense Date</label>
@@ -805,6 +816,7 @@ let CURRENT_ACTIVE_TRIP = null;
 let CURRENT_UPCOMING_TRIP = null;
 let LOCATION_ALERT_SHOWN = false;
 let SELECTED_EXPENSE_TRIP = null;
+let EXPENSE_ELIGIBLE_TRIPS = [];
 const DRIVER_SESSION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 let LAST_RECEIPT_DATA_URL = null;
 let APP_POPUP_RESOLVE = null;
@@ -879,9 +891,14 @@ function canTrackTripLocation(trip) {
 }
 
 function getAllTrips() {
+  const seen = new Set();
   const cards = [];
-  if (CURRENT_ACTIVE_TRIP) cards.push(CURRENT_ACTIVE_TRIP);
-  if (CURRENT_UPCOMING_TRIP) cards.push(CURRENT_UPCOMING_TRIP);
+  [CURRENT_ACTIVE_TRIP, CURRENT_UPCOMING_TRIP, ...(window.DRIVER_ALL_TRIPS || []), ...EXPENSE_ELIGIBLE_TRIPS].forEach((trip) => {
+    if (!trip?.id) return;
+    if (seen.has(String(trip.id))) return;
+    seen.add(String(trip.id));
+    cards.push(trip);
+  });
   return cards;
 }
 
@@ -902,6 +919,10 @@ function getStatusMeta(status) {
 function setSelectedExpenseTrip(tripId) {
   SELECTED_EXPENSE_TRIP = tripId ? findTripById(tripId) : null;
   const pill = document.getElementById('selected-trip-pill');
+  const select = document.getElementById('expense-trip-select');
+  if (select) {
+    select.value = SELECTED_EXPENSE_TRIP?.id ? String(SELECTED_EXPENSE_TRIP.id) : '';
+  }
   if (!pill) return;
   if (!SELECTED_EXPENSE_TRIP) {
     pill.style.display = 'none';
@@ -910,6 +931,40 @@ function setSelectedExpenseTrip(tripId) {
   }
   pill.style.display = 'block';
   pill.innerText = `Trip ${SELECTED_EXPENSE_TRIP.id} · ${cleanLoc(SELECTED_EXPENSE_TRIP.origin)} → ${cleanLoc(SELECTED_EXPENSE_TRIP.destination)}`;
+}
+
+function getDefaultExpenseTrip() {
+  return CURRENT_ACTIVE_TRIP || EXPENSE_ELIGIBLE_TRIPS[0] || null;
+}
+
+function handleExpenseTripSelection(tripId) {
+  setSelectedExpenseTrip(tripId || null);
+}
+
+function populateExpenseTripSelector() {
+  const wrap = document.getElementById('expense-trip-select-wrap');
+  const select = document.getElementById('expense-trip-select');
+  if (!wrap || !select) return;
+
+  const options = EXPENSE_ELIGIBLE_TRIPS || [];
+  if (!options.length) {
+    wrap.style.display = 'none';
+    select.innerHTML = '';
+    return;
+  }
+
+  wrap.style.display = 'block';
+  select.innerHTML = options.map((trip) => {
+    const status = String(trip.status || '').toLowerCase();
+    const statusLabel = status === 'completed' ? 'Completed' : (status === 'approved' ? 'Approved' : (status === 'active' || status === 'en route' ? 'Active' : (trip.status || 'Trip')));
+    return `<option value="${String(trip.id)}">${statusLabel} · ${cleanLoc(trip.origin)} → ${cleanLoc(trip.destination)} · ${safeDateString(trip.endDate || trip.end_date || trip.startDate || trip.start_date)}</option>`;
+  }).join('');
+
+  const selectedId = SELECTED_EXPENSE_TRIP?.id || getDefaultExpenseTrip()?.id || '';
+  select.value = selectedId ? String(selectedId) : '';
+  if (!SELECTED_EXPENSE_TRIP && selectedId) {
+    setSelectedExpenseTrip(selectedId);
+  }
 }
 
 function openMissedExpenseForTrip(tripId, mode) {
@@ -1405,6 +1460,11 @@ async function refreshDriverData() {
     window.DRIVER_ALL_TRIPS = data.trips || [];
     CURRENT_ACTIVE_TRIP = data.activeTrip || null;
     CURRENT_UPCOMING_TRIP = data.upcomingTrip || null;
+    EXPENSE_ELIGIBLE_TRIPS = Array.isArray(data.expenseEligibleTrips) ? data.expenseEligibleTrips : [];
+    if (!SELECTED_EXPENSE_TRIP || !findTripById(SELECTED_EXPENSE_TRIP.id)) {
+      SELECTED_EXPENSE_TRIP = getDefaultExpenseTrip();
+    }
+    populateExpenseTripSelector();
     
     // 0. Update Driver Profile
     if (data.driver) {
@@ -1738,6 +1798,10 @@ function updateNavIcons(active) {
 
 function openCamera(tripId) {
   if (tripId) setSelectedExpenseTrip(tripId);
+  if (!SELECTED_EXPENSE_TRIP) {
+    const fallbackTrip = getDefaultExpenseTrip();
+    if (fallbackTrip) setSelectedExpenseTrip(fallbackTrip.id);
+  }
   document.getElementById('cam-overlay').classList.add('active');
 }
 function openCameraForSelectedTrip() {
@@ -1940,6 +2004,11 @@ async function confirmExpense() {
     alert("No scan data found.");
     return;
   }
+  const chosenTrip = SELECTED_EXPENSE_TRIP || CURRENT_ACTIVE_TRIP || getDefaultExpenseTrip();
+  if (!chosenTrip) {
+    alert("No eligible trip found for this expense. Please select the correct trip first.");
+    return;
+  }
 
   document.getElementById('scan-preview').classList.remove('active');
   
@@ -1955,11 +2024,11 @@ async function confirmExpense() {
         category: lastOcrResult.category,
         date: lastOcrResult.date,
         driver_id: USER_ID,
-        truck_id: lastOcrResult.vehicle_id || CURRENT_ACTIVE_TRIP?.truck || SELECTED_EXPENSE_TRIP?.truck || '---',
-        trip_id: SELECTED_EXPENSE_TRIP?.id || CURRENT_ACTIVE_TRIP?.id || null,
+        truck_id: lastOcrResult.vehicle_id || chosenTrip?.truck || '---',
+        trip_id: chosenTrip?.id || null,
         place: lastOcrResult.place || lastOcrResult.location || lastOcrResult.vendor,
-        route_from: (SELECTED_EXPENSE_TRIP || CURRENT_ACTIVE_TRIP)?.origin || null,
-        route_to: (SELECTED_EXPENSE_TRIP || CURRENT_ACTIVE_TRIP)?.destination || null,
+        route_from: chosenTrip?.origin || null,
+        route_to: chosenTrip?.destination || null,
         bill_image_data: LAST_RECEIPT_DATA_URL,
         submission_mode: 'scan',
         metadata: {
@@ -1971,11 +2040,9 @@ async function confirmExpense() {
     
     if (!saveRes.ok) {
       const errRes = await saveRes.json();
-      if (errRes.code === 'OUTSIDE_TRIP_RANGE') {
-        throw new Error(`${errRes.error}\nTrip Window: ${errRes.tripStart} to ${errRes.tripEnd}`);
-      }
       throw new Error(errRes.error || "Save failed.");
     }
+    const saveData = await saveRes.json();
     
     // Refresh UI data after scan
     await refreshDriverData();
@@ -1983,7 +2050,7 @@ async function confirmExpense() {
     lastOcrResult = null;
     LAST_RECEIPT_DATA_URL = null;
     setSelectedExpenseTrip(null);
-    alert('Expense submitted successfully.');
+    alert(saveData.warning ? `Expense submitted successfully.\n\nWarning: ${saveData.warning}` : 'Expense submitted successfully.');
   } catch (err) {
     alert("Submission failed: " + err.message);
   }
@@ -2057,6 +2124,11 @@ function closeDetail() {
 
 function openAddSheet(tripId) {
   if (tripId) setSelectedExpenseTrip(tripId);
+  if (!SELECTED_EXPENSE_TRIP) {
+    const fallbackTrip = getDefaultExpenseTrip();
+    if (fallbackTrip) setSelectedExpenseTrip(fallbackTrip.id);
+  }
+  populateExpenseTripSelector();
   document.getElementById('add-backdrop').classList.add('active');
   document.getElementById('add-sheet').classList.add('active');
   const dateField = document.getElementById('manual-expense-date');
@@ -2083,6 +2155,11 @@ async function submitManual() {
     alert("Please enter amount, vendor, and date");
     return;
   }
+  const chosenTrip = SELECTED_EXPENSE_TRIP || CURRENT_ACTIVE_TRIP || getDefaultExpenseTrip();
+  if (!chosenTrip) {
+    alert("No eligible trip found for this expense. Please select the correct trip first.");
+    return;
+  }
 
   try {
     const baseUrl = window.FLEETOS_API_BASE || '';
@@ -2095,11 +2172,11 @@ async function submitManual() {
         category: cat,
         date: date,
         driver_id: USER_ID,
-        truck_id: CURRENT_ACTIVE_TRIP?.truck || SELECTED_EXPENSE_TRIP?.truck || '---',
-        trip_id: SELECTED_EXPENSE_TRIP?.id || CURRENT_ACTIVE_TRIP?.id || null,
+        truck_id: chosenTrip?.truck || '---',
+        trip_id: chosenTrip?.id || null,
         place: place || vend,
-        route_from: (SELECTED_EXPENSE_TRIP || CURRENT_ACTIVE_TRIP)?.origin || null,
-        route_to: (SELECTED_EXPENSE_TRIP || CURRENT_ACTIVE_TRIP)?.destination || null,
+        route_from: chosenTrip?.origin || null,
+        route_to: chosenTrip?.destination || null,
         bill_image_data: LAST_RECEIPT_DATA_URL || null,
         submission_mode: LAST_RECEIPT_DATA_URL ? 'scan' : 'manual',
         metadata: {
@@ -2108,7 +2185,7 @@ async function submitManual() {
           category: cat,
           date,
           place: place || vend,
-          vehicle_id: CURRENT_ACTIVE_TRIP?.truck || SELECTED_EXPENSE_TRIP?.truck || null,
+          vehicle_id: chosenTrip?.truck || null,
           receiptImageDataUrl: LAST_RECEIPT_DATA_URL || null
         }
       })
@@ -2116,18 +2193,16 @@ async function submitManual() {
 
     if (!saveRes.ok) {
       const errRes = await saveRes.json();
-      if (errRes.code === 'OUTSIDE_TRIP_RANGE') {
-        throw new Error(`${errRes.error}\nTrip Window: ${errRes.tripStart} to ${errRes.tripEnd}`);
-      }
       throw new Error(errRes.error || 'Save failed.');
     }
+    const saveData = await saveRes.json();
 
     closeAddSheet();
     await refreshDriverData();
     LAST_RECEIPT_DATA_URL = null;
     lastOcrResult = null;
     setSelectedExpenseTrip(null);
-    alert('Expense submitted successfully.');
+    alert(saveData.warning ? `Expense submitted successfully.\n\nWarning: ${saveData.warning}` : 'Expense submitted successfully.');
   } catch (err) {
     alert("Submission failed: " + err.message);
   }
@@ -2137,5 +2212,15 @@ async function submitManual() {
 updateNavIcons('profile');
 checkAutoLogin(); // Check for session or show login overlay
 </script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('/sw.js').catch(function (err) {
+      console.warn('SW registration failed', err);
+    });
+  });
+}
+</script>
 </body>
 </html>
+
