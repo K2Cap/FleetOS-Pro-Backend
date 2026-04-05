@@ -294,6 +294,52 @@ function getTripDateWindow(trip) {
     };
 }
 
+const TRIP_EXPENSE_GRACE_DAYS = 7;
+
+function getTripExpenseAllowedWindow(trip, graceDays = TRIP_EXPENSE_GRACE_DAYS) {
+    const baseWindow = getTripDateWindow(trip);
+    if (!baseWindow) return null;
+    const allowedEnd = new Date(baseWindow.end.getTime());
+    allowedEnd.setDate(allowedEnd.getDate() + graceDays);
+    return {
+        start: baseWindow.start,
+        end: endOfDay(allowedEnd),
+        strictEnd: baseWindow.end
+    };
+}
+
+function isTripEligibleForExpenseSubmission(trip, now = new Date(), graceDays = TRIP_EXPENSE_GRACE_DAYS) {
+    if (!trip) return false;
+    const status = String(trip.status || '').toLowerCase();
+    if (['active', 'en route', 'approved'].includes(status)) return true;
+    const allowedWindow = getTripExpenseAllowedWindow(trip, graceDays);
+    if (!allowedWindow) return false;
+    return now.getTime() <= allowedWindow.end.getTime();
+}
+
+function getExpenseDateValidation(trip, expenseDate, graceDays = TRIP_EXPENSE_GRACE_DAYS) {
+    if (!trip || !expenseDate) return null;
+    const strictWindow = getTripDateWindow(trip);
+    const allowedWindow = getTripExpenseAllowedWindow(trip, graceDays);
+    if (!strictWindow || !allowedWindow) return null;
+    const expenseTime = expenseDate.getTime();
+    if (expenseTime >= strictWindow.start.getTime() && expenseTime <= strictWindow.end.getTime()) {
+        return { level: 'ok', code: 'WITHIN_TRIP_WINDOW' };
+    }
+    if (expenseTime >= strictWindow.start.getTime() && expenseTime <= allowedWindow.end.getTime()) {
+        return {
+            level: 'warning',
+            code: 'WITHIN_GRACE_WINDOW',
+            message: `Receipt date falls after trip completion but within the ${graceDays}-day grace window.`
+        };
+    }
+    return {
+        level: 'warning',
+        code: 'OUTSIDE_TRIP_WINDOW',
+        message: 'Receipt date falls outside the trip window. Please verify that this expense belongs to the selected trip.'
+    };
+}
+
 function getTripAccountingDate(trip) {
     return parseFlexibleDate(trip?.start_date_raw || trip?.start_date || trip?.created_at);
 }
@@ -3170,6 +3216,16 @@ app.get('/api/driver-data', async (req, res) => {
         const upcomingTrip = [...mappedTrips]
             .filter((t) => ['Upcoming', 'Approved', 'Scheduled'].includes(String(t.status || '')))
             .sort((a, b) => (resolveTripStartDate(a)?.getTime() || 0) - (resolveTripStartDate(b)?.getTime() || 0))[0] || null;
+        const expenseEligibleTrips = [...mappedTrips]
+            .filter((t) => isTripEligibleForExpenseSubmission(t))
+            .sort((a, b) => {
+                const aStatus = String(a.status || '').toLowerCase();
+                const bStatus = String(b.status || '').toLowerCase();
+                const aPriority = ['active', 'en route'].includes(aStatus) ? 0 : (aStatus === 'approved' ? 1 : 2);
+                const bPriority = ['active', 'en route'].includes(bStatus) ? 0 : (bStatus === 'approved' ? 1 : 2);
+                if (aPriority !== bPriority) return aPriority - bPriority;
+                return (resolveTripEndDate(b)?.getTime() || resolveTripStartDate(b)?.getTime() || 0) - (resolveTripEndDate(a)?.getTime() || resolveTripStartDate(a)?.getTime() || 0);
+            });
 
         res.json({
             driver: sanitizeDriverRow(driver),
@@ -3191,6 +3247,7 @@ app.get('/api/driver-data', async (req, res) => {
                 };
             }),
             trips: mappedTrips,
+            expenseEligibleTrips,
             charts,
             activeTrip,
             upcomingTrip
@@ -3233,33 +3290,41 @@ app.post('/api/save-expense', authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'You can only submit expenses for your own driver account' });
         }
 
+        const expenseDate = parseFlexibleDate(date);
         let trip = null;
         if (cleanString(trip_id)) {
             const tripRes = await pool.query('SELECT * FROM trips WHERE id = $1 LIMIT 1', [trip_id]);
             trip = tripRes.rows[0] || null;
         } else {
-            const tripRes = await pool.query(
-                "SELECT * FROM trips WHERE driver_text = $1 AND status IN ('Active', 'En Route') ORDER BY start_date_raw DESC NULLS LAST LIMIT 1",
+            const eligibleTripRes = await pool.query(
+                `SELECT *
+                 FROM trips
+                 WHERE driver_text = $1
+                   AND status IN ('Active', 'En Route', 'Approved', 'Completed')
+                 ORDER BY
+                   CASE
+                     WHEN status IN ('Active', 'En Route') THEN 0
+                     WHEN status = 'Approved' THEN 1
+                     ELSE 2
+                   END ASC,
+                   COALESCE(end_date_raw, end_date, start_date_raw, start_date, created_at::text) DESC`,
                 [driver.full_name]
             );
-            trip = tripRes.rows[0] || null;
+            const eligibleTrips = eligibleTripRes.rows.filter((row) => isTripEligibleForExpenseSubmission(row));
+            if (expenseDate) {
+                trip = eligibleTrips.find((row) => {
+                    const window = getTripExpenseAllowedWindow(row);
+                    return window && expenseDate >= window.start && expenseDate <= window.end;
+                }) || null;
+            }
+            trip = trip || eligibleTrips[0] || null;
         }
 
         if (!trip) {
-            return res.status(400).json({ error: 'No trip is linked to this expense. Please log it from the correct trip.' });
+            return res.status(400).json({ error: 'No eligible trip is linked to this expense. Please log it from the correct trip.' });
         }
 
-        const expenseDate = parseFlexibleDate(date);
-        const tripWindow = getTripDateWindow(trip);
-        if (expenseDate && tripWindow && (expenseDate < tripWindow.start || expenseDate > tripWindow.end)) {
-            return res.status(409).json({
-                code: 'OUTSIDE_TRIP_RANGE',
-                error: 'This expense does not fall inside the selected trip dates. Please log it under the correct trip from the Trips tab.',
-                tripId: trip.id,
-                tripStart: trip.start_date || trip.start_date_raw,
-                tripEnd: trip.end_date || trip.end_date_raw || trip.auto_end_date_raw || new Date().toISOString().split('T')[0]
-            });
-        }
+        const expenseDateValidation = getExpenseDateValidation(trip, expenseDate);
 
         const normalizedTotalPaise = Math.round(toNumberOrNull(total) ?? toNumberOrNull(amount) ?? 0);
         const normalizedCategory = classifyExpenseCategory(
@@ -3296,6 +3361,7 @@ app.post('/api/save-expense', authenticateToken, async (req, res) => {
             route_to: route_to || trip.destination || null,
             place: place || metadata?.place || metadata?.location || null,
             receiptImageDataUrl: receiptImageData || null,
+            expenseDateValidation,
             category: normalizedCategory,
             originalCategory: cleanString(category) || cleanString(metadata?.category) || null,
             vendor: normalizedMerchant
@@ -3360,7 +3426,9 @@ app.post('/api/save-expense', authenticateToken, async (req, res) => {
             id: result.rows[0].id,
             message: 'Expense saved successfully',
             status: 'In Process',
-            tripId: trip.id
+            tripId: trip.id,
+            warning: expenseDateValidation?.level === 'warning' ? expenseDateValidation.message : null,
+            validation: expenseDateValidation || null
         });
     } catch (err) {
         console.error(`[SaveExpense] Database Error: ${err.message}`);
