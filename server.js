@@ -1632,7 +1632,7 @@ app.get('/api/fleet/trips', async (req, res) => {
 });
 
 app.put('/api/fleet/trips/:id', async (req, res) => {
-    const { status, isPaid, paymentDate, endDate, endDateRaw } = req.body;
+    const { status, isPaid, paymentDate, endDate, endDateRaw, bhatta } = req.body;
     let updates = [], params = [];
     let idx = 1;
     if (status !== undefined) { updates.push(`status = $${idx++}`); params.push(status); }
@@ -1640,6 +1640,7 @@ app.put('/api/fleet/trips/:id', async (req, res) => {
     if (paymentDate !== undefined) { updates.push(`payment_date = $${idx++}`); params.push(paymentDate); }
     if (endDate !== undefined) { updates.push(`end_date = $${idx++}`); params.push(endDate); }
     if (endDateRaw !== undefined) { updates.push(`end_date_raw = $${idx++}`); params.push(endDateRaw); }
+    if (bhatta !== undefined) { updates.push(`bhatta = $${idx++}`); params.push(toNumberOrNull(bhatta) || 0); }
     if (!updates.length) {
         return res.status(400).json({ error: 'No trip fields provided for update' });
     }
