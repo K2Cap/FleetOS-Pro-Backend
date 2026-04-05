@@ -406,6 +406,259 @@ function serializeExpenseRow(row) {
     };
 }
 
+function normalizeTripOtherFixedExpenses(value) {
+    if (!Array.isArray(value)) return [];
+    return value
+        .map((entry, index) => ({
+            id: cleanString(entry?.id) || `fixed_${index + 1}`,
+            type: cleanString(entry?.type) || 'Other',
+            amount: Math.max(0, toNumberOrNull(entry?.amount) || 0),
+            notes: cleanString(entry?.notes) || null
+        }))
+        .filter((entry) => entry.amount > 0 || entry.notes);
+}
+
+function buildTripFinancialSnapshot(trip, expenses = []) {
+    const dayMetrics = getTripOperationalDayMetrics(trip || {});
+    const revenue = Math.max(0, toNumberOrNull(trip?.freight) || 0);
+    const bhattaPerDay = Math.max(0, toNumberOrNull(trip?.bhatta) || 0);
+    const bhattaTotal = bhattaPerDay * dayMetrics.actualDays;
+    const depreciationCost = Math.max(0, (((toNumberOrNull(trip?.truck_purchase_price) || 0) / (365 * 7)) * dayMetrics.depreciationDays) || 0);
+    const wearAndTear = Math.max(0, ((((toNumberOrNull(trip?.truck_tyres_count) || 0) * 25000) / 50000) * (toNumberOrNull(trip?.distance_km) || 0)) || 0);
+    const otherFixedExpenses = normalizeTripOtherFixedExpenses(trip?.other_fixed_expenses);
+    const otherFixedTotal = otherFixedExpenses.reduce((sum, entry) => sum + (toNumberOrNull(entry.amount) || 0), 0);
+    const fixedTotal = bhattaTotal + depreciationCost + wearAndTear + otherFixedTotal;
+    const approvedVariableTotal = expenses.filter((expense) => String(expense?.status || '') === 'Approved').reduce((sum, expense) => sum + (expense?.total_rupees || 0), 0);
+    const inProcessVariableTotal = expenses.filter((expense) => !expense?.status || String(expense?.status) === 'In Process').reduce((sum, expense) => sum + (expense?.total_rupees || 0), 0);
+    const rejectedVariableTotal = expenses.filter((expense) => String(expense?.status || '') === 'Rejected').reduce((sum, expense) => sum + (expense?.total_rupees || 0), 0);
+    const variableTotal = expenses.filter((expense) => String(expense?.status || '') !== 'Rejected').reduce((sum, expense) => sum + (expense?.total_rupees || 0), 0);
+    const totalCost = fixedTotal + variableTotal;
+
+    return {
+        revenue,
+        fixed: {
+            tripDays: dayMetrics.actualDays,
+            depreciationDays: dayMetrics.depreciationDays,
+            driverBhattaPerDay: bhattaPerDay,
+            driverBhattaTotal: bhattaTotal,
+            depreciationCost,
+            wearAndTear,
+            otherExpenses: otherFixedExpenses,
+            otherExpensesTotal: otherFixedTotal,
+            total: fixedTotal
+        },
+        variable: {
+            total: variableTotal,
+            approvedTotal: approvedVariableTotal,
+            inProcessTotal: inProcessVariableTotal,
+            rejectedTotal: rejectedVariableTotal
+        },
+        totalCost,
+        pnl: revenue - totalCost
+    };
+}
+
+async function buildTripStructuredSnapshot(tripId, ownerUserId = null) {
+    const tripRes = await pool.query(
+        `SELECT t.*,
+                tr.reg_no AS truck_reg_no,
+                tr.chassis_no AS truck_chassis_no,
+                tr.make AS truck_make,
+                tr.model AS truck_model,
+                tr.purchase_price AS truck_purchase_price,
+                tr.tyres_count AS truck_tyres_count,
+                d.full_name AS driver_full_name,
+                d.phone AS driver_phone,
+                d.dl_no AS driver_dl_no
+         FROM trips t
+         LEFT JOIN trucks tr ON tr.id = t.truck_id
+         LEFT JOIN drivers d ON d.id = t.driver_id
+         WHERE t.id = $1
+           AND ($2::int IS NULL OR t.owner_user_id = $2)
+         LIMIT 1`,
+        [tripId, ownerUserId]
+    );
+    const trip = tripRes.rows[0];
+    if (!trip) return null;
+
+    const expensesRes = await pool.query(
+        `SELECT e.*,
+                ted.original_name AS receipt_original_name,
+                ted.stored_name AS receipt_stored_name,
+                ted.stored_path AS receipt_stored_path,
+                ted.mime_type AS receipt_mime_type
+         FROM expenses e
+         LEFT JOIN LATERAL (
+             SELECT original_name, stored_name, stored_path, mime_type
+             FROM trip_expense_documents
+             WHERE expense_id = e.id
+             ORDER BY created_at DESC
+             LIMIT 1
+         ) ted ON true
+         WHERE e.trip_id = $1
+         ORDER BY COALESCE(e.date, e.created_at::text) ASC, e.created_at ASC`,
+        [tripId]
+    );
+    const expenses = expensesRes.rows.map((row) => ({
+        ...serializeExpenseRow(row),
+        receipt_document: row.receipt_stored_name
+            ? {
+                original_name: row.receipt_original_name,
+                stored_name: row.receipt_stored_name,
+                stored_path: row.receipt_stored_path,
+                mime_type: row.receipt_mime_type,
+                download_path: `/api/expense/${row.id}/receipt`
+            }
+            : null
+    }));
+
+    const locationsRes = await pool.query(
+        `SELECT *
+         FROM trip_locations
+         WHERE trip_id = $1
+         ORDER BY recorded_at DESC`,
+        [tripId]
+    );
+
+    const financials = buildTripFinancialSnapshot(trip, expenses);
+
+    return {
+        trip: decorateTripRow({
+            ...trip,
+            truck_text: trip.truck_text || trip.truck_reg_no,
+            driver_text: trip.driver_text || trip.driver_full_name,
+            truck_purchase_price: trip.truck_purchase_price,
+            truck_tyres_count: trip.truck_tyres_count
+        }),
+        truck: trip.truck_id ? decorateTruckRow({
+            id: trip.truck_id,
+            reg_no: trip.truck_reg_no,
+            chassis_no: trip.truck_chassis_no,
+            make: trip.truck_make,
+            model: trip.truck_model,
+            purchase_price: trip.truck_purchase_price,
+            tyres_count: trip.truck_tyres_count
+        }) : null,
+        driver: trip.driver_id ? {
+            id: trip.driver_id,
+            full_name: trip.driver_full_name || trip.driver_text || null,
+            phone: trip.driver_phone || null,
+            dl_no: trip.driver_dl_no || null
+        } : null,
+        financials,
+        expenses,
+        locations: locationsRes.rows,
+        counts: {
+            expenses: expenses.length,
+            receipts: expenses.filter((expense) => !!expense.receipt_document).length,
+            locations: locationsRes.rows.length
+        }
+    };
+}
+
+async function generateTripWorkbook(snapshot) {
+    const workbook = new ExcelJS.Workbook();
+    const summary = workbook.addWorksheet('Trip Summary');
+    const expenseSheet = workbook.addWorksheet('Trip Expenses');
+    const fixedSheet = workbook.addWorksheet('Fixed Expenses');
+    const locationSheet = workbook.addWorksheet('Location Trail');
+
+    summary.columns = [
+        { header: 'Field', key: 'field', width: 28 },
+        { header: 'Value', key: 'value', width: 40 }
+    ];
+
+    const trip = snapshot.trip || {};
+    const financials = snapshot.financials || {};
+    const fixed = financials.fixed || {};
+    const variable = financials.variable || {};
+    const summaryRows = [
+        ['Trip ID', trip.id],
+        ['Status', trip.status],
+        ['Truck Number', trip.truck_text || snapshot.truck?.reg_no],
+        ['Driver', trip.driver_text || snapshot.driver?.full_name],
+        ['From', trip.origin],
+        ['To', trip.destination],
+        ['Start Date', trip.start_date_raw || trip.start_date],
+        ['End Date', trip.end_date_raw || trip.end_date || trip.auto_end_date_raw || null],
+        ['Distance (KM)', trip.distance_km_display || formatIndianNumber(trip.distance_km)],
+        ['Freight', trip.freight_display || formatIndianNumber(trip.freight, { prefix: '₹ ' })],
+        ['Revenue', formatIndianNumber(financials.revenue, { prefix: '₹ ' })],
+        ['Fixed Cost Total', formatIndianNumber(fixed.total, { prefix: '₹ ' })],
+        ['Variable Cost Total', formatIndianNumber(variable.total, { prefix: '₹ ' })],
+        ['Total Cost', formatIndianNumber(financials.totalCost, { prefix: '₹ ' })],
+        ['Net P&L', formatIndianNumber(financials.pnl, { prefix: '₹ ' })]
+    ];
+    summary.addRows(summaryRows.map(([field, value]) => ({ field, value: value ?? '—' })));
+
+    fixedSheet.columns = [
+        { header: 'Fixed Expense', key: 'type', width: 32 },
+        { header: 'Amount', key: 'amount', width: 18 },
+        { header: 'Notes', key: 'notes', width: 36 }
+    ];
+    fixedSheet.addRows([
+        { type: 'Driver Bhatta / Day', amount: formatIndianNumber(fixed.driverBhattaPerDay, { prefix: '₹ ' }), notes: `${fixed.tripDays || 0} trip day(s)` },
+        { type: 'Driver Bhatta Total', amount: formatIndianNumber(fixed.driverBhattaTotal, { prefix: '₹ ' }), notes: null },
+        { type: 'Depreciation', amount: formatIndianNumber(fixed.depreciationCost, { prefix: '₹ ' }), notes: `${fixed.depreciationDays || 0} depreciation day(s)` },
+        { type: 'Wear & Tear', amount: formatIndianNumber(fixed.wearAndTear, { prefix: '₹ ' }), notes: null },
+        ...((fixed.otherExpenses || []).map((entry) => ({
+            type: entry.type,
+            amount: formatIndianNumber(entry.amount, { prefix: '₹ ' }),
+            notes: entry.notes || null
+        }))),
+        { type: 'Fixed Cost Total', amount: formatIndianNumber(fixed.total, { prefix: '₹ ' }), notes: null }
+    ]);
+
+    expenseSheet.columns = [
+        { header: 'Expense ID', key: 'id', width: 12 },
+        { header: 'Date', key: 'date', width: 16 },
+        { header: 'Expense Type', key: 'type', width: 20 },
+        { header: 'Status', key: 'status', width: 14 },
+        { header: 'Amount', key: 'amount', width: 16 },
+        { header: 'Truck Number', key: 'truck', width: 18 },
+        { header: 'From', key: 'from', width: 24 },
+        { header: 'To', key: 'to', width: 24 },
+        { header: 'Vendor / Place', key: 'place', width: 22 },
+        { header: 'Receipt File', key: 'receipt', width: 32 }
+    ];
+    expenseSheet.addRows((snapshot.expenses || []).map((expense) => ({
+        id: expense.id,
+        date: expense.date || expense.created_at || null,
+        type: expense.expense_type,
+        status: expense.status || 'In Process',
+        amount: formatIndianNumber(expense.total_rupees, { prefix: '₹ ' }),
+        truck: trip.truck_text || snapshot.truck?.reg_no || null,
+        from: expense.route_from || trip.origin || null,
+        to: expense.route_to || trip.destination || null,
+        place: expense.place || expense.vendor || expense.merchant || null,
+        receipt: expense.receipt_document?.original_name || expense.receipt_document?.stored_name || '—'
+    })));
+
+    locationSheet.columns = [
+        { header: 'Recorded At', key: 'recorded_at', width: 24 },
+        { header: 'Latitude', key: 'lat', width: 16 },
+        { header: 'Longitude', key: 'lng', width: 16 },
+        { header: 'Accuracy', key: 'accuracy', width: 14 },
+        { header: 'Place', key: 'place', width: 32 },
+        { header: 'Source', key: 'source', width: 16 }
+    ];
+    locationSheet.addRows((snapshot.locations || []).map((row) => ({
+        recorded_at: row.recorded_at,
+        lat: row.lat,
+        lng: row.lng,
+        accuracy: row.accuracy,
+        place: row.place,
+        source: row.source
+    })));
+
+    [summary, expenseSheet, fixedSheet, locationSheet].forEach((sheet) => {
+        sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A5C3A' } };
+    });
+
+    return workbook;
+}
+
 function getTripMapsLink(origin, destination) {
     const parts = [cleanString(origin), cleanString(destination)].filter(Boolean);
     if (!parts.length) return null;
@@ -1841,15 +2094,23 @@ app.delete('/api/fleet/trips/:id', async (req, res) => {
 
 app.get('/api/fleet/trips/:id/expenses', async (req, res) => {
     try {
-        const result = await pool.query(
-            `SELECT *
-             FROM expenses
-             WHERE trip_id = $1
-               AND COALESCE(status, 'In Process') != 'Rejected'
-             ORDER BY created_at ASC`,
-            [req.params.id]
-        );
-        res.json(result.rows.map(serializeExpenseRow));
+        const snapshot = await buildTripStructuredSnapshot(req.params.id, req.user?.id || null);
+        if (!snapshot) {
+            return res.status(404).json({ error: 'Trip not found' });
+        }
+        res.json(snapshot.expenses.filter((expense) => String(expense?.status || '') !== 'Rejected'));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/fleet/trips/:id/detail', async (req, res) => {
+    try {
+        const snapshot = await buildTripStructuredSnapshot(req.params.id, req.user?.id || null);
+        if (!snapshot) {
+            return res.status(404).json({ error: 'Trip not found' });
+        }
+        res.json(snapshot);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -2832,6 +3093,24 @@ app.get('/api/owner/master-fleet-register', authenticateOwnerExport, async (req,
     } catch (err) {
         console.error('Master fleet export failed:', err.message);
         res.status(500).json({ error: 'Master fleet export failed' });
+    }
+});
+
+app.get('/api/export/trips/:id', async (req, res) => {
+    try {
+        const snapshot = await buildTripStructuredSnapshot(req.params.id, req.user?.id || null);
+        if (!snapshot) {
+            return res.status(404).json({ error: 'Trip not found' });
+        }
+        const wb = await generateTripWorkbook(snapshot);
+        const truckLabel = sanitizeDownloadName(snapshot.trip?.truck_text || snapshot.truck?.reg_no || 'trip', 'trip');
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=Trip_${truckLabel}_${req.params.id}.xlsx`);
+        await wb.xlsx.write(res);
+        res.end();
+    } catch (err) {
+        console.error('Trip export failed:', err.message);
+        res.status(500).json({ error: 'Trip export failed' });
     }
 });
 
