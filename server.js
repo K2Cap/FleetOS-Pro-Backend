@@ -3291,13 +3291,55 @@ app.post('/api/ocr-truck', authenticateToken, async (req, res) => {
 });
 
 // --- TAXHACKER RECEIPT ANALYZE ---
+function normalizeReceiptAnalysisResult(result) {
+    const raw = result || {};
+    const totalAmount = (() => {
+        const direct = raw.total_amount ?? raw['Total Amount'] ?? raw.amount ?? raw['Amount'];
+        if (direct === undefined || direct === null || direct === '') return null;
+        const cleaned = String(direct).replace(/[^0-9.,-]/g, '');
+        if (!cleaned) return null;
+        if (!/[.,]/.test(cleaned) && /^\d+$/.test(cleaned)) {
+            const numeric = Number(cleaned);
+            if (!Number.isFinite(numeric)) return null;
+            return numeric >= 1000 ? Math.round(numeric) : Math.round(numeric * 100);
+        }
+        const normalized = cleaned.replace(/,/g, '');
+        const numeric = Number(normalized);
+        return Number.isFinite(numeric) ? Math.round(numeric * 100) : null;
+    })();
+
+    const category = cleanString(
+        raw.category || raw.type || raw['Category'] || raw['Expense Type']
+        || (String(raw.product || raw['Product'] || '').toLowerCase().includes('diesel') ? 'Fuel' : '')
+    ) || 'Other';
+
+    return {
+        ...raw,
+        vendor: cleanString(raw.vendor || raw.station_name || raw['Station Name'] || raw.merchant || raw['Vendor'] || raw['Merchant']) || null,
+        station_name: cleanString(raw.station_name || raw['Station Name'] || raw.vendor || raw.merchant) || null,
+        location: cleanString(raw.location || raw['Location'] || raw.place || raw['Place'] || raw.city) || null,
+        contact_number: cleanString(raw.contact_number || raw['Contact Number']) || null,
+        date: cleanString(raw.date || raw.bill_date || raw.invoice_date || raw['Date'] || raw['Bill Date']) || null,
+        time: cleanString(raw.time || raw['Time']) || null,
+        transaction_id: cleanString(raw.transaction_id || raw['Transaction ID']) || null,
+        vehicle_id: cleanString(raw.vehicle_id || raw.vehicle_number || raw['Vehicle Number'] || raw.truck_id || raw['Vehicle ID'] || raw['Truck ID']) || null,
+        product: cleanString(raw.product || raw['Product']) || null,
+        rate_per_liter: cleanString(raw.rate_per_liter || raw['Rate per Liter']) || null,
+        fuel_volume: cleanString(raw.fuel_volume || raw['Volume (Liters)'] || raw['Volume'] || raw.quantity || raw['Fuel Volume']) || null,
+        payment_mode: cleanString(raw.payment_mode || raw['Payment Mode']) || null,
+        bay_nozzle: cleanString(raw.bay_nozzle || raw['Bay / Nozzle']) || null,
+        total_amount: totalAmount,
+        category
+    };
+}
+
 app.post('/api/analyze', authenticateToken, async (req, res) => {
     try {
         const { base64, mimeType } = req.body;
         if (!base64) return res.status(400).json({ error: 'No base64 image data' });
 
         console.log(`[TaxHacker] Processing receipt scan...`);
-        const result = await parseDocumentWithGemini(base64, mimeType || 'image/jpeg', 'receipt');
+        const result = normalizeReceiptAnalysisResult(await parseDocumentWithGemini(base64, mimeType || 'image/jpeg', 'receipt'));
         
         const normalizedAmount = toNumberOrNull(result.total_amount);
         if (normalizedAmount === null || normalizedAmount <= 0 || !cleanString(result.date)) {

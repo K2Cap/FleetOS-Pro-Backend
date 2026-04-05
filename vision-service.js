@@ -21,14 +21,22 @@ async function parseDocumentWithGemini(base64Image, mimeType = "image/jpeg", mod
 
         let prompt = '';
         if (mode === 'receipt') {
-            prompt = `TAXHACKER OCR MODE. Extract bill details into a single FLAT JSON object. 
-            Amounts must be in CENTS/PAISE (multiply by 100).
-            
-            Fields: "vendor", "date", "total_amount", "category", "vehicle_id", "fuel_volume", "currency".
-            
-            Categories: Fuel, Toll, Repair, Food, Parking, Other.
-            For Fuel, also extract "fuel_volume" in Litres.
-            
+            prompt = `Receipt OCR Mode. Extract bill details into a single FLAT JSON object.
+            Amounts must be in CENTS/PAISE (multiply rupees by 100).
+
+            Preferred fields:
+            "vendor", "station_name", "location", "contact_number", "date", "time",
+            "transaction_id", "vehicle_id", "product", "rate_per_liter", "fuel_volume",
+            "total_amount", "payment_mode", "bay_nozzle", "category", "currency".
+
+            Rules:
+            - For fuel pump receipts, station or merchant name should go into "station_name" and "vendor".
+            - "vehicle_id" should be the truck / vehicle number if visible.
+            - "fuel_volume" should be the litres value if visible.
+            - "rate_per_liter" should preserve the displayed rate text if visible.
+            - Categories should be one of: Fuel, Toll, Repair, Food, Parking, Border, Other.
+            - If a field is missing, return null.
+
             RETURN ONLY THE JSON OBJECT.`;
         } else {
             prompt = `Logistics OCR Mode. Extract fields into a single FLAT JSON object. Use null for missing data.
