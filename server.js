@@ -360,6 +360,96 @@ function serializeExpenseRow(row) {
     };
 }
 
+function getTripMapsLink(origin, destination) {
+    const parts = [cleanString(origin), cleanString(destination)].filter(Boolean);
+    if (!parts.length) return null;
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(parts[parts.length - 1])}${parts[0] ? `&origin=${encodeURIComponent(parts[0])}` : ''}`;
+}
+
+function resolveTripStartDate(trip) {
+    return parseFlexibleDate(trip?.start_date_raw || trip?.startDateRaw || trip?.start_date || trip?.startDate || trip?.created_at);
+}
+
+function resolveTripEndDate(trip) {
+    return parseFlexibleDate(trip?.end_date_raw || trip?.endDateRaw || trip?.end_date || trip?.endDate || trip?.auto_end_date_raw || trip?.autoEndDateRaw);
+}
+
+function isTripWithinLocationTrackingWindow(trip, now = new Date()) {
+    if (!trip) return false;
+    const status = String(trip.status || '').toLowerCase();
+    if (['active', 'en route'].includes(status)) return true;
+
+    if (!['approved', 'upcoming', 'scheduled'].includes(status)) return false;
+    const start = resolveTripStartDate(trip);
+    if (!start) return false;
+
+    const startMs = start.getTime();
+    const nowMs = now.getTime();
+    const preStartWindowMs = 2 * 60 * 60 * 1000;
+
+    if (nowMs < startMs - preStartWindowMs) return false;
+    const end = resolveTripEndDate(trip);
+    if (end && nowMs > end.getTime() + (24 * 60 * 60 * 1000)) return false;
+    return true;
+}
+
+function inferUploadExtensionFromMimeType(mimeType = '') {
+    const normalized = String(mimeType || '').toLowerCase();
+    if (normalized.includes('png')) return '.png';
+    if (normalized.includes('webp')) return '.webp';
+    if (normalized.includes('pdf')) return '.pdf';
+    if (normalized.includes('gif')) return '.gif';
+    return '.jpg';
+}
+
+function persistDataUrlUpload(dataUrl, prefix = 'receipt') {
+    const match = String(dataUrl || '').match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) return null;
+    const mimeType = match[1];
+    const base64 = match[2];
+    const ext = inferUploadExtensionFromMimeType(mimeType);
+    const storedName = `${sanitizeDownloadName(prefix, prefix)}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`;
+    const storedPath = path.join(UPLOADS_DIR, storedName);
+    fs.writeFileSync(storedPath, Buffer.from(base64, 'base64'));
+    return {
+        mimeType,
+        storedName,
+        storedPath: `/uploads/${storedName}`
+    };
+}
+
+function buildTripLocationShareUrl(req, tripId) {
+    const host = req.get('host');
+    const protocolHeader = cleanString(req.headers['x-forwarded-proto']);
+    const protocol = protocolHeader || req.protocol || 'https';
+    if (!host) return `/api/share/trip-location/${encodeURIComponent(tripId)}`;
+    return `${protocol}://${host}/api/share/trip-location/${encodeURIComponent(tripId)}`;
+}
+
+function buildTripPayloadForDriverApp(trip, extra = {}) {
+    if (!trip) return null;
+    return {
+        ...trip,
+        truck: trip.truck_text || trip.truck || extra.truck || null,
+        truckText: trip.truck_text || trip.truck || extra.truck || null,
+        driver: trip.driver_text || trip.driver || extra.driver || null,
+        driverText: trip.driver_text || trip.driver || extra.driver || null,
+        route: trip.origin || trip.route || null,
+        dest: trip.destination || trip.dest || null,
+        origin: trip.origin || trip.route || null,
+        destination: trip.destination || trip.dest || null,
+        startDate: trip.start_date || trip.startDate || null,
+        startDateRaw: trip.start_date_raw || trip.startDateRaw || null,
+        endDate: trip.end_date || trip.endDate || null,
+        endDateRaw: trip.end_date_raw || trip.endDateRaw || null,
+        autoEndDateRaw: trip.auto_end_date_raw || trip.autoEndDateRaw || null,
+        mapsLink: getTripMapsLink(trip.origin || trip.route, trip.destination || trip.dest),
+        approvalRequired: ['upcoming', 'scheduled'].includes(String(trip.status || '').toLowerCase()),
+        trackingWindowOpen: isTripWithinLocationTrackingWindow(trip),
+        locationShareUrl: extra.locationShareUrl || null
+    };
+}
+
 function createRecentMonthBuckets(monthCount = 8) {
     const now = new Date();
     const buckets = [];
@@ -1038,6 +1128,7 @@ async function initializeDatabase() {
         `ALTER TABLE trips ADD COLUMN IF NOT EXISTS bhatta REAL DEFAULT 0`,
         `ALTER TABLE trips ADD COLUMN IF NOT EXISTS distance_km REAL DEFAULT 0`,
         `ALTER TABLE trips ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Active'`,
+            `ALTER TABLE trips ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP`,
             `ALTER TABLE trips ADD COLUMN IF NOT EXISTS is_paid INTEGER DEFAULT 0`,
             `ALTER TABLE trips ADD COLUMN IF NOT EXISTS payment_date TEXT`,
             `ALTER TABLE trips ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
@@ -2186,6 +2277,67 @@ app.get('/api/fleet/trips/:id/locations', async (req, res) => {
     }
 });
 
+app.get('/api/fleet/trips/:id/location-share', async (req, res) => {
+    try {
+        const tripRes = await pool.query(
+            `SELECT id, owner_user_id, truck_text, driver_text, origin, destination, status
+             FROM trips
+             WHERE id = $1
+             LIMIT 1`,
+            [req.params.id]
+        );
+        const trip = tripRes.rows[0];
+        if (!trip) return res.status(404).json({ error: 'Trip not found' });
+        if (trip.owner_user_id && String(trip.owner_user_id) !== String(req.user?.id || '')) {
+            return res.status(403).json({ error: 'Trip does not belong to this account' });
+        }
+
+        const latestRes = await pool.query(
+            `SELECT *
+             FROM trip_locations
+             WHERE trip_id = $1
+             ORDER BY recorded_at DESC
+             LIMIT 1`,
+            [trip.id]
+        );
+        const latest = latestRes.rows[0] || null;
+        const mapsUrl = latest?.lat !== null && latest?.lng !== null && latest?.lat !== undefined && latest?.lng !== undefined
+            ? `https://www.google.com/maps?q=${encodeURIComponent(`${latest.lat},${latest.lng}`)}`
+            : getTripMapsLink(trip.origin, trip.destination);
+
+        res.json({
+            tripId: trip.id,
+            shareUrl: buildTripLocationShareUrl(req, trip.id),
+            mapsUrl,
+            latest
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/share/trip-location/:id', async (req, res) => {
+    try {
+        const latestRes = await pool.query(
+            `SELECT lat, lng, place
+             FROM trip_locations
+             WHERE trip_id = $1
+             ORDER BY recorded_at DESC
+             LIMIT 1`,
+            [req.params.id]
+        );
+        const latest = latestRes.rows[0];
+        if (!latest) return res.status(404).send('No live location available yet for this trip.');
+        if (latest.lat === null || latest.lng === null || latest.lat === undefined || latest.lng === undefined) {
+            return res.status(404).send('No live coordinates available yet for this trip.');
+        }
+        const mapsUrl = `https://www.google.com/maps?q=${encodeURIComponent(`${latest.lat},${latest.lng}`)}`;
+        return res.redirect(mapsUrl);
+    } catch (err) {
+        return res.status(500).send(err.message);
+    }
+});
+
 app.post('/api/drivers', upload.fields([{ name: 'file_dl' }, { name: 'file_aadhar' }, { name: 'file_pan' }, { name: 'file_photo' }]), async (req, res) => {
     const d = req.body;
     const f = req.files || {};
@@ -2370,36 +2522,75 @@ app.post('/api/driver-auth/forgot-pin', (req, res) => {
 });
 
 // Update Location & Track Alerts
-app.post('/api/driver/location', authenticateToken, (req, res) => {
+app.post('/api/driver/location', authenticateToken, async (req, res) => {
     const { driverId, lat, lng, locationEnabled } = req.body;
     if (!driverId) return res.status(400).json({ error: 'Driver ID required' });
     if (req.user?.role !== 'driver' || String(req.user.id) !== String(driverId)) {
         return res.status(403).json({ error: 'You can only update your own driver location' });
     }
 
-    const lastPing = new Date().toISOString();
-    let locationAlert = null;
+    try {
+        const driverRes = await pool.query('SELECT * FROM drivers WHERE id::text = $1 LIMIT 1', [String(driverId)]);
+        const driver = driverRes.rows[0];
+        if (!driver) return res.status(404).json({ error: 'Driver not found' });
 
-    // Logic: If driver is on an ACTIVE trip and location is OFF, trigger alert.
-    db.get('SELECT d.*, t.id as active_trip_id FROM drivers d LEFT JOIN trips t ON (d.full_name = t.driver_text AND t.status = \'Active\') WHERE d.id = ?', [driverId], (err, data) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (!data) return res.status(404).json({ error: 'Driver not found' });
-
+        const tripsRes = await pool.query(
+            `SELECT *
+             FROM trips
+             WHERE driver_text = $1
+               AND status IN ('Upcoming', 'Approved', 'Active', 'En Route', 'Scheduled')
+             ORDER BY start_date_raw ASC NULLS LAST, created_at DESC`,
+            [driver.full_name]
+        );
+        const trackingTrip = tripsRes.rows.find((trip) => isTripWithinLocationTrackingWindow(trip)) || null;
         const locationUnavailable = locationEnabled === false || lat === null || lat === undefined || lng === null || lng === undefined;
+        const locationAlert = trackingTrip && locationUnavailable
+            ? `Location unavailable for trip ${trackingTrip.id}`
+            : null;
+        const lastPing = new Date().toISOString();
 
-        if (data.active_trip_id && locationUnavailable) {
-            locationAlert = `Location turned OFF during active trip ${data.active_trip_id}`;
+        await pool.query(
+            `UPDATE drivers
+             SET last_lat = COALESCE($1, last_lat),
+                 last_lng = COALESCE($2, last_lng),
+                 last_ping = $3,
+                 location_enabled = $4,
+                 location_alert = $5
+             WHERE id = $6`,
+            [
+                toNumberOrNull(lat),
+                toNumberOrNull(lng),
+                lastPing,
+                locationEnabled ? 1 : 0,
+                locationAlert,
+                driver.id
+            ]
+        );
+
+        if (trackingTrip && !locationUnavailable) {
+            await pool.query(
+                `INSERT INTO trip_locations (trip_id, owner_user_id, driver_id, lat, lng, place, source, recorded_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, 'driver-app', CURRENT_TIMESTAMP)`,
+                [
+                    trackingTrip.id,
+                    trackingTrip.owner_user_id || driver.owner_user_id || null,
+                    driver.id,
+                    toNumberOrNull(lat),
+                    toNumberOrNull(lng),
+                    cleanString(req.body.place || req.body.location)
+                ]
+            );
         }
 
-        db.run(`
-            UPDATE drivers 
-            SET last_lat = ?, last_lng = ?, last_ping = ?, location_enabled = ?, location_alert = ? 
-            WHERE id = ?
-        `, [lat ?? data.last_lat, lng ?? data.last_lng, lastPing, locationEnabled ? 1 : 0, locationAlert, driverId], (err) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: 'Location updated', alertCreated: !!locationAlert, locationRequired: !!data.active_trip_id });
+        res.json({
+            message: 'Location updated',
+            alertCreated: !!locationAlert,
+            locationRequired: !!trackingTrip,
+            trackingTripId: trackingTrip?.id || null
         });
-    });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
 });
 
 
@@ -2958,7 +3149,7 @@ app.get('/api/driver-data', async (req, res) => {
         ).size || (cleanString(driver.assigned_truck) ? 1 : 0);
         const fleetUtilization = trackedTruckCount ? Math.min(100, Math.round((activeTrips / trackedTruckCount) * 100)) : 0;
 
-        const mappedTrips = lastTripsRes.rows.map(t => ({
+        const mappedTrips = allDriverTripsRes.rows.map((t) => buildTripPayloadForDriverApp({
             ...t,
             truck: t.truck_text,
             route: t.origin,
@@ -2971,10 +3162,14 @@ app.get('/api/driver-data', async (req, res) => {
             earned: Math.round((parseFloat(t.freight) || 0) / 100),
             truckPurchasePrice: 0,
             truckTyresCount: 0
+        }, {
+            locationShareUrl: buildTripLocationShareUrl(req, t.id)
         }));
 
         const activeTrip = mappedTrips.find(t => ['Active', 'En Route'].includes(t.status)) || null;
-        const upcomingTrip = mappedTrips.find(t => t.status === 'Upcoming') || null;
+        const upcomingTrip = [...mappedTrips]
+            .filter((t) => ['Upcoming', 'Approved', 'Scheduled'].includes(String(t.status || '')))
+            .sort((a, b) => (resolveTripStartDate(a)?.getTime() || 0) - (resolveTripStartDate(b)?.getTime() || 0))[0] || null;
 
         res.json({
             driver: sanitizeDriverRow(driver),
@@ -3106,17 +3301,25 @@ app.post('/api/save-expense', authenticateToken, async (req, res) => {
             vendor: normalizedMerchant
         };
 
+        const storedReceipt = receiptImageData ? persistDataUrlUpload(receiptImageData, `trip_${trip.id}_${normalizedCategory}`) : null;
+        if (storedReceipt) {
+            payload.receiptStoredName = storedReceipt.storedName;
+            payload.receiptStoredPath = storedReceipt.storedPath;
+            payload.receiptMimeType = storedReceipt.mimeType;
+        }
+
         const result = await pool.query(
             `INSERT INTO expenses (
-                merchant, total, amount, category, type, date, issued_at, status,
+                owner_user_id, merchant, total, amount, category, type, date, issued_at, status,
                 driver_id, driver_name, truck_id, trip_id, place, route_from, route_to,
                 bill_image_data, metadata, source
             ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, 'In Process',
-                $8, $9, $10, $11, $12, $13, $14,
-                $15, $16, 'driver'
+                $1, $2, $3, $4, $5, $6, $7, $8, 'In Process',
+                $9, $10, $11, $12, $13, $14, $15,
+                $16, $17, 'driver'
             ) RETURNING id`,
             [
+                trip.owner_user_id || driver.owner_user_id || null,
                 normalizedMerchant,
                 normalizedTotalPaise,
                 normalizedAmountRupees,
@@ -3135,6 +3338,23 @@ app.post('/api/save-expense', authenticateToken, async (req, res) => {
                 JSON.stringify(payload)
             ]
         );
+
+        if (storedReceipt) {
+            await pool.query(
+                `INSERT INTO trip_expense_documents (
+                    trip_id, expense_id, owner_user_id, original_name, stored_name, stored_path, mime_type
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                [
+                    trip.id,
+                    result.rows[0].id,
+                    trip.owner_user_id || driver.owner_user_id || null,
+                    sanitizeDownloadName(`${normalizedCategory}_${normalizedDate}`, 'expense_receipt'),
+                    storedReceipt.storedName,
+                    storedReceipt.storedPath,
+                    storedReceipt.mimeType
+                ]
+            );
+        }
 
         res.json({
             id: result.rows[0].id,
@@ -3169,9 +3389,69 @@ app.get('/api/expense/:id', authenticateToken, async (req, res) => {
         if (req.user?.role === 'driver' && String(row.driver_id) !== String(req.user.id)) {
             return res.status(403).json({ error: 'You can only view your own expenses' });
         }
-        res.json(serializeExpenseRow(row));
+        const expenseDocRes = await pool.query(
+            `SELECT original_name, stored_name, stored_path, mime_type
+             FROM trip_expense_documents
+             WHERE expense_id = $1
+             ORDER BY created_at DESC
+             LIMIT 1`,
+            [req.params.id]
+        );
+        res.json({
+            ...serializeExpenseRow(row),
+            receipt_document: expenseDocRes.rows[0] || null
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/expense/:id/receipt', authenticateToken, async (req, res) => {
+    try {
+        const expenseRes = await pool.query(
+            `SELECT id, driver_id, owner_user_id, bill_image_data
+             FROM expenses
+             WHERE id = $1
+             LIMIT 1`,
+            [req.params.id]
+        );
+        const expense = expenseRes.rows[0];
+        if (!expense) return res.status(404).json({ error: 'Expense not found' });
+        if (req.user?.role === 'driver' && String(expense.driver_id) !== String(req.user.id)) {
+            return res.status(403).json({ error: 'You can only access your own expense receipts' });
+        }
+        if (req.user?.role !== 'driver' && expense.owner_user_id && String(expense.owner_user_id) !== String(req.user?.id || '')) {
+            return res.status(403).json({ error: 'You can only access receipts from your own trips' });
+        }
+
+        const receiptRes = await pool.query(
+            `SELECT original_name, stored_name, stored_path, mime_type
+             FROM trip_expense_documents
+             WHERE expense_id = $1
+             ORDER BY created_at DESC
+             LIMIT 1`,
+            [req.params.id]
+        );
+        const receipt = receiptRes.rows[0];
+        if (receipt?.stored_name) {
+            const filePath = path.join(UPLOADS_DIR, path.basename(receipt.stored_name));
+            if (fs.existsSync(filePath)) {
+                return res.download(filePath, sanitizeDownloadName(receipt.original_name, path.basename(filePath)));
+            }
+        }
+
+        const fallbackImage = cleanString(expense.bill_image_data);
+        if (fallbackImage && fallbackImage.startsWith('data:')) {
+            const saved = persistDataUrlUpload(fallbackImage, `expense_${expense.id}`);
+            if (saved) {
+                const filePath = path.join(UPLOADS_DIR, path.basename(saved.storedName));
+                return res.download(filePath, sanitizeDownloadName(`expense_${expense.id}${inferUploadExtensionFromMimeType(saved.mimeType)}`, `expense_${expense.id}.jpg`));
+            }
+        }
+
+        return res.status(404).json({ error: 'Receipt file not found' });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
     }
 });
 
@@ -3181,7 +3461,7 @@ app.post('/api/driver-data', authenticateToken, async (req, res) => {
         const userId = cleanString(req.body.userId);
         const tripId = cleanString(req.body.tripId);
 
-        if (action !== 'START_TRIP') {
+        if (!['START_TRIP', 'APPROVE_TRIP'].includes(action)) {
             return res.json({ message: 'Action processed successfully' });
         }
 
@@ -3200,12 +3480,12 @@ app.post('/api/driver-data', authenticateToken, async (req, res) => {
         }
 
         const activeRes = await pool.query("SELECT id FROM trips WHERE driver_text = $1 AND status IN ('Active', 'En Route') LIMIT 1", [driver.full_name]);
-        if (activeRes.rows.length > 0) {
+        if (action === 'START_TRIP' && activeRes.rows.length > 0) {
             return res.status(409).json({ error: `Finish active trip ${activeRes.rows[0].id} before starting a new one` });
         }
 
         const params = [driver.full_name];
-        let sql = "SELECT * FROM trips WHERE driver_text = $1 AND status = 'Upcoming'";
+        let sql = "SELECT * FROM trips WHERE driver_text = $1 AND status IN ('Upcoming', 'Approved', 'Scheduled')";
         if (tripId) {
             params.push(tripId);
             sql += ' AND id = $2';
@@ -3218,8 +3498,16 @@ app.post('/api/driver-data', authenticateToken, async (req, res) => {
             return res.status(404).json({ error: 'No upcoming trip found for this driver' });
         }
 
+        if (action === 'APPROVE_TRIP') {
+            await pool.query(
+                'UPDATE trips SET status = $1, approved_at = COALESCE(approved_at, CURRENT_TIMESTAMP) WHERE id = $2',
+                ['Approved', upcomingTrip.id]
+            );
+            return res.json({ message: 'Trip approved successfully', tripId: upcomingTrip.id, status: 'Approved' });
+        }
+
         await pool.query('UPDATE trips SET status = $1 WHERE id = $2', ['Active', upcomingTrip.id]);
-        res.json({ message: 'Trip started successfully', tripId: upcomingTrip.id });
+        res.json({ message: 'Trip started successfully', tripId: upcomingTrip.id, status: 'Active' });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: err.message });
