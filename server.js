@@ -987,6 +987,7 @@ async function initializeDatabase() {
             lr_no TEXT,
             notes TEXT,
             bhatta REAL DEFAULT 0,
+            other_fixed_expenses JSONB DEFAULT '[]'::jsonb,
             status TEXT DEFAULT 'Active',
             is_paid INTEGER DEFAULT 0,
             payment_date TEXT,
@@ -1172,6 +1173,7 @@ async function initializeDatabase() {
             `ALTER TABLE trips ADD COLUMN IF NOT EXISTS lr_no TEXT`,
         `ALTER TABLE trips ADD COLUMN IF NOT EXISTS notes TEXT`,
         `ALTER TABLE trips ADD COLUMN IF NOT EXISTS bhatta REAL DEFAULT 0`,
+        `ALTER TABLE trips ADD COLUMN IF NOT EXISTS other_fixed_expenses JSONB DEFAULT '[]'::jsonb`,
         `ALTER TABLE trips ADD COLUMN IF NOT EXISTS distance_km REAL DEFAULT 0`,
         `ALTER TABLE trips ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Active'`,
             `ALTER TABLE trips ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP`,
@@ -1756,6 +1758,7 @@ app.get('/api/fleet/trips', async (req, res) => {
             status: r.status, 
             totalExpenses: r.total_expenses,
             bhatta: r.bhatta || 0,
+            otherFixedExpenses: Array.isArray(r.other_fixed_expenses) ? r.other_fixed_expenses : [],
             distanceKm: r.distance_km || 0,
             truckPurchasePrice: r.truck_purchase_price || 0,
             truckTyresCount: r.truck_tyres_count || 0,
@@ -1769,7 +1772,7 @@ app.get('/api/fleet/trips', async (req, res) => {
 });
 
 app.put('/api/fleet/trips/:id', async (req, res) => {
-    const { status, isPaid, paymentDate, endDate, endDateRaw, bhatta } = req.body;
+    const { status, isPaid, paymentDate, endDate, endDateRaw, bhatta, otherFixedExpenses } = req.body;
     let updates = [], params = [];
     let idx = 1;
     if (status !== undefined) { updates.push(`status = $${idx++}`); params.push(status); }
@@ -1778,6 +1781,18 @@ app.put('/api/fleet/trips/:id', async (req, res) => {
     if (endDate !== undefined) { updates.push(`end_date = $${idx++}`); params.push(endDate); }
     if (endDateRaw !== undefined) { updates.push(`end_date_raw = $${idx++}`); params.push(endDateRaw); }
     if (bhatta !== undefined) { updates.push(`bhatta = $${idx++}`); params.push(toNumberOrNull(bhatta) || 0); }
+    if (otherFixedExpenses !== undefined) {
+        const normalized = Array.isArray(otherFixedExpenses)
+            ? otherFixedExpenses.map((entry, index) => ({
+                id: cleanString(entry?.id) || `fixed_${Date.now()}_${index + 1}`,
+                type: cleanString(entry?.type) || 'Other',
+                amount: Math.max(0, toNumberOrNull(entry?.amount) || 0),
+                notes: cleanString(entry?.notes) || null
+            })).filter((entry) => entry.amount > 0)
+            : [];
+        updates.push(`other_fixed_expenses = $${idx++}`);
+        params.push(JSON.stringify(normalized));
+    }
     if (!updates.length) {
         return res.status(400).json({ error: 'No trip fields provided for update' });
     }
