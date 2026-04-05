@@ -1652,6 +1652,40 @@ app.put('/api/fleet/trips/:id', async (req, res) => {
     }
 });
 
+app.delete('/api/fleet/trips/:id', async (req, res) => {
+    const tripId = cleanString(req.params.id);
+    if (!tripId) {
+        return res.status(400).json({ error: 'Trip ID is required' });
+    }
+
+    const clientConn = await pool.connect();
+    try {
+        await clientConn.query('BEGIN');
+
+        const existing = await clientConn.query(
+            `SELECT id FROM trips WHERE id = $1 LIMIT 1`,
+            [tripId]
+        );
+        if (!existing.rowCount) {
+            await clientConn.query('ROLLBACK');
+            return res.status(404).json({ error: 'Trip not found' });
+        }
+
+        await clientConn.query(`DELETE FROM trip_locations WHERE trip_id = $1`, [tripId]);
+        await clientConn.query(`DELETE FROM trip_expense_documents WHERE trip_id = $1`, [tripId]);
+        await clientConn.query(`DELETE FROM expenses WHERE trip_id = $1`, [tripId]);
+        await clientConn.query(`DELETE FROM trips WHERE id = $1`, [tripId]);
+
+        await clientConn.query('COMMIT');
+        res.json({ message: 'Trip deleted successfully', id: tripId });
+    } catch (err) {
+        await clientConn.query('ROLLBACK');
+        res.status(500).json({ error: err.message });
+    } finally {
+        clientConn.release();
+    }
+});
+
 app.get('/api/fleet/trips/:id/expenses', async (req, res) => {
     try {
         const result = await pool.query(
