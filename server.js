@@ -831,6 +831,9 @@ async function initializeDatabase() {
 
         await pool.query(`CREATE TABLE IF NOT EXISTS trips (
             id TEXT PRIMARY KEY,
+            owner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            truck_id INTEGER REFERENCES trucks(id) ON DELETE SET NULL,
+            driver_id INTEGER REFERENCES drivers(id) ON DELETE SET NULL,
             inv_id TEXT,
             truck_text TEXT,
             driver_text TEXT,
@@ -854,6 +857,18 @@ async function initializeDatabase() {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
 
+        await pool.query(`CREATE TABLE IF NOT EXISTS trip_locations (
+            id SERIAL PRIMARY KEY,
+            trip_id TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+            owner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            driver_id INTEGER REFERENCES drivers(id) ON DELETE SET NULL,
+            lat REAL,
+            lng REAL,
+            place TEXT,
+            source TEXT DEFAULT 'app',
+            recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`);
+
         await pool.query(`CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             full_name TEXT NOT NULL,
@@ -867,6 +882,7 @@ async function initializeDatabase() {
 
         await pool.query(`CREATE TABLE IF NOT EXISTS expenses (
             id SERIAL PRIMARY KEY,
+            owner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
             merchant TEXT,
             category TEXT,
             amount REAL,
@@ -878,6 +894,18 @@ async function initializeDatabase() {
             truck_id TEXT,
             notes TEXT,
             metadata JSONB,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`);
+
+        await pool.query(`CREATE TABLE IF NOT EXISTS trip_expense_documents (
+            id SERIAL PRIMARY KEY,
+            trip_id TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+            expense_id INTEGER REFERENCES expenses(id) ON DELETE CASCADE,
+            owner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            original_name TEXT,
+            stored_name TEXT,
+            stored_path TEXT,
+            mime_type TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
 
@@ -989,6 +1017,9 @@ async function initializeDatabase() {
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
             `ALTER TABLE trips ADD COLUMN IF NOT EXISTS inv_id TEXT`,
+            `ALTER TABLE trips ADD COLUMN IF NOT EXISTS owner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`,
+            `ALTER TABLE trips ADD COLUMN IF NOT EXISTS truck_id INTEGER REFERENCES trucks(id) ON DELETE SET NULL`,
+            `ALTER TABLE trips ADD COLUMN IF NOT EXISTS driver_id INTEGER REFERENCES drivers(id) ON DELETE SET NULL`,
             `ALTER TABLE trips ADD COLUMN IF NOT EXISTS truck_text TEXT`,
             `ALTER TABLE trips ADD COLUMN IF NOT EXISTS driver_text TEXT`,
             `ALTER TABLE trips ADD COLUMN IF NOT EXISTS origin TEXT`,
@@ -1017,6 +1048,7 @@ async function initializeDatabase() {
             `ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT`,
             `ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
             `ALTER TABLE expenses ADD COLUMN IF NOT EXISTS type TEXT`,
+            `ALTER TABLE expenses ADD COLUMN IF NOT EXISTS owner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`,
             `ALTER TABLE expenses ADD COLUMN IF NOT EXISTS amount REAL`,
             `ALTER TABLE expenses ADD COLUMN IF NOT EXISTS trip_id TEXT`,
             `ALTER TABLE expenses ADD COLUMN IF NOT EXISTS notes TEXT`,
@@ -1045,6 +1077,30 @@ async function initializeDatabase() {
             `CREATE INDEX IF NOT EXISTS idx_expenses_trip_id ON expenses (trip_id)`,
             `CREATE INDEX IF NOT EXISTS idx_expenses_created_at ON expenses (created_at DESC)`,
             `CREATE INDEX IF NOT EXISTS idx_ocr_scans_created_at ON ocr_scans (created_at DESC)`,
+            `CREATE TABLE IF NOT EXISTS trip_locations (
+                id SERIAL PRIMARY KEY,
+                trip_id TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+                owner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                driver_id INTEGER REFERENCES drivers(id) ON DELETE SET NULL,
+                lat REAL,
+                lng REAL,
+                place TEXT,
+                source TEXT DEFAULT 'app',
+                recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`,
+            `CREATE TABLE IF NOT EXISTS trip_expense_documents (
+                id SERIAL PRIMARY KEY,
+                trip_id TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+                expense_id INTEGER REFERENCES expenses(id) ON DELETE CASCADE,
+                owner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                original_name TEXT,
+                stored_name TEXT,
+                stored_path TEXT,
+                mime_type TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`,
+            `CREATE INDEX IF NOT EXISTS idx_trip_locations_trip_id ON trip_locations (trip_id, recorded_at DESC)`,
+            `CREATE INDEX IF NOT EXISTS idx_trip_expense_documents_trip_id ON trip_expense_documents (trip_id, created_at DESC)`,
         ];
 
         for (const statement of migrations) {
@@ -1445,6 +1501,9 @@ registerDocumentWorkflow({
 // --- TRIPS API ---
 app.post('/api/fleet/trips', async (req, res) => {
     const id = cleanString(req.body.id);
+    const ownerUserId = toNumberOrNull(req.body.ownerUserId || req.user?.id);
+    const truckId = toNumberOrNull(req.body.truckId);
+    const driverId = toNumberOrNull(req.body.driverId);
     const invId = cleanString(req.body.invId);
     const truckText = cleanString(req.body.truckText);
     const driverText = cleanString(req.body.driverText);
@@ -1465,6 +1524,7 @@ app.post('/api/fleet/trips', async (req, res) => {
         const status = cleanString(req.body.status) || 'Upcoming';
     const bhatta = toNumberOrNull(req.body.bhatta) || 0;
     const expenses = Array.isArray(req.body.expenses) ? req.body.expenses : [];
+    const locationEvents = Array.isArray(req.body.locationEvents) ? req.body.locationEvents : [];
 
     if (!id || !truckText || !driverText || !origin || !destination || freight === null) {
         return res.status(400).json({ error: 'Trip ID, truck, driver, origin, destination and freight are required' });
@@ -1474,9 +1534,9 @@ app.post('/api/fleet/trips', async (req, res) => {
     try {
         await clientConn.query('BEGIN');
         await clientConn.query(
-            `INSERT INTO trips (id, inv_id, truck_text, driver_text, origin, destination, start_date, start_date_raw, end_date, end_date_raw, auto_end_date_raw, freight, advance, balance, client, lr_no, notes, status, bhatta, distance_km)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
-            [id, invId, truckText, driverText, origin, destination, startDate, startDateRaw, endDate, endDateRaw, autoEndDateRaw, freight, advance, balance, client, lrNo, notes, status, bhatta, distanceKm]
+            `INSERT INTO trips (id, owner_user_id, truck_id, driver_id, inv_id, truck_text, driver_text, origin, destination, start_date, start_date_raw, end_date, end_date_raw, auto_end_date_raw, freight, advance, balance, client, lr_no, notes, status, bhatta, distance_km)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)`,
+            [id, ownerUserId, truckId, driverId, invId, truckText, driverText, origin, destination, startDate, startDateRaw, endDate, endDateRaw, autoEndDateRaw, freight, advance, balance, client, lrNo, notes, status, bhatta, distanceKm]
         );
 
         for (const expense of expenses) {
@@ -1496,6 +1556,18 @@ app.post('/api/fleet/trips', async (req, res) => {
                     cleanString(expense.notes),
                     cleanString(expense.date) || new Date().toISOString().split('T')[0]
                 ]
+            );
+        }
+
+        for (const ping of locationEvents) {
+            const lat = toNumberOrNull(ping?.lat);
+            const lng = toNumberOrNull(ping?.lng);
+            const place = cleanString(ping?.place || ping?.location);
+            if (lat === null && lng === null && !place) continue;
+            await clientConn.query(
+                `INSERT INTO trip_locations (trip_id, owner_user_id, driver_id, lat, lng, place, source, recorded_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8::timestamp, CURRENT_TIMESTAMP))`,
+                [id, ownerUserId, driverId, lat, lng, place, cleanString(ping?.source) || 'app', cleanString(ping?.recordedAt)]
             );
         }
 
@@ -2059,6 +2131,21 @@ app.get('/api/drivers', authenticateTransporter, async (req, res) => {
             [ownerId]
         );
         res.json(result.rows.map((row) => sanitizeDriverRow(row, { includeTransporterOtp: true })));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/fleet/trips/:id/locations', async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT *
+             FROM trip_locations
+             WHERE trip_id = $1
+             ORDER BY recorded_at DESC`,
+            [req.params.id]
+        );
+        res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
