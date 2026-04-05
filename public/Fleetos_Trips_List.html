@@ -223,6 +223,14 @@ body{font-family:var(--ff);color:var(--ink);display:flex;flex-direction:column;}
 .confirm-btn-ghost,.confirm-btn-danger{flex:1;padding:13px;border-radius:var(--r);font-family:var(--ff);font-size:13px;font-weight:700;cursor:pointer;}
 .confirm-btn-ghost{border:1.5px solid var(--bd);background:#fff;color:var(--ink2);}
 .confirm-btn-danger{border:none;background:var(--s);color:#fff;box-shadow:0 4px 16px rgba(232,103,26,.28);}
+.expense-editor-list{display:flex;flex-direction:column;gap:10px;margin-top:12px;max-height:42vh;overflow-y:auto;padding-right:2px;}
+.expense-editor-item{background:#fff;border:1.5px solid var(--bd);border-radius:18px;padding:12px;}
+.expense-editor-grid{display:grid;grid-template-columns:1fr 120px;gap:10px;align-items:end;}
+.expense-editor-grid .ds-input,.expense-editor-grid select.ds-input{width:100%;}
+.expense-editor-note{margin-top:8px;font-size:11px;color:var(--mu);}
+.expense-editor-remove{margin-top:10px;border:none;background:transparent;color:var(--cr);font-size:12px;font-weight:800;cursor:pointer;padding:0;}
+.expense-editor-add{width:100%;margin-top:12px;padding:12px;border:1.5px dashed var(--g2);border-radius:16px;background:var(--glt);color:var(--g);font-family:var(--ff);font-size:13px;font-weight:800;cursor:pointer;}
+.expense-editor-empty{padding:18px 14px;border-radius:18px;border:1.5px dashed var(--bd2);background:rgba(255,255,255,.55);font-size:12px;line-height:1.55;color:var(--mu);text-align:center;}
 
 @keyframes fuA{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .trip-card{animation:fuA .4s ease both;}
@@ -361,6 +369,7 @@ body{font-family:var(--ff);color:var(--ink);display:flex;flex-direction:column;}
         <div class="ds-row"><span class="ds-key">Driver Bhatta</span><span class="ds-val" id="ds-pnl-bhatta">—</span></div>
         <div class="ds-row"><span class="ds-key">Depreciation</span><span class="ds-val" id="ds-pnl-depr">—</span></div>
         <div class="ds-row"><span class="ds-key">Wear &amp; Tear</span><span class="ds-val" id="ds-pnl-wear">—</span></div>
+        <div class="ds-row"><span class="ds-key">Other Expenses</span><button type="button" class="ds-val" id="ds-other-fixed-total" style="border:none;background:none;padding:0;color:var(--g);cursor:pointer;">₹ 0</button></div>
         <div class="ds-row subtotal"><span class="ds-key">Fixed Cost Total</span><span class="ds-val" id="ds-fixed-expenses">—</span></div>
         <div class="ds-row subtotal"><span class="ds-key">Variable Cost Total</span><button type="button" class="ds-val" id="ds-variable-total" style="border:none;background:none;padding:0;color:var(--g);cursor:pointer;">₹ 0</button></div>
         <div class="ds-row total-cost"><span class="ds-key">Total Cost</span><span class="ds-val" id="ds-total-cost">—</span></div>
@@ -387,6 +396,19 @@ body{font-family:var(--ff);color:var(--ink);display:flex;flex-direction:column;}
     </div>
   </div>
 
+  <div class="confirm-backdrop" id="other-fixed-backdrop" onclick="closeOtherFixedExpenses()"></div>
+  <div class="confirm-sheet" id="other-fixed-sheet">
+    <div class="confirm-title">Other Expenses</div>
+    <p class="confirm-copy">Add fixed trip costs like parking retainers, union fees, escort charges, night halt costs, loading support, permits, or admin overheads. The trip detail page will only show the summed total.</p>
+    <div class="confirm-tag" id="other-fixed-trip-tag">—</div>
+    <div class="expense-editor-list" id="other-fixed-list"></div>
+    <button class="expense-editor-add" type="button" onclick="addOtherFixedExpense()">+ Add Another Expense</button>
+    <div class="confirm-actions" style="margin-top:14px;">
+      <button class="confirm-btn-ghost" onclick="closeOtherFixedExpenses()">Close</button>
+      <button class="confirm-btn-danger" id="save-other-fixed-btn" onclick="saveOtherFixedExpenses()">Save Expenses</button>
+    </div>
+  </div>
+
 </div><!-- /phone -->
 
 <script>
@@ -400,6 +422,21 @@ const filterState = { status: 'all', enRouteSubstatus: 'all', month: 'all', sear
 let ALL_TRIPS = [];
 let ACTIVE_TRIP_ID = '';
 const requestedTripId = new URLSearchParams(window.location.search).get('tripId') || '';
+let OTHER_FIXED_EXPENSES_CACHE = [];
+const OTHER_FIXED_EXPENSE_OPTIONS = [
+  'Parking & Stand Fees',
+  'Union / Loading Labour',
+  'Escort / Helper Cost',
+  'Night Halt / Lodging',
+  'Detention / Waiting Charges',
+  'RTO / Permit Facilitation',
+  'Police / Security Escort',
+  'Brokerage / Commission',
+  'Office / Documentation',
+  'Cleaning / Washing',
+  'Tyre Repair Reserve',
+  'Unexpected Fixed Overhead'
+];
 
 function getFleetApiBase() {
   return (window.FLEETOS_API_BASE || '').replace(/\/$/, '');
@@ -449,6 +486,21 @@ function parseNumberLoose(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function uid(prefix = 'id') {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function normalizeOtherFixedExpenses(value) {
+  return Array.isArray(value)
+    ? value.map((entry, index) => ({
+        id: String(entry?.id || uid(`fixed${index + 1}`)),
+        type: String(entry?.type || 'Other'),
+        amount: Math.max(0, parseNumberLoose(entry?.amount)),
+        notes: String(entry?.notes || '').trim()
+      })).filter((entry) => entry.amount > 0 || entry.type || entry.notes)
+    : [];
+}
+
 function startOfDay(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -495,7 +547,9 @@ function computeTripOperationalMetrics(trip) {
   const depreciationDays = tripDays + idleDays;
   const depreciationCost = ((purchasePrice / (365 * 7)) || 0) * depreciationDays;
   const wearAndTear = (((tyresCount * 25000) / 50000) || 0) * distanceKm;
-  const fixedTotal = bhatta + depreciationCost + wearAndTear;
+  const otherFixedExpenses = normalizeOtherFixedExpenses(trip?.otherFixedExpenses ?? trip?.other_fixed_expenses);
+  const otherFixedTotal = otherFixedExpenses.reduce((sum, entry) => sum + parseNumberLoose(entry?.amount), 0);
+  const fixedTotal = bhatta + depreciationCost + wearAndTear + otherFixedTotal;
   const variableTotal = parseNumberLoose(trip?.variable_expenses_total ?? trip?.variableExpensesTotal ?? trip?.total_expenses ?? trip?.total_expenses_display);
   const revenue = parseNumberLoose(trip?.freight ?? trip?.freight_display);
 
@@ -506,6 +560,8 @@ function computeTripOperationalMetrics(trip) {
     bhatta,
     depreciationCost,
     wearAndTear,
+    otherFixedExpenses,
+    otherFixedTotal,
     fixedTotal,
     variableTotal,
     totalCost: fixedTotal + variableTotal,
@@ -516,6 +572,7 @@ function computeTripOperationalMetrics(trip) {
 
 function renderTripFinancials(trip) {
   const metrics = computeTripOperationalMetrics(trip || {});
+  OTHER_FIXED_EXPENSES_CACHE = metrics.otherFixedExpenses.map((entry) => ({ ...entry }));
   document.getElementById('ds-bhatta-display').textContent = formatMoney(Math.round(metrics.bhatta));
   document.getElementById('ds-bhatta-input').value = metrics.bhattaPerDay ? Math.round(metrics.bhattaPerDay).toLocaleString('en-IN') : '';
   document.getElementById('ds-trip-days').textContent = String(metrics.tripDays);
@@ -524,6 +581,7 @@ function renderTripFinancials(trip) {
   document.getElementById('ds-pnl-bhatta').textContent = formatMoney(Math.round(metrics.bhatta));
   document.getElementById('ds-pnl-depr').textContent = formatMoney(Math.round(metrics.depreciationCost));
   document.getElementById('ds-pnl-wear').textContent = formatMoney(Math.round(metrics.wearAndTear));
+  document.getElementById('ds-other-fixed-total').textContent = formatMoney(Math.round(metrics.otherFixedTotal));
   document.getElementById('ds-fixed-expenses').textContent = formatMoney(Math.round(metrics.fixedTotal));
   document.getElementById('ds-variable-total').textContent = formatMoney(Math.round(metrics.variableTotal));
   document.getElementById('ds-total-cost').textContent = formatMoney(Math.round(metrics.totalCost));
@@ -557,6 +615,99 @@ async function loadTripLocationShare(tripId) {
 function openTripLedger() {
   if (!ACTIVE_TRIP_ID) return;
   window.location.href = `/transporter_dashboard_FINAL.html?page=finance&tab=ledger&tripId=${encodeURIComponent(ACTIVE_TRIP_ID)}`;
+}
+
+function renderOtherFixedExpenseEditor() {
+  const list = document.getElementById('other-fixed-list');
+  if (!list) return;
+  if (!OTHER_FIXED_EXPENSES_CACHE.length) {
+    list.innerHTML = `<div class="expense-editor-empty">No other fixed expenses added yet. Use this for predictable trip-level costs beyond driver bhatta, depreciation, and wear &amp; tear.</div>`;
+    return;
+  }
+  list.innerHTML = OTHER_FIXED_EXPENSES_CACHE.map((entry, index) => `
+    <div class="expense-editor-item">
+      <div class="expense-editor-grid">
+        <div>
+          <label class="ds-key" style="display:block;margin-bottom:6px;">Expense Type</label>
+          <select class="ds-input" onchange="updateOtherFixedExpense('${entry.id}','type',this.value)">
+            ${OTHER_FIXED_EXPENSE_OPTIONS.map((option) => `<option value="${option.replace(/"/g, '&quot;')}" ${entry.type === option ? 'selected' : ''}>${option}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label class="ds-key" style="display:block;margin-bottom:6px;">Amount</label>
+          <input class="ds-input" type="text" inputmode="numeric" value="${entry.amount ? Math.round(entry.amount).toLocaleString('en-IN') : ''}" placeholder="0" oninput="updateOtherFixedExpense('${entry.id}','amount',this.value)">
+        </div>
+      </div>
+      <div class="expense-editor-note">Line ${index + 1}${entry.notes ? ` · ${entry.notes}` : ''}</div>
+      <button type="button" class="expense-editor-remove" onclick="removeOtherFixedExpense('${entry.id}')">Remove Expense</button>
+    </div>
+  `).join('');
+}
+
+function openOtherFixedExpenses() {
+  if (!ACTIVE_TRIP_ID) return;
+  const trip = ALL_TRIPS.find((row) => String(row?.id || '') === String(ACTIVE_TRIP_ID)) || {};
+  OTHER_FIXED_EXPENSES_CACHE = normalizeOtherFixedExpenses(trip?.otherFixedExpenses ?? trip?.other_fixed_expenses);
+  document.getElementById('other-fixed-trip-tag').textContent = trip?.truck_text || trip?.truckText || ACTIVE_TRIP_ID;
+  renderOtherFixedExpenseEditor();
+  document.getElementById('other-fixed-backdrop').classList.add('active');
+  document.getElementById('other-fixed-sheet').classList.add('active');
+}
+
+function closeOtherFixedExpenses() {
+  document.getElementById('other-fixed-backdrop').classList.remove('active');
+  document.getElementById('other-fixed-sheet').classList.remove('active');
+}
+
+function addOtherFixedExpense() {
+  OTHER_FIXED_EXPENSES_CACHE.push({ id: uid('fixed'), type: OTHER_FIXED_EXPENSE_OPTIONS[0], amount: 0, notes: '' });
+  renderOtherFixedExpenseEditor();
+}
+
+function updateOtherFixedExpense(id, field, value) {
+  OTHER_FIXED_EXPENSES_CACHE = OTHER_FIXED_EXPENSES_CACHE.map((entry) => {
+    if (entry.id !== id) return entry;
+    if (field === 'amount') return { ...entry, amount: parseNumberLoose(value) };
+    if (field === 'type') return { ...entry, type: String(value || 'Other') };
+    return entry;
+  });
+}
+
+function removeOtherFixedExpense(id) {
+  OTHER_FIXED_EXPENSES_CACHE = OTHER_FIXED_EXPENSES_CACHE.filter((entry) => entry.id !== id);
+  renderOtherFixedExpenseEditor();
+}
+
+async function saveOtherFixedExpenses() {
+  if (!ACTIVE_TRIP_ID) return;
+  const btn = document.getElementById('save-other-fixed-btn');
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  try {
+    const payloadExpenses = normalizeOtherFixedExpenses(OTHER_FIXED_EXPENSES_CACHE).filter((entry) => entry.amount > 0);
+    const response = await fetch(`${getFleetApiBase()}/api/fleet/trips/${encodeURIComponent(ACTIVE_TRIP_ID)}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getFleetAuthHeaders()
+      },
+      body: JSON.stringify({ otherFixedExpenses: payloadExpenses })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload?.error || 'Could not save other expenses.');
+    const trip = ALL_TRIPS.find((row) => String(row?.id || '') === String(ACTIVE_TRIP_ID));
+    if (trip) {
+      trip.otherFixedExpenses = payloadExpenses;
+      renderTripFinancials(trip);
+    }
+    closeOtherFixedExpenses();
+  } catch (err) {
+    alert(err?.message || 'Could not save other expenses.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
 }
 
 function statusKeyFromTrip(trip) {
@@ -903,6 +1054,8 @@ function filterCards(q) { filterState.search = String(q || '').toLowerCase().tri
 
 const variableTotalButton = document.getElementById('ds-variable-total');
 if (variableTotalButton) variableTotalButton.addEventListener('click', openTripLedger);
+const otherFixedButton = document.getElementById('ds-other-fixed-total');
+if (otherFixedButton) otherFixedButton.addEventListener('click', openOtherFixedExpenses);
 loadTrips();
 
 (function syncVisibleFooter() {
