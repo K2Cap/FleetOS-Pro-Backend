@@ -210,6 +210,7 @@ body{font-family:var(--ff);color:var(--ink);display:flex;flex-direction:column;}
 .ds-pnl-total .value.loss{color:var(--cr);}
 .ds-actions{display:flex;gap:9px;padding:0 18px calc(28px + env(safe-area-inset-bottom,0px));flex-shrink:0;background:linear-gradient(180deg,rgba(245,242,236,0) 0%,rgba(245,242,236,.96) 20%,rgba(245,242,236,1) 100%);}
 .ds-btn-g{flex:1;padding:12px;border-radius:var(--r);border:1.5px solid var(--bd);background:var(--bg);font-family:var(--ff);font-size:13px;font-weight:700;color:var(--ink2);cursor:pointer;}
+.ds-btn-outline{flex:1;padding:12px;border-radius:var(--r);border:1.5px solid var(--g);background:#fff;color:var(--g);font-family:var(--ff);font-size:13px;font-weight:800;cursor:pointer;}
 .ds-btn-p{flex:1;padding:12px;border-radius:var(--r);border:none;background:var(--g);color:#fff;font-family:var(--ff);font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(26,92,58,.32);}
 .ds-btn-danger{flex:1;padding:12px;border-radius:var(--r);border:none;background:var(--s);color:#fff;font-family:var(--ff);font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(232,103,26,.28);}
 .confirm-backdrop{position:fixed;inset:0;background:rgba(26,24,20,.58);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:340;opacity:0;pointer-events:none;transition:opacity .24s;}
@@ -381,6 +382,7 @@ body{font-family:var(--ff);color:var(--ink);display:flex;flex-direction:column;}
     </div>
     <div class="ds-actions">
       <button class="ds-btn-g" onclick="closeDetail()">Close</button>
+      <button class="ds-btn-outline" id="ds-export-trip-btn" onclick="downloadTripExcel()">Download Trip Excel</button>
       <button class="ds-btn-danger" onclick="openDeleteTripConfirm()">Delete Trip</button>
     </div>
   </div>
@@ -615,6 +617,44 @@ async function loadTripLocationShare(tripId) {
 function openTripLedger() {
   if (!ACTIVE_TRIP_ID) return;
   window.location.href = `/transporter_dashboard_FINAL.html?page=finance&tab=ledger&tripId=${encodeURIComponent(ACTIVE_TRIP_ID)}`;
+}
+
+async function downloadTripExcel() {
+  if (!ACTIVE_TRIP_ID) return;
+  const btn = document.getElementById('ds-export-trip-btn');
+  const original = btn?.textContent || 'Download Trip Excel';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Preparing...';
+  }
+  try {
+    const response = await fetch(`${getFleetApiBase()}/api/export/trips/${encodeURIComponent(ACTIVE_TRIP_ID)}`, {
+      headers: { ...getFleetAuthHeaders() }
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload?.error || 'Could not download trip export right now.');
+    }
+    const blob = await response.blob();
+    const disposition = response.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename="?([^"]+)"?/i);
+    const fileName = match?.[1] || `Trip_${ACTIVE_TRIP_ID}.xlsx`;
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert(err?.message || 'Could not download trip export right now.');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  }
 }
 
 function renderOtherFixedExpenseEditor() {
