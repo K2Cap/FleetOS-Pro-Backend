@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>FleetOS — Trips</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,900;1,9..144,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --g:#1a5c3a;--g2:#236b47;--glt:#e8f5ee;--glt2:#d1ead9;
+  --s:#e8671a;--slt:#fdf0e8;--slt2:#fcd9c0;
+  --go:#c9930a;--golt:#fdf6e3;
+  --cr:#c0392b;--crlt:#fdecea;
+  --bl:#2563eb;--bllt:#eff6ff;
+  --bg:#f5f2ec;--bg2:#edeae2;--wh:#ffffff;
+  --ink:#1a1814;--ink2:#3d3a34;--mu:#7a7570;--mu2:#b0aca4;--bd:#ddd9d0;--bd2:#c8c4bb;
+  --ff:'DM Sans',sans-serif;--fd:'Fraunces',serif;--fm:'JetBrains Mono',monospace;
+  --r:18px;--r-lg:22px;
+  --sh-sm:0 2px 8px rgba(26,24,20,.07);--sh-md:0 6px 24px rgba(26,24,20,.11);
+  --app-footer-height:88px;
+}
+html,body{height:100%;margin:0;padding:0;overflow:hidden;background:var(--bg);}
+body{font-family:var(--ff);color:var(--ink);display:flex;flex-direction:column;}
+
+/* PHONE SHELL */
+.phone{width:100%;max-width:none;margin:0;background:var(--bg);border-radius:0;overflow:hidden;transform:none;box-shadow:none;border:none;display:flex;flex-direction:column;flex:1;min-height:100vh;min-height:100svh;min-height:100dvh;position:relative;}
+
+/* STATUS BAR */
+.sbar{background:var(--g);padding:12px 22px 5px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.sbar-time{font-family:var(--fm);font-size:11px;font-weight:700;color:#fff;}
+.sbar-pill{width:80px;height:16px;background:#0d3626;border-radius:18px;display:flex;align-items:center;justify-content:center;}
+.sbar-dot{width:7px;height:7px;border-radius:50%;background:#0a2c1d;}
+
+/* HEADER */
+.header{background:var(--g);padding:14px 18px 18px;flex-shrink:0;}
+.hdr-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;}
+.hdr-title{font-family:var(--fd);font-weight:900;font-size:22px;color:#fff;letter-spacing:-.3px;line-height:1;}
+.hdr-title em{color:var(--s);font-style:italic;font-weight:400;}
+.hdr-sub{font-size:11px;color:rgba(255,255,255,.6);font-weight:500;margin-top:3px;}
+.add-btn{display:flex;align-items:center;gap:5px;background:var(--s);color:#fff;border:none;border-radius:11px;padding:9px 15px;font-family:var(--ff);font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;box-shadow:0 4px 14px rgba(232,103,26,.38);}
+
+/* SEARCH */
+.search-wrap{position:relative;}
+.search-input{width:100%;height:40px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:0 14px 0 36px;font-family:var(--ff);font-size:13px;color:#fff;outline:none;}
+.search-input::placeholder{color:rgba(255,255,255,.45);}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.5;pointer-events:none;}
+.toolbar-row{display:flex;gap:10px;align-items:center;margin-top:10px;}
+.month-select{
+  flex:0 0 138px;
+  height:40px;
+  padding:0 34px 0 12px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.12);
+  color:#fff;
+  font-family:var(--ff);
+  font-size:12px;
+  font-weight:700;
+  outline:none;
+  appearance:none;
+  -webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none'%3E%3Cpath d='M3 5.25L7 9.25L11 5.25' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 12px center;
+}
+.month-select option{color:var(--ink);}
+
+/* STATS ROW */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--bd);flex-shrink:0;}
+.stat-cell{background:var(--wh);padding:10px 0;text-align:center;cursor:pointer;transition:background .16s,color .16s;}
+.stat-cell.active{background:var(--glt);}
+.stat-num{font-family:'Fraunces',serif;font-size:19px;font-weight:900;color:var(--ink);line-height:1;}
+.stat-lbl{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--mu);margin-top:2px;}
+.stat-num.en-route{color:var(--g);}
+.stat-num.scheduled{color:var(--go);}
+.stat-num.completed{color:var(--mu);}
+
+/* FILTER PILLS */
+.subfilter-bar{display:none;justify-content:center;align-items:center;gap:10px;padding:12px 16px;background:var(--wh);border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);flex-shrink:0;}
+.subfilter-bar.show{display:flex;}
+.subpill{padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;border:1.5px solid var(--bd);background:var(--bg);color:var(--mu);cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0;letter-spacing:.2px;}
+.subpill.active{background:var(--g);color:#fff;border-color:var(--g);}
+.subpill.delayed.active{background:var(--cr);border-color:var(--cr);}
+
+/* SCROLL BODY */
+.scroll-body{flex:1;min-height:0;overflow-y:auto;padding:14px 14px calc(var(--app-footer-height) + env(safe-area-inset-bottom, 0px) + 28px);-webkit-overflow-scrolling:touch;}
+.scroll-body::-webkit-scrollbar{display:none;}
+
+/* SECTION LABEL */
+.section-lbl{display:flex;align-items:center;gap:10px;font-size:10px;font-weight:800;letter-spacing:1.8px;text-transform:uppercase;color:var(--mu);margin:16px 2px 10px;}
+.section-lbl::before{content:'';width:5px;height:18px;border-radius:999px;background:var(--bd2);flex-shrink:0;}
+.section-lbl[data-section="scheduled"]::before{background:var(--go);}
+.section-lbl[data-section="en-route"]::before{background:var(--g);}
+.section-lbl[data-section="completed"]::before{background:var(--mu2);}
+
+/* TRIP CARD */
+.trip-card{position:relative;background:var(--wh);border:1.5px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-bottom:10px;transition:all .18s;cursor:pointer;box-shadow:var(--sh-sm);}
+.trip-card:active{transform:scale(.985);}
+.trip-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:6px;border-radius:18px 0 0 18px;background:var(--bd2);}
+.trip-card.tc-delay::before{background:var(--cr);}
+.trip-card.tc-route::before{background:var(--g);}
+.trip-card.tc-sched::before{background:var(--go);}
+.trip-card.tc-done::before{background:var(--mu2);}
+
+/* card top */
+.tc-top{display:flex;align-items:flex-start;gap:10px;padding:12px 13px 0;}
+.tc-head{flex:1;min-width:0;}
+.tc-status{display:flex;justify-content:flex-end;align-items:flex-start;min-width:96px;padding-top:2px;}
+.trip-reg{font-family:var(--fm);font-size:19px;font-weight:700;color:var(--ink);letter-spacing:1.9px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.chip{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:4px 10px;border-radius:7px;display:inline-flex;align-items:center;gap:4px;}
+.ch-del{background:var(--crlt);color:var(--cr);}
+.ch-rte{background:var(--glt);color:var(--g);}
+.ch-sch{background:var(--golt);color:var(--go);}
+.ch-done{background:var(--bg2);color:var(--mu);}
+.driver-lbl-sm{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--mu2);}
+
+/* route row */
+.tc-body{padding:10px 13px 13px;}
+.route-row{display:flex;align-items:center;gap:10px;margin-bottom:11px;}
+.rt-city{font-size:14px;font-weight:700;color:var(--ink);white-space:nowrap;flex-shrink:0;}
+.rt-prog{flex:1;position:relative;height:32px;min-width:0;}
+.rt-track{position:absolute;left:0;right:0;top:50%;margin-top:-3px;height:6px;background:var(--bg2);border-radius:6px;box-shadow:inset 0 1px 2px rgba(0,0,0,.07);overflow:hidden;}
+.rt-fill{height:100%;border-radius:6px;min-width:4px;transition:width .8s cubic-bezier(.4,0,.2,1);}
+.rf-route{background:linear-gradient(90deg,var(--g),var(--g2));}
+.rf-delay{background:linear-gradient(90deg,var(--cr),#f87171);}
+.rf-sched{background:var(--mu2);opacity:.4;}
+.rf-done{background:var(--mu2);opacity:.55;}
+.rt-truck-wrap{position:absolute;top:50%;transform:translate(-50%,-55%) scaleX(-1);font-size:16px;line-height:1;pointer-events:none;z-index:2;}
+.rt-pct-lbl{position:absolute;top:calc(50% + 8px);transform:translateX(-50%);font-family:var(--fm);font-size:9px;font-weight:700;color:var(--mu);letter-spacing:.4px;white-space:nowrap;}
+
+/* meta row */
+.tc-meta{display:flex;align-items:center;gap:0;padding-top:10px;border-top:1px solid var(--bg2);}
+.tm{flex:1;}
+.tm+.tm{border-left:1px solid var(--bg2);padding-left:12px;}
+.tm-lbl{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--mu);margin-bottom:3px;}
+.tm-val{font-size:12.5px;font-weight:700;color:var(--ink);}
+.tm-val.g{color:var(--g);}
+.tm-val.r{color:var(--cr);}
+.tm-val.au{color:var(--go);}
+.tm-val.mu{color:var(--mu);}
+.dchip{display:inline-flex;align-items:center;gap:6px;background:var(--glt);border:1px solid rgba(26,92,58,.18);border-radius:9px;padding:5px 10px 5px 6px;margin-left:auto;}
+.dchip.amber{background:var(--golt);border-color:rgba(201,147,10,.2);}
+.dchip.grey{background:var(--bg2);border-color:var(--bd);}
+.dav{width:24px;height:24px;border-radius:7px;background:var(--g);color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+.dav.amber{background:var(--go);}
+.dav.grey{background:var(--mu2);}
+.dname{font-size:11.5px;font-weight:700;color:var(--g);}
+.dname.amber{color:var(--go);}
+.dname.grey{color:var(--mu);}
+
+/* BOTTOM NAV */
+.bnav{position:fixed;bottom:0;left:0;right:0;z-index:300;background:rgba(245,242,236,.94);backdrop-filter:blur(24px) saturate(1.5);-webkit-backdrop-filter:blur(24px) saturate(1.5);border-top:1.5px solid var(--bd);padding-bottom:env(safe-area-inset-bottom, 0px);box-shadow:0 -10px 24px rgba(26,24,20,.08);}
+.bnav-inner{display:flex;align-items:stretch;min-height:64px;padding:0 4px;}
+.nt{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;position:relative;border:none;background:transparent;padding:0;-webkit-tap-highlight-color:transparent;transition:transform .15s;}
+.nt:active{transform:scale(.9);}
+.nt.on::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:26px;height:2.5px;border-radius:0 0 3px 3px;background:linear-gradient(90deg,var(--g),var(--s));}
+.ni{width:40px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;transition:background .2s;}
+.nt.on .ni{background:rgba(26,92,58,.11);}
+.nsvg{width:22px;height:22px;stroke:var(--mu);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s;}
+.nt.on .nsvg{stroke:var(--g);}
+.nl{font-size:10px;font-weight:600;color:var(--mu);line-height:1;transition:color .2s;letter-spacing:.2px;}
+.nt.on .nl{color:var(--g);}
+.nfab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;border:none;background:transparent;margin-top:-16px;-webkit-tap-highlight-color:transparent;}
+.fab-circle{width:52px;height:52px;border-radius:16px;background:linear-gradient(145deg,var(--g2),var(--g));display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(26,92,58,.42),0 2px 6px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.14);transition:all .2s;}
+.fab-circle:hover{transform:scale(1.08);}
+.fab-circle:active{transform:scale(.94);}
+.fab-lbl{font-size:10px;font-weight:700;color:var(--g);letter-spacing:.3px;}
+
+/* DETAIL SHEET */
+.sheet-backdrop{position:fixed;inset:0;background:rgba(26,24,20,.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:320;opacity:0;pointer-events:none;transition:opacity .25s;}
+.sheet-backdrop.active{opacity:1;pointer-events:all;}
+.detail-sheet{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(180deg,#fbf8f1 0%,var(--bg) 100%);border-radius:28px 28px 0 0;z-index:321;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);max-height:min(78vh,720px);display:flex;flex-direction:column;box-shadow:0 -18px 40px rgba(26,24,20,.22);}
+.detail-sheet.active{transform:translateY(0);}
+.ds-handle{width:42px;height:5px;border-radius:999px;background:var(--bd2);margin:12px auto 0;flex-shrink:0;}
+.ds-header{padding:18px 18px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0;}
+.ds-head-main{min-width:0;flex:1;}
+.ds-topline{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;}
+.ds-plate{font-family:var(--fm);font-size:18px;font-weight:700;color:var(--ink);letter-spacing:1.8px;line-height:1.1;}
+.ds-topline .chip{margin-left:auto;flex-shrink:0;}
+.ds-route{font-family:var(--fd);font-size:17px;font-weight:700;color:var(--ink);line-height:1.2;margin-top:8px;}
+.ds-sub{display:none;}
+.ds-rows{padding:12px 18px;overflow-y:auto;min-height:0;flex:1;-webkit-overflow-scrolling:touch;}
+.ds-rows::-webkit-scrollbar{width:0;height:0;}
+.ds-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--bg2);}
+.ds-row:last-child{border-bottom:none;}
+.ds-key{font-size:12px;color:var(--mu);font-weight:600;}
+.ds-val{font-size:12.5px;color:var(--ink);font-weight:700;}
+.ds-val.mono{font-family:var(--fm);font-size:11.5px;letter-spacing:.4px;}
+.ds-row.major .ds-key,.ds-row.major .ds-val{font-size:13px;font-weight:800;color:var(--ink);}
+.ds-row.major .ds-val{color:var(--g);}
+.ds-row.subtotal .ds-key,.ds-row.subtotal .ds-val{font-size:12.5px;font-weight:800;color:var(--ink2);}
+.ds-row.total-cost .ds-key,.ds-row.total-cost .ds-val{font-size:13px;font-weight:900;color:var(--cr);}
+.ds-section-title{font-size:11px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--mu);margin:6px 0 8px;}
+.ds-section-title:not(:first-child){margin-top:14px;}
+.ds-row.stack{display:block;}
+.ds-edit-line{display:flex;align-items:center;gap:10px;margin-top:8px;}
+.ds-input{flex:1;height:40px;border-radius:13px;border:1.5px solid var(--bd);background:#fff;padding:0 12px;font-family:var(--ff);font-size:13px;font-weight:700;color:var(--ink);outline:none;}
+.ds-input:focus{border-color:var(--g);}
+.ds-help{margin-top:6px;font-size:11px;color:var(--mu);}
+.ds-mini-btn{padding:10px 14px;border:none;border-radius:13px;background:var(--g);color:#fff;font-family:var(--ff);font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(26,92,58,.22);}
+.ds-pnl{margin-top:14px;padding:14px 14px 12px;border-radius:18px;background:linear-gradient(180deg,#fffdf7 0%,#f7f1e7 100%);border:1px solid rgba(201,147,10,.16);}
+.ds-pnl-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;}
+.ds-pnl-title{font-family:var(--fd);font-size:18px;font-weight:700;color:var(--ink);}
+.ds-pnl-badge{font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--go);}
+.ds-pnl-total{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding-top:10px;margin-top:10px;border-top:1px solid rgba(201,147,10,.18);}
+.ds-pnl-total .label{font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--mu);}
+.ds-pnl-total .value{font-size:24px;font-weight:800;color:var(--g);}
+.ds-pnl-total .value.loss{color:var(--cr);}
+.ds-actions{display:flex;gap:9px;padding:0 18px calc(28px + env(safe-area-inset-bottom,0px));flex-shrink:0;background:linear-gradient(180deg,rgba(245,242,236,0) 0%,rgba(245,242,236,.96) 20%,rgba(245,242,236,1) 100%);}
+.ds-btn-g{flex:1;padding:12px;border-radius:var(--r);border:1.5px solid var(--bd);background:var(--bg);font-family:var(--ff);font-size:13px;font-weight:700;color:var(--ink2);cursor:pointer;}
+.ds-btn-p{flex:1;padding:12px;border-radius:var(--r);border:none;background:var(--g);color:#fff;font-family:var(--ff);font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(26,92,58,.32);}
+.ds-btn-danger{flex:1;padding:12px;border-radius:var(--r);border:none;background:var(--s);color:#fff;font-family:var(--ff);font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(232,103,26,.28);}
+.confirm-backdrop{position:fixed;inset:0;background:rgba(26,24,20,.58);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:340;opacity:0;pointer-events:none;transition:opacity .24s;}
+.confirm-backdrop.active{opacity:1;pointer-events:auto;}
+.confirm-sheet{position:fixed;left:14px;right:14px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:341;background:linear-gradient(180deg,#fffaf4 0%,#f7f1e7 100%);border:1px solid rgba(217,147,61,.18);border-radius:26px;padding:18px 18px 16px;box-shadow:0 22px 44px rgba(26,24,20,.28);transform:translateY(110%);transition:transform .28s cubic-bezier(.4,0,.2,1);}
+.confirm-sheet.active{transform:translateY(0);}
+.confirm-title{font-family:var(--fd);font-size:22px;font-weight:700;color:var(--ink);margin:2px 0 6px;}
+.confirm-copy{font-size:13px;line-height:1.55;color:var(--ink2);margin:0 0 14px;}
+.confirm-tag{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#fff;border:1px solid var(--bd);font-family:var(--fm);font-size:13px;font-weight:700;letter-spacing:1.2px;color:var(--ink);margin-bottom:14px;}
+.confirm-actions{display:flex;gap:10px;}
+.confirm-btn-ghost,.confirm-btn-danger{flex:1;padding:13px;border-radius:var(--r);font-family:var(--ff);font-size:13px;font-weight:700;cursor:pointer;}
+.confirm-btn-ghost{border:1.5px solid var(--bd);background:#fff;color:var(--ink2);}
+.confirm-btn-danger{border:none;background:var(--s);color:#fff;box-shadow:0 4px 16px rgba(232,103,26,.28);}
+
+@keyframes fuA{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.trip-card{animation:fuA .4s ease both;}
+.trip-card:nth-child(1){animation-delay:.04s}.trip-card:nth-child(2){animation-delay:.08s}
+.trip-card:nth-child(3){animation-delay:.12s}.trip-card:nth-child(4){animation-delay:.16s}
+.trip-card:nth-child(5){animation-delay:.20s}.trip-card:nth-child(6){animation-delay:.24s}
+.trip-card:nth-child(7){animation-delay:.28s}.trip-card:nth-child(8){animation-delay:.32s}
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- STATUS BAR -->
+  <!-- HEADER -->
+  <div class="header">
+    <div class="hdr-row">
+      <div>
+        <div class="hdr-title">All <em>Trips</em></div>
+        <div class="hdr-sub" id="hdr-sub">8 trips this month</div>
+      </div>
+      <button class="add-btn" onclick="window.location.href='/Fleetos_Log_Trip.html'">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+        Log Trip
+      </button>
+    </div>
+    <div class="toolbar-row">
+      <div class="search-wrap" style="flex:1;">
+        <svg class="search-icon" width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="white" stroke-width="1.5"/><path d="M10.5 10.5L13 13" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <input class="search-input" id="tripSearchInput" type="text" placeholder="Search by truck, route, driver…" oninput="filterCards(this.value)">
+      </div>
+      <select class="month-select" id="monthFilter" onchange="setMonthFilter(this.value)">
+        <option value="all">Till Date</option>
+        <option value="2026-03">March 2026</option>
+        <option value="2026-02">February 2026</option>
+        <option value="2026-01">January 2026</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- STATS ROW -->
+  <div class="stats-row">
+    <div class="stat-cell active" data-filter="all" onclick="setFilter('all')"><div class="stat-num" id="statAll">0</div><div class="stat-lbl">All</div></div>
+    <div class="stat-cell" data-filter="completed" onclick="setFilter('completed')"><div class="stat-num completed" id="statCompleted">0</div><div class="stat-lbl">Completed</div></div>
+    <div class="stat-cell" data-filter="en-route" onclick="setFilter('en-route')"><div class="stat-num en-route" id="statEnRoute">0</div><div class="stat-lbl">En Route</div></div>
+    <div class="stat-cell" data-filter="scheduled" onclick="setFilter('scheduled')"><div class="stat-num scheduled" id="statScheduled">0</div><div class="stat-lbl">Scheduled</div></div>
+  </div>
+  <div class="subfilter-bar" id="enRouteSubfilters">
+    <div class="subpill active" data-subfilter="all" onclick="setEnRouteSubfilter('all',this)">All</div>
+    <div class="subpill" data-subfilter="on-time" onclick="setEnRouteSubfilter('on-time',this)">On Time</div>
+    <div class="subpill delayed" data-subfilter="delayed" onclick="setEnRouteSubfilter('delayed',this)">Delayed</div>
+  </div>
+
+  <!-- TRIPS LIST -->
+  <div class="scroll-body" id="trips-list">
+    <div style="background:var(--white);border:1.5px solid var(--bd);border-radius:var(--r);padding:18px;text-align:center;color:var(--mu);font-size:12px;line-height:1.5;">
+      No trip records yet. New and live trips will appear here once they are created.
+    </div>
+
+  </div><!-- /scroll-body -->
+
+  <!-- BOTTOM NAV — identical to BASE -->
+  <nav class="bnav">
+    <div class="bnav-inner">
+
+      <button class="nt" id="nt-home" onclick="window.location.href='/transporter_dashboard_FINAL.html?v=4.6.0'">
+        <div class="ni"><svg class="nsvg" viewBox="0 0 24 24"><path d="M3 10L12 3l9 7v11h-6v-5H9v5H3z"/></svg></div>
+        <span class="nl">Home</span>
+      </button>
+
+      <button class="nt on" id="nt-trips">
+        <div class="ni"><svg class="nsvg" viewBox="0 0 24 24"><rect x="1" y="9" width="22" height="11" rx="2.5"/><path d="M6 9V7a3 3 0 016 0v2M16 9V6a2 2 0 014 0v3"/><circle cx="7" cy="20" r="2"/><circle cx="17" cy="20" r="2"/></svg></div>
+        <span class="nl">Trips</span>
+      </button>
+
+      <button class="nfab" id="newTripFab" type="button" onclick="window.location.href='/Fleetos_Log_Trip.html'">
+        <div class="fab-circle">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </div>
+        <span class="fab-lbl">New Trip</span>
+      </button>
+
+      <button class="nt" id="nt-finance">
+        <div class="ni"><svg class="nsvg" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="15" rx="2"/><path d="M2 10h20"/><path d="M7 15h.01M11 15h4"/></svg></div>
+        <span class="nl">Finance</span>
+      </button>
+
+      <button class="nt" id="nt-insights">
+        <div class="ni"><svg class="nsvg" viewBox="0 0 24 24"><path d="M2 20h20M6 20V12M10 20V8M14 20V4M18 20v-6"/></svg></div>
+        <span class="nl">Insights</span>
+      </button>
+
+    </div>
+  </nav>
+
+  <!-- DETAIL BOTTOM SHEET -->
+  <div class="sheet-backdrop" id="sheet-backdrop" onclick="closeDetail()"></div>
+  <div class="detail-sheet" id="detail-sheet">
+    <div class="ds-handle"></div>
+    <div class="ds-header">
+      <div class="ds-head-main">
+        <div class="ds-topline">
+          <div class="ds-plate" id="ds-plate">—</div>
+          <div class="chip ch-sch" id="ds-badge">—</div>
+        </div>
+        <div class="ds-route" id="ds-route">—</div>
+        <div class="ds-sub" id="ds-sub">—</div>
+      </div>
+    </div>
+    <div class="ds-rows">
+      <div class="ds-section-title">Trip Basics</div>
+      <div class="ds-row"><span class="ds-key">Driver</span><span class="ds-val" id="ds-driver">—</span></div>
+      <div class="ds-row"><span class="ds-key">Distance</span><span class="ds-val" id="ds-dist">—</span></div>
+      <div class="ds-row"><span class="ds-key">ETA / Date</span><span class="ds-val" id="ds-eta">—</span></div>
+      <div class="ds-row"><span class="ds-key">Driver Location</span><a class="ds-val" id="ds-location-link" href="#" target="_blank" rel="noopener noreferrer" style="color:var(--g);text-decoration:none;">Share Link</a></div>
+      <div class="ds-row stack">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+          <span class="ds-key">Driver Bhatta Total</span>
+          <span class="ds-val" id="ds-bhatta-display">₹ 0</span>
+        </div>
+        <div class="ds-edit-line">
+          <input class="ds-input" id="ds-bhatta-input" type="text" inputmode="numeric" placeholder="Enter driver bhatta / day">
+          <button class="ds-mini-btn" id="ds-bhatta-save" onclick="saveTripBhatta()">Save</button>
+        </div>
+        <div class="ds-help">Per day amount. Actual trip cost = Driver Bhatta × Trip Days</div>
+      </div>
+      <div class="ds-pnl">
+        <div class="ds-pnl-head">
+          <div class="ds-pnl-title">Live P&amp;L</div>
+          <div class="ds-pnl-badge">Revenue vs Trip Costs</div>
+        </div>
+        <div class="ds-row major"><span class="ds-key">Revenue</span><span class="ds-val" id="ds-revenue">—</span></div>
+        <div class="ds-row"><span class="ds-key">Trip Days</span><span class="ds-val" id="ds-trip-days">—</span></div>
+        <div class="ds-row"><span class="ds-key">Idle Days Added</span><span class="ds-val" id="ds-idle-days">—</span></div>
+        <div class="ds-row"><span class="ds-key">Driver Bhatta</span><span class="ds-val" id="ds-pnl-bhatta">—</span></div>
+        <div class="ds-row"><span class="ds-key">Depreciation</span><span class="ds-val" id="ds-pnl-depr">—</span></div>
+        <div class="ds-row"><span class="ds-key">Wear &amp; Tear</span><span class="ds-val" id="ds-pnl-wear">—</span></div>
+        <div class="ds-row subtotal"><span class="ds-key">Fixed Cost Total</span><span class="ds-val" id="ds-fixed-expenses">—</span></div>
+        <div class="ds-row subtotal"><span class="ds-key">Variable Cost Total</span><button type="button" class="ds-val" id="ds-variable-total" style="border:none;background:none;padding:0;color:var(--g);cursor:pointer;">₹ 0</button></div>
+        <div class="ds-row total-cost"><span class="ds-key">Total Cost</span><span class="ds-val" id="ds-total-cost">—</span></div>
+        <div class="ds-pnl-total">
+          <div class="label">Net P&amp;L</div>
+          <div class="value" id="ds-pnl-value">—</div>
+        </div>
+      </div>
+    </div>
+    <div class="ds-actions">
+      <button class="ds-btn-g" onclick="closeDetail()">Close</button>
+      <button class="ds-btn-danger" onclick="openDeleteTripConfirm()">Delete Trip</button>
+    </div>
+  </div>
+
+  <div class="confirm-backdrop" id="delete-trip-backdrop" onclick="closeDeleteTripConfirm()"></div>
+  <div class="confirm-sheet" id="delete-trip-sheet">
+    <div class="confirm-title">Delete Trip Entry?</div>
+    <p class="confirm-copy">This will remove the trip from your Trips tab along with its linked expenses and trip-location records.</p>
+    <div class="confirm-tag" id="delete-trip-tag">—</div>
+    <div class="confirm-actions">
+      <button class="confirm-btn-ghost" onclick="closeDeleteTripConfirm()">Keep Trip</button>
+      <button class="confirm-btn-danger" id="confirm-delete-trip-btn" onclick="deleteCurrentTrip()">Yes, Delete Trip</button>
+    </div>
+  </div>
+
+</div><!-- /phone -->
+
+<script>
+const statusMeta = {
+  'en-route':  { cls:'ch-rte', label:'● En Route' },
+  'scheduled': { cls:'ch-sch', label:'◷ Scheduled' },
+  'completed': { cls:'ch-done', label:'✓ Completed' },
+};
+
+const filterState = { status: 'all', enRouteSubstatus: 'all', month: 'all', search: '' };
+let ALL_TRIPS = [];
+let ACTIVE_TRIP_ID = '';
+const requestedTripId = new URLSearchParams(window.location.search).get('tripId') || '';
+
+function getFleetApiBase() {
+  return (window.FLEETOS_API_BASE || '').replace(/\/$/, '');
+}
+
+function getFleetAuthToken() {
+  return (
+    localStorage.getItem('fleetToken') ||
+    localStorage.getItem('gravityToken') ||
+    localStorage.getItem('token') ||
+    localStorage.getItem('transporterToken') ||
+    sessionStorage.getItem('fleetToken') ||
+    sessionStorage.getItem('gravityToken') ||
+    sessionStorage.getItem('token') ||
+    sessionStorage.getItem('transporterToken') ||
+    ''
+  );
+}
+
+function getFleetAuthHeaders() {
+  const token = getFleetAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function parseDateSafe(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function formatRegNo(value) {
+  const compact = String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const match = compact.match(/^([A-Z]{2})(\d{1,2})([A-Z]{1,3})(\d{1,4})$/);
+  if (!match) return value || '—';
+  return `${match[1]} ${match[2].padStart(2, '0')} ${match[3]} ${match[4].padStart(4, '0')}`;
+}
+
+function formatMoney(value) {
+  const num = Number(value || 0);
+  if (!Number.isFinite(num)) return '—';
+  return `₹ ${num.toLocaleString('en-IN')}`;
+}
+
+function parseNumberLoose(value) {
+  const cleaned = String(value ?? '').replace(/[^0-9.-]/g, '');
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function startOfDay(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function normalizeTruckKey(value) {
+  return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+}
+
+function resolveTripStartDate(trip) {
+  return parseDateSafe(trip?.start_date || trip?.startDate || trip?.start_date_raw || trip?.startDateRaw || trip?.created_at);
+}
+
+function resolveTripEndDate(trip) {
+  return parseDateSafe(trip?.end_date || trip?.endDate || trip?.end_date_raw || trip?.endDateRaw || trip?.auto_end_date_raw || trip?.autoEndDateRaw)
+    || resolveTripStartDate(trip);
+}
+
+function computeTripOperationalMetrics(trip) {
+  const distanceKm = parseDistanceKm(trip);
+  const tripDays = Math.max(1, Math.ceil(Math.max(0, distanceKm) / 500));
+  const bhattaPerDay = parseNumberLoose(trip?.bhatta ?? trip?.bhatta_display);
+  const bhatta = bhattaPerDay * tripDays;
+  const purchasePrice = parseNumberLoose(trip?.truck_purchase_price ?? trip?.truckPurchasePrice ?? trip?.truck_purchase_price_display);
+  const tyresCount = parseNumberLoose(trip?.truck_tyres_count ?? trip?.truckTyresCount ?? trip?.truck_tyres_count_display);
+  const truckKey = normalizeTruckKey(trip?.truck_text || trip?.truckText);
+  const tripStart = resolveTripStartDate(trip);
+
+  let idleDays = 0;
+  if (truckKey && tripStart && Array.isArray(ALL_TRIPS) && ALL_TRIPS.length) {
+    const previousTrips = ALL_TRIPS
+      .filter((row) => String(row?.id || '') !== String(trip?.id || '') && normalizeTruckKey(row?.truck_text || row?.truckText) === truckKey)
+      .map((row) => ({ row, end: resolveTripEndDate(row) }))
+      .filter((entry) => entry.end && entry.end.getTime() <= tripStart.getTime())
+      .sort((a, b) => b.end.getTime() - a.end.getTime());
+    if (previousTrips.length) {
+      const prevEnd = previousTrips[0].end;
+      const gapDays = Math.floor((startOfDay(tripStart).getTime() - startOfDay(prevEnd).getTime()) / (24 * 60 * 60 * 1000)) - 1;
+      idleDays = Math.max(0, gapDays);
+    }
+  }
+
+  const depreciationDays = tripDays + idleDays;
+  const depreciationCost = ((purchasePrice / (365 * 7)) || 0) * depreciationDays;
+  const wearAndTear = (((tyresCount * 25000) / 50000) || 0) * distanceKm;
+  const fixedTotal = bhatta + depreciationCost + wearAndTear;
+  const variableTotal = parseNumberLoose(trip?.variable_expenses_total ?? trip?.variableExpensesTotal ?? trip?.total_expenses ?? trip?.total_expenses_display);
+  const revenue = parseNumberLoose(trip?.freight ?? trip?.freight_display);
+
+  return {
+    tripDays,
+    idleDays,
+    bhattaPerDay,
+    bhatta,
+    depreciationCost,
+    wearAndTear,
+    fixedTotal,
+    variableTotal,
+    totalCost: fixedTotal + variableTotal,
+    revenue,
+    pnl: revenue - (fixedTotal + variableTotal)
+  };
+}
+
+function renderTripFinancials(trip) {
+  const metrics = computeTripOperationalMetrics(trip || {});
+  document.getElementById('ds-bhatta-display').textContent = formatMoney(Math.round(metrics.bhatta));
+  document.getElementById('ds-bhatta-input').value = metrics.bhattaPerDay ? Math.round(metrics.bhattaPerDay).toLocaleString('en-IN') : '';
+  document.getElementById('ds-trip-days').textContent = String(metrics.tripDays);
+  document.getElementById('ds-idle-days').textContent = String(metrics.idleDays);
+  document.getElementById('ds-revenue').textContent = formatMoney(Math.round(metrics.revenue));
+  document.getElementById('ds-pnl-bhatta').textContent = formatMoney(Math.round(metrics.bhatta));
+  document.getElementById('ds-pnl-depr').textContent = formatMoney(Math.round(metrics.depreciationCost));
+  document.getElementById('ds-pnl-wear').textContent = formatMoney(Math.round(metrics.wearAndTear));
+  document.getElementById('ds-fixed-expenses').textContent = formatMoney(Math.round(metrics.fixedTotal));
+  document.getElementById('ds-variable-total').textContent = formatMoney(Math.round(metrics.variableTotal));
+  document.getElementById('ds-total-cost').textContent = formatMoney(Math.round(metrics.totalCost));
+  const pnlEl = document.getElementById('ds-pnl-value');
+  pnlEl.textContent = formatMoney(Math.round(metrics.pnl));
+  pnlEl.classList.toggle('loss', metrics.pnl < 0);
+}
+
+async function loadTripLocationShare(tripId) {
+  const link = document.getElementById('ds-location-link');
+  if (!link) return;
+  link.textContent = 'Loading...';
+  link.href = '#';
+  try {
+    const response = await fetch(`${getFleetApiBase()}/api/fleet/trips/${encodeURIComponent(tripId)}/location-share`, {
+      headers: { ...getFleetAuthHeaders() },
+      cache: 'no-store'
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload?.error || 'Location not available');
+    link.textContent = payload?.latest?.lat !== null && payload?.latest?.lng !== null && payload?.latest?.lat !== undefined && payload?.latest?.lng !== undefined
+      ? 'Open Live Location'
+      : 'Share Link';
+    link.href = payload.mapsUrl || payload.shareUrl || '#';
+  } catch (err) {
+    link.textContent = 'Not Live Yet';
+    link.href = '#';
+  }
+}
+
+function openTripLedger() {
+  if (!ACTIVE_TRIP_ID) return;
+  window.location.href = `/transporter_dashboard_FINAL.html?page=finance&tab=ledger&tripId=${encodeURIComponent(ACTIVE_TRIP_ID)}`;
+}
+
+function statusKeyFromTrip(trip) {
+  const raw = String(trip.status || '').toLowerCase();
+  if (raw.includes('completed')) return 'completed';
+  if (raw.includes('upcoming') || raw.includes('scheduled')) return 'scheduled';
+  return 'en-route';
+}
+
+function substatusFromTrip(trip) {
+  const end = parseDateSafe(trip.end_date_raw || trip.end_date || trip.auto_end_date_raw);
+  if (!end) return 'on-time';
+  return end.getTime() < Date.now() ? 'delayed' : 'on-time';
+}
+
+function monthBucket(trip) {
+  const d = parseDateSafe(trip.start_date_raw || trip.start_date || trip.created_at);
+  if (!d) return 'all';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function formatEtaDate(date) {
+  if (!date || Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+}
+
+function parseDistanceKm(trip) {
+  const rawValue = trip.distance_km ?? trip.distanceKm ?? trip.distance_km_display ?? trip.distanceKmDisplay ?? '';
+  const numeric = Number(rawValue);
+  if (Number.isFinite(numeric) && numeric > 0) return numeric;
+  const cleaned = String(rawValue || '').replace(/,/g, '').match(/\d+(\.\d+)?/);
+  if (!cleaned) return 0;
+  const parsed = Number(cleaned[0]);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function etaLabel(trip) {
+  const start = parseDateSafe(trip.start_date_raw || trip.start_date || trip.created_at);
+  const distance = parseDistanceKm(trip);
+  if (!start || !Number.isFinite(distance) || distance <= 0) {
+    return trip.end_date || trip.end_date_raw || trip.auto_end_date_raw || '—';
+  }
+  const tripDays = Math.max(1, Math.ceil(distance / 500));
+  const eta = new Date(start);
+  eta.setDate(eta.getDate() + tripDays);
+  return formatEtaDate(eta);
+}
+
+function extractCityName(value) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!text) return '—';
+  const firstPart = text.split(',').map((part) => part.trim()).filter(Boolean)[0];
+  if (firstPart) return firstPart;
+  const tokens = text.split(/\s+/).filter(Boolean);
+  return tokens[0] || '—';
+}
+
+function buildTripCard(trip) {
+  const statusKey = statusKeyFromTrip(trip);
+  const meta = statusMeta[statusKey] || statusMeta['en-route'];
+  const substatus = substatusFromTrip(trip);
+  const plate = formatRegNo(trip.truck_text || trip.truckText || '—');
+  const origin = extractCityName(trip.origin);
+  const destination = extractCityName(trip.destination);
+  const driver = trip.driver_text || trip.driverText || '—';
+  const distance = trip.distance_km_display || trip.distanceKmDisplay || (trip.distance_km || trip.distanceKm ? `${Number(trip.distance_km || trip.distanceKm).toLocaleString('en-IN')} km` : '—');
+  const freight = trip.freight_display || trip.freightDisplay || formatMoney(trip.freight);
+  const progressWidth = statusKey === 'completed' ? 100 : statusKey === 'scheduled' ? 5 : (substatus === 'delayed' ? 65 : 55);
+  const fillClass = statusKey === 'completed' ? 'rf-done' : statusKey === 'scheduled' ? 'rf-sched' : (substatus === 'delayed' ? 'rf-delay' : 'rf-route');
+  const driverChipClass = statusKey === 'scheduled' ? 'amber' : statusKey === 'completed' ? 'grey' : '';
+  const initials = String(driver || '—').split(/\s+/).filter(Boolean).slice(0, 2).map(s => s[0]).join('').toUpperCase() || 'DR';
+  const search = [plate, origin, destination, driver, trip.id, trip.inv_id, trip.client].join(' ').toLowerCase();
+
+  return `
+    <div class="trip-card tc-${statusKey === 'completed' ? 'done' : statusKey === 'scheduled' ? 'sched' : substatus === 'delayed' ? 'delay' : 'route'}"
+         data-status="${statusKey}"
+         data-substatus="${substatus}"
+         data-start-month="${monthBucket(trip)}"
+         data-search="${search.replace(/"/g, '&quot;')}"
+         data-trip-id="${String(trip.id || '').replace(/"/g, '&quot;')}"
+         data-driver="${String(driver).replace(/"/g, '&quot;')}"
+         data-freight="${String(freight).replace(/"/g, '&quot;')}"
+         data-distance="${String(distance).replace(/"/g, '&quot;')}"
+         data-route="${String(origin + ' → ' + destination).replace(/"/g, '&quot;')}"
+         data-eta="${String(etaLabel(trip)).replace(/"/g, '&quot;')}">
+      <div class="tc-top">
+        <div class="tc-head">
+          <div class="trip-reg">${plate || '—'}</div>
+        </div>
+        <div class="tc-status"><span class="chip ${meta.cls}">${meta.label}</span></div>
+      </div>
+      <div class="tc-body">
+        <div class="route-row">
+          <div class="rt-city">${origin}</div>
+          <div class="rt-prog">
+            <div class="rt-track"><div class="rt-fill ${fillClass}" style="width:${progressWidth}%"></div></div>
+            <div class="rt-truck-wrap" style="left:${progressWidth}%">🚚</div>
+            <div class="rt-pct-lbl" style="left:${progressWidth}%">${statusKey === 'completed' ? 'Completed' : statusKey === 'scheduled' ? 'Scheduled' : substatus === 'delayed' ? 'Delayed' : 'On Route'}</div>
+          </div>
+          <div class="rt-city">${destination}</div>
+        </div>
+        <div class="tc-meta">
+          <div class="tm">
+            <div class="tm-lbl">ETA / Date</div>
+            <div class="tm-val ${statusKey === 'scheduled' ? 'au' : statusKey === 'completed' ? 'mu' : substatus === 'delayed' ? 'r' : 'g'}">${etaLabel(trip)}</div>
+          </div>
+          <div class="tm">
+            <div class="tm-lbl">Distance</div>
+            <div class="tm-val">${distance}</div>
+          </div>
+          <div class="dchip ${driverChipClass}">
+            <div class="dav ${driverChipClass}">${initials}</div>
+            <div class="dname ${driverChipClass}">${driver}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTrips(trips) {
+  const list = document.getElementById('trips-list');
+  if (!list) return;
+  if (!Array.isArray(trips) || !trips.length) {
+    list.innerHTML = `<div style="background:var(--white);border:1.5px solid var(--bd);border-radius:var(--r);padding:18px;text-align:center;color:var(--mu);font-size:12px;line-height:1.5;">No trip records yet. New, ongoing, upcoming and completed trips will appear here once they are created.</div>`;
+    ALL_TRIPS = [];
+    applyFilters();
+    return;
+  }
+  ALL_TRIPS = trips;
+  const grouped = {
+    scheduled: trips.filter((trip) => statusKeyFromTrip(trip) === 'scheduled'),
+    'en-route': trips.filter((trip) => statusKeyFromTrip(trip) === 'en-route'),
+    completed: trips.filter((trip) => statusKeyFromTrip(trip) === 'completed'),
+  };
+  const sectionTitles = {
+    scheduled: 'Upcoming Trips',
+    'en-route': 'Ongoing Trips',
+    completed: 'Completed Trips',
+  };
+  list.innerHTML = ['scheduled', 'en-route', 'completed']
+    .filter((key) => grouped[key].length)
+    .map((key) => `
+      <div class="section-lbl" data-section="${key}">${sectionTitles[key]}</div>
+      ${grouped[key].map(buildTripCard).join('')}
+    `)
+    .join('');
+  attachCardClickHandlers();
+  applyFilters();
+}
+
+function getCards() { return Array.from(document.querySelectorAll('.trip-card')); }
+
+function getMatches(card) {
+  const matchesSearch = !filterState.search || card.dataset.search.includes(filterState.search);
+  const matchesMonth = filterState.month === 'all' || card.dataset.startMonth === filterState.month;
+  const matchesStatus = filterState.status === 'all' || card.dataset.status === filterState.status;
+  const matchesSubstatus = filterState.status !== 'en-route' || filterState.enRouteSubstatus === 'all' || card.dataset.substatus === filterState.enRouteSubstatus;
+  return matchesSearch && matchesMonth && matchesStatus && matchesSubstatus;
+}
+
+function getVisibleCount(status) {
+  return getCards().filter((card) => {
+    const matchesSearch = !filterState.search || card.dataset.search.includes(filterState.search);
+    const matchesMonth = filterState.month === 'all' || card.dataset.startMonth === filterState.month;
+    if (!matchesSearch || !matchesMonth) return false;
+    return status === 'all' ? true : card.dataset.status === status;
+  }).length;
+}
+
+function updateHeaderSummary(totalVisible) {
+  const hdrSub = document.getElementById('hdr-sub');
+  const monthLabel = document.getElementById('monthFilter').selectedOptions[0]?.text || 'Till Date';
+  if (!hdrSub) return;
+  hdrSub.textContent = filterState.month === 'all'
+    ? `${totalVisible} trips till date`
+    : `${totalVisible} trip${totalVisible === 1 ? '' : 's'} started in ${monthLabel}`;
+}
+
+function updateStatCounts() {
+  document.getElementById('statAll').textContent = getVisibleCount('all');
+  document.getElementById('statCompleted').textContent = getVisibleCount('completed');
+  document.getElementById('statEnRoute').textContent = getVisibleCount('en-route');
+  document.getElementById('statScheduled').textContent = getVisibleCount('scheduled');
+}
+
+function updateActiveStates() {
+  document.querySelectorAll('.stat-cell').forEach((cell) => cell.classList.toggle('active', cell.dataset.filter === filterState.status));
+  document.querySelectorAll('.subpill').forEach((pill) => pill.classList.toggle('active', pill.dataset.subfilter === filterState.enRouteSubstatus));
+  document.getElementById('enRouteSubfilters').classList.toggle('show', filterState.status === 'en-route');
+}
+
+function updateSectionLabels() {
+  const visibleStatuses = new Set(
+    getCards().filter((card) => getMatches(card)).map((card) => card.dataset.status)
+  );
+  document.querySelectorAll('.section-lbl[data-section]').forEach((label) => {
+    label.style.display = visibleStatuses.has(label.dataset.section) ? '' : 'none';
+  });
+}
+
+function applyFilters() {
+  const cards = getCards();
+  let totalVisible = 0;
+  cards.forEach((card) => {
+    const visible = getMatches(card);
+    card.style.display = visible ? '' : 'none';
+    if (visible) totalVisible += 1;
+  });
+  updateStatCounts();
+  updateActiveStates();
+  updateSectionLabels();
+  updateHeaderSummary(totalVisible);
+}
+
+function attachCardClickHandlers() {
+  document.querySelectorAll('.trip-card').forEach((card) => {
+    card.onclick = () => openTripCard(card);
+  });
+}
+
+function openTripCard(card) {
+  if (!card) return;
+  const s = card.dataset.status;
+  const meta = statusMeta[s] || statusMeta['en-route'];
+  ACTIVE_TRIP_ID = card.dataset.tripId || '';
+  const trip = ALL_TRIPS.find((row) => String(row?.id || '') === String(ACTIVE_TRIP_ID)) || {};
+  document.getElementById('ds-plate').textContent = card.querySelector('.trip-reg')?.textContent || '—';
+  document.getElementById('ds-route').textContent = card.dataset.route || '—';
+  document.getElementById('ds-sub').textContent = s.charAt(0).toUpperCase() + s.slice(1).replace('-', ' ');
+  document.getElementById('ds-driver').textContent = card.dataset.driver || '—';
+  document.getElementById('ds-dist').textContent = card.dataset.distance || '—';
+  document.getElementById('ds-eta').textContent = card.dataset.eta || '—';
+  renderTripFinancials(trip);
+  loadTripLocationShare(ACTIVE_TRIP_ID);
+  const badge = document.getElementById('ds-badge');
+  badge.textContent = meta.label;
+  badge.className = 'chip ' + meta.cls;
+  card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  document.getElementById('sheet-backdrop').classList.add('active');
+  document.getElementById('detail-sheet').classList.add('active');
+}
+
+async function loadTrips() {
+  try {
+    const response = await fetch(`${getFleetApiBase()}/api/fleet/trips`, {
+      headers: { ...getFleetAuthHeaders() },
+      cache: 'no-store'
+    });
+    const payload = await response.json().catch(() => []);
+    if (!response.ok) throw new Error(payload?.error || 'Failed to load trips');
+    renderTrips(Array.isArray(payload) ? payload : []);
+    if (requestedTripId) {
+      const match = document.querySelector(`.trip-card[data-trip-id="${CSS.escape(requestedTripId)}"]`);
+      if (match) {
+        setTimeout(() => openTripCard(match), 120);
+      }
+    }
+  } catch (err) {
+    console.error('Trips load failed:', err);
+    renderTrips([]);
+  }
+}
+
+function closeDetail() {
+  document.getElementById('sheet-backdrop').classList.remove('active');
+  document.getElementById('detail-sheet').classList.remove('active');
+}
+function openDeleteTripConfirm() {
+  if (!ACTIVE_TRIP_ID) return;
+  document.getElementById('delete-trip-tag').textContent = ACTIVE_TRIP_ID;
+  document.getElementById('delete-trip-backdrop').classList.add('active');
+  document.getElementById('delete-trip-sheet').classList.add('active');
+}
+function closeDeleteTripConfirm() {
+  document.getElementById('delete-trip-backdrop').classList.remove('active');
+  document.getElementById('delete-trip-sheet').classList.remove('active');
+}
+async function deleteCurrentTrip() {
+  if (!ACTIVE_TRIP_ID) return;
+  const btn = document.getElementById('confirm-delete-trip-btn');
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Deleting...';
+  try {
+    const response = await fetch(`${getFleetApiBase()}/api/fleet/trips/${encodeURIComponent(ACTIVE_TRIP_ID)}`, {
+      method: 'DELETE',
+      headers: { ...getFleetAuthHeaders() }
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload?.error || 'Could not delete this trip right now.');
+    closeDeleteTripConfirm();
+    closeDetail();
+    ACTIVE_TRIP_ID = '';
+    await loadTrips();
+  } catch (err) {
+    alert(err?.message || 'Could not delete this trip right now.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+}
+
+async function saveTripBhatta() {
+  if (!ACTIVE_TRIP_ID) return;
+  const input = document.getElementById('ds-bhatta-input');
+  const button = document.getElementById('ds-bhatta-save');
+  const bhatta = parseNumberLoose(input?.value);
+  const original = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Saving...';
+  try {
+    const response = await fetch(`${getFleetApiBase()}/api/fleet/trips/${encodeURIComponent(ACTIVE_TRIP_ID)}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getFleetAuthHeaders()
+      },
+      body: JSON.stringify({ bhatta })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload?.error || 'Could not save driver bhatta.');
+    const trip = ALL_TRIPS.find((row) => String(row?.id || '') === String(ACTIVE_TRIP_ID));
+    if (trip) {
+      trip.bhatta = bhatta;
+      trip.bhatta_display = formatMoney(bhatta);
+      renderTripFinancials(trip);
+    }
+  } catch (err) {
+    alert(err?.message || 'Could not save driver bhatta.');
+  } finally {
+    button.disabled = false;
+    button.textContent = original;
+  }
+}
+function setFilter(f) { filterState.status = f; if (f !== 'en-route') filterState.enRouteSubstatus = 'all'; applyFilters(); }
+function setEnRouteSubfilter(value, el) { filterState.enRouteSubstatus = value; if (el) { document.querySelectorAll('.subpill').forEach((pill) => pill.classList.remove('active')); el.classList.add('active'); } applyFilters(); }
+function setMonthFilter(value) { filterState.month = value; applyFilters(); }
+function filterCards(q) { filterState.search = String(q || '').toLowerCase().trim(); applyFilters(); }
+
+const variableTotalButton = document.getElementById('ds-variable-total');
+if (variableTotalButton) variableTotalButton.addEventListener('click', openTripLedger);
+loadTrips();
+
+(function syncVisibleFooter() {
+  const footer = document.querySelector('.bnav');
+  if (!footer) return;
+  const root = document.documentElement;
+  function updateFooterMetrics() { root.style.setProperty('--app-footer-height', footer.offsetHeight + 'px'); }
+  updateFooterMetrics();
+  window.addEventListener('resize', updateFooterMetrics);
+  window.addEventListener('orientationchange', updateFooterMetrics);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', updateFooterMetrics);
+    window.visualViewport.addEventListener('scroll', updateFooterMetrics);
+  }
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(updateFooterMetrics).observe(footer);
+})();
+</script>
+</body>
+</html>

@@ -2663,11 +2663,11 @@ function ExpenseReviewModal({expense, onClose, onRefresh, reviewerName}){
             </div>
           ))}
 
-          {expense.bill_image_data && (
+          {(expense.bill_image_data || expense.receipt_document) && (
             <div style={{marginTop:16}}>
               <div style={{fontSize:10,fontWeight:900,letterSpacing:1.1,textTransform:'uppercase',color:MU,marginBottom:8}}>Scanned Bill</div>
-              <img src={expense.bill_image_data} alt="Expense bill" style={{width:'100%',borderRadius:18,border:`1px solid ${BD}`,display:'block'}} />
-              <a href={expense.bill_image_data} download={`expense-${expense.id}.jpg`} style={{display:'inline-flex',marginTop:10,padding:'10px 14px',borderRadius:12,border:`1px solid ${BD}`,textDecoration:'none',fontSize:11.5,fontWeight:800,color:INK,background:BG}}>Download Bill</a>
+              {expense.bill_image_data && <img src={expense.bill_image_data} alt="Expense bill" style={{width:'100%',borderRadius:18,border:`1px solid ${BD}`,display:'block'}} />}
+              <a href={withFleetToken(`${window.FLEETOS_API_BASE || ''}/api/expense/${expense.id}/receipt`)} style={{display:'inline-flex',marginTop:10,padding:'10px 14px',borderRadius:12,border:`1px solid ${BD}`,textDecoration:'none',fontSize:11.5,fontWeight:800,color:INK,background:BG}}>Download Bill</a>
             </div>
           )}
 
@@ -2790,11 +2790,14 @@ function InvoicePaymentModal({invoice, onClose, onRefresh}) {
   );
 }
 
-function FinancePage({ledger, invoices, onRefresh, reviewerName, initialTab = "ledger"}){
+function FinancePage({ledger, invoices, onRefresh, reviewerName, initialTab = "ledger", tripFilterId = ""}){
   const [tab,setTab]=useState(initialTab);
   const [selectedExpense,setSelectedExpense]=useState(null);
   const [selectedInvoice,setSelectedInvoice]=useState(null);
-  const liveLedger = Array.isArray(ledger) ? ledger : [];
+  const allLedger = Array.isArray(ledger) ? ledger : [];
+  const liveLedger = tripFilterId
+    ? allLedger.filter((entry)=>String(entry.tripId || entry.trip_id || "") === String(tripFilterId))
+    : allLedger;
   const liveInvoices = Array.isArray(invoices) && invoices.length ? invoices : [];
   const reviewQueue = liveLedger.filter((entry)=>entry.status !== 'Approved' && entry.status !== 'Rejected');
   const approvedExpenses = liveLedger.filter((entry)=>entry.status === 'Approved');
@@ -2819,6 +2822,12 @@ function FinancePage({ledger, invoices, onRefresh, reviewerName, initialTab = "l
           </div>
         ))}
       </div>
+      {tripFilterId && (
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:12,padding:"10px 12px",borderRadius:12,background:BG,border:`1px solid ${BD}`}}>
+          <div style={{fontSize:11.5,fontWeight:800,color:INK}}>Showing variable expenses for Trip {tripFilterId}</div>
+          <button onClick={()=>window.location.href='/transporter_dashboard_FINAL.html?page=finance&tab=ledger'} style={{border:'none',background:'transparent',color:G,fontSize:11,fontWeight:800,cursor:'pointer'}}>Clear Filter</button>
+        </div>
+      )}
 
       <div style={{display:"flex",gap:4,background:BG2,padding:4,borderRadius:10,marginBottom:MOBILE_DENSE?12:16}}>
         {[["ledger","₹ Ledger"],["invoices","🔖 Invoices"],["pl","📊 P&L"]].map(([key,label])=>(
@@ -2838,9 +2847,9 @@ function FinancePage({ledger, invoices, onRefresh, reviewerName, initialTab = "l
         <>
           <SecHd left={<>Cost <em style={{fontStyle:"italic",color:G}}>Ledger</em></>}/>
           <Card>
-            {ledger && ledger.length > 0 ? ledger.map((e,i)=>(
+            {liveLedger && liveLedger.length > 0 ? liveLedger.map((e,i)=>(
               <div key={e.id} onClick={()=>setSelectedExpense(e)} style={{padding:"14px 16px",
-                borderBottom:i<ledger.length-1?`1px solid ${BD}`:"none",
+                borderBottom:i<liveLedger.length-1?`1px solid ${BD}`:"none",
                 display:"flex",alignItems:"center",gap:12,cursor:'pointer'}}>
                 <div style={{width:36,height:36,borderRadius:9,flexShrink:0,
                   background:SLt,
@@ -2851,10 +2860,11 @@ function FinancePage({ledger, invoices, onRefresh, reviewerName, initialTab = "l
                   <div style={{fontSize:12,fontWeight:700,color:INK,marginBottom:3,
                     whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.expense_type || e.category || e.desc}</div>
                   <div style={{display:"flex",gap:7,alignItems:"center"}}>
-                    <span style={{fontSize:10.5,color:MU}}>{e.tripId || e.trip_id || 'No Trip'}</span>
+                    <span style={{fontSize:10.5,color:MU}}>{e.truck_id || 'Truck'}</span>
                     <span style={{fontSize:10.5,color:MU}}>{formatRouteLabel(e.from || e.route_from, e.to || e.route_to)}</span>
                   </div>
                   <div style={{display:'flex',gap:7,alignItems:'center',marginTop:4}}>
+                    <span style={{fontSize:10.5,color:MU}}>{e.tripId || e.trip_id || 'No Trip'}</span>
                     <span style={{fontSize:10.5,color:MU}}>{e.date}</span>
                     <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9.5,color:MU2,
                       background:expenseStatusInfo(e.status).bg,padding:"2px 6px",borderRadius:999,color:expenseStatusInfo(e.status).color}}>{expenseStatusInfo(e.status).label}</span>
@@ -2862,7 +2872,7 @@ function FinancePage({ledger, invoices, onRefresh, reviewerName, initialTab = "l
                 </div>
                 <div style={{fontFamily:"'Sora',sans-serif",fontWeight:900,fontSize:14,
                   color:CR,flexShrink:0}}>
-                  {formatPaise(e.amount)}
+                  {formatPaise(e.amount ?? e.total_paise)}
                 </div>
               </div>
             )) : <div style={{padding:40, textAlign:'center', color:MU}}>No ledger entries found.</div>}
@@ -3592,6 +3602,7 @@ export default function App({ user: propsUser }){
   const searchParams = new URLSearchParams(window.location.search);
   const [page,setPage]=useState(searchParams.get("page") || "dashboard");
   const financeTab = searchParams.get("tab") || "ledger";
+  const financeTripId = searchParams.get("tripId") || "";
   const initialModal = searchParams.get("modal") || "";
   const [data, setData] = useState({
     trips:[], trucks:[], drivers:[], alerts:[], ledger:[], invoices:[],
@@ -3778,7 +3789,7 @@ export default function App({ user: propsUser }){
   const pages={
     dashboard:<DashboardPage onNavigate={setPage} stats={data.stats.kpis} charts={data.stats.charts} trips={data.trips} trucks={data.trucks} invoices={data.invoices} ledger={data.ledger} onViewDetails={handleViewTrip} onViewMap={() => setShowMapModal(true)} />,
     trips:<TripsPage trips={data.trips} onViewDetails={handleViewTrip} onComplete={handleCompleteTrip} />,
-    finance:<FinancePage ledger={data.ledger} invoices={data.invoices} onRefresh={fetchData} reviewerName={user?.fullName} initialTab={financeTab} />,
+    finance:<FinancePage ledger={data.ledger} invoices={data.invoices} onRefresh={fetchData} reviewerName={user?.fullName} initialTab={financeTab} tripFilterId={financeTripId} />,
     insights:<InsightsPage insights={data.stats.insights} />,
     alerts:<AlertsPage alerts={data.alerts} />,
     fleet:<FleetPage trucks={data.trucks} onAddTruck={()=>openAppModal('Fleetos Add Truck.html')} onItemClick={handleItemClick} />,
