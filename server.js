@@ -1984,7 +1984,14 @@ app.get('/api/fleet/trips', async (req, res) => {
             COALESCE((SELECT SUM(amount) FROM expenses WHERE trip_id = t.id AND COALESCE(status, 'In Process') != 'Rejected'), 0) as total_expenses
         FROM trips t
         LEFT JOIN drivers d ON d.id = t.driver_id
-        LEFT JOIN trucks tr ON tr.id = t.truck_id
+        LEFT JOIN trucks tr ON (
+            tr.id = t.truck_id OR
+            (
+                t.truck_id IS NULL AND
+                regexp_replace(COALESCE(tr.reg_no, ''), '[^A-Za-z0-9]', '', 'g') =
+                regexp_replace(COALESCE(t.truck_text, ''), '[^A-Za-z0-9]', '', 'g')
+            )
+        )
         WHERE t.owner_user_id = $1
         ORDER BY t.created_at DESC
     `;
@@ -3506,7 +3513,14 @@ app.get('/api/driver-data', async (req, res) => {
             return;
         }
 
-        const driverRes = await pool.query('SELECT * FROM drivers WHERE id::text = $1', [String(authUser.id)]);
+        const driverRes = await pool.query(`
+            SELECT d.*, u.phone AS transporter_phone
+            FROM drivers d
+            LEFT JOIN users u
+              ON u.id = COALESCE(d.owner_user_id, d.transporter_id)
+            WHERE d.id::text = $1
+            LIMIT 1
+        `, [String(authUser.id)]);
         const driver = driverRes.rows[0] || null;
         if (!driver) {
             return res.status(404).json({ error: 'Driver not found' });
@@ -3573,6 +3587,7 @@ app.get('/api/driver-data', async (req, res) => {
 
         res.json({
             driver: sanitizeDriverRow(driver),
+            transporter_phone: normalizePhone(driver.transporter_phone),
             stats: {
                 tripsCount,
                 activeTrips,
