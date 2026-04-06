@@ -910,6 +910,7 @@ async function initializeDatabase() {
             `ALTER TABLE trips ADD COLUMN IF NOT EXISTS is_paid INTEGER DEFAULT 0`,
             `ALTER TABLE trips ADD COLUMN IF NOT EXISTS payment_date TEXT`,
             `ALTER TABLE trips ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
+            `ALTER TABLE trips ADD COLUMN IF NOT EXISTS client_phone TEXT`,
             `ALTER TABLE users ADD COLUMN IF NOT EXISTS company_name TEXT`,
             `ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile TEXT`,
             `ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT`,
@@ -2271,14 +2272,23 @@ app.get('/api/driver-data', async (req, res) => {
             km: parseFloat(t.distance_km || 0),
             earned: Math.round((parseFloat(t.freight) || 0) / 100),
             truckPurchasePrice: 0,
-            truckTyresCount: 0
+            truckTyresCount: 0,
+            client_phone: t.client_phone || null
         }));
 
         const activeTrip = mappedTrips.find(t => ['Active', 'En Route'].includes(t.status)) || null;
         const upcomingTrip = mappedTrips.find(t => t.status === 'Upcoming') || null;
 
+        // Get transporter phone for call button
+        let transporterPhone = null;
+        try {
+            const tpRes = await pool.query("SELECT mobile FROM users ORDER BY id LIMIT 1");
+            transporterPhone = tpRes.rows[0]?.mobile || null;
+        } catch (_) {}
+
         res.json({
             driver: sanitizeDriverRow(driver),
+            transporter_phone: transporterPhone,
             stats: {
                 tripsCount,
                 activeTrips,

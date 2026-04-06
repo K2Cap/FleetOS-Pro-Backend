@@ -372,6 +372,53 @@ body{background:var(--bg);font-family:var(--ff);color:var(--ink);min-height:100d
 .sheet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;}
 .sheet-title{font-family:var(--fd);font-size:18px;font-weight:800;color:var(--ink);}
 .sheet-close{background:var(--bg2);border:none;width:32px;height:32px;border-radius:50%;font-size:18px;cursor:pointer;}
+/* ══ TRIP DETAIL SHEET ══ */
+.active-trip{cursor:pointer;}
+.trip-card{cursor:pointer;}
+.td-backdrop{position:absolute;inset:0;background:rgba(26,24,20,.55);z-index:1200;opacity:0;pointer-events:none;transition:opacity .25s;}
+.td-backdrop.active{opacity:1;pointer-events:all;}
+.td-sheet{position:absolute;bottom:0;left:0;right:0;background:var(--bg);border-radius:24px 24px 0 0;z-index:1201;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);max-height:90dvh;display:flex;flex-direction:column;overflow:hidden;}
+.td-sheet.active{transform:translateY(0);}
+.td-handle{width:36px;height:4px;background:var(--bd2);border-radius:2px;margin:12px auto 0;flex-shrink:0;}
+.td-scroll{overflow-y:auto;padding:12px 14px 44px;flex:1;-webkit-overflow-scrolling:touch;}
+.td-scroll::-webkit-scrollbar{display:none;}
+.td-hero{background:var(--g);border-radius:16px;padding:14px;margin-bottom:10px;position:relative;}
+.td-close{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
+.td-trip-id{font-family:var(--fm);font-size:10px;color:rgba(255,255,255,.6);margin-bottom:8px;letter-spacing:.05em;}
+.td-route-row{display:flex;align-items:center;gap:8px;}
+.td-city{flex:1;}
+.td-city.right{text-align:right;}
+.td-city-name{font-family:var(--fd);font-size:15px;font-weight:700;color:#fff;line-height:1.2;}
+.td-city-addr{font-size:9.5px;color:rgba(255,255,255,.58);margin-top:3px;line-height:1.4;}
+.td-arr{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;}
+.td-arr-dot{width:7px;height:7px;border-radius:50%;background:#fff;}
+.td-arr-dot.end{background:var(--s);}
+.td-arr-line{width:1.5px;height:22px;background:rgba(255,255,255,.3);}
+.td-chip{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:800;margin-top:10px;}
+.td-chip.active-s,.td-chip.en-route{background:rgba(255,255,255,.18);color:#fff;}
+.td-chip.completed{background:rgba(255,255,255,.9);color:var(--g);}
+.td-chip.upcoming{background:var(--slt);color:var(--s);}
+.td-chip.cancelled{background:rgba(200,60,60,.25);color:#ffd0d0;}
+.td-maps{display:flex;align-items:center;gap:10px;background:var(--wh);border:1.5px solid var(--glt2);border-radius:14px;padding:10px 13px;text-decoration:none;color:var(--ink);margin-bottom:10px;}
+.td-maps-pin{font-size:17px;flex-shrink:0;}
+.td-maps-body{flex:1;}
+.td-maps-title{font-size:12px;font-weight:700;color:var(--g);}
+.td-maps-sub{font-size:10px;color:var(--mu);margin-top:1px;}
+.td-maps-chev{font-size:20px;color:var(--g);font-weight:300;}
+.td-sec-lbl{font-size:9px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--mu);margin:12px 0 7px;}
+.td-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;}
+.td-cell{background:var(--wh);border:1px solid var(--bd);border-radius:13px;padding:10px 12px;}
+.td-cell.full{grid-column:1/-1;}
+.td-cell-lbl{font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--mu);}
+.td-cell-val{font-size:13px;font-weight:700;color:var(--ink);margin-top:5px;}
+.td-cell-val.hl{color:var(--s);}
+.td-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.td-btn-scan{height:46px;border-radius:12px;border:none;background:var(--s);color:#fff;font-family:var(--ff);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
+.td-btn-add{height:46px;border-radius:12px;border:1.5px solid var(--bd);background:var(--wh);color:var(--ink2);font-family:var(--ff);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
+.td-btn-call{height:46px;border-radius:12px;border:1.5px solid var(--glt2);background:var(--glt);color:var(--g);font-family:var(--ff);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;}
+.td-btn-call.no-phone{opacity:.45;pointer-events:none;}
+.td-btn-call.customer{border-color:var(--slt2);background:var(--slt);color:var(--s);}
+
 .app-popup-backdrop{position:absolute;inset:0;background:rgba(26,24,20,.62);backdrop-filter:blur(10px);z-index:1400;display:none;align-items:center;justify-content:center;padding:20px;}
 .app-popup-backdrop.active{display:flex;}
 .app-popup{width:min(92vw,420px);background:#241612;color:#fff;border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:22px 20px 18px;box-shadow:0 24px 60px rgba(0,0,0,.42);}
@@ -570,11 +617,11 @@ body{background:var(--bg);font-family:var(--ff);color:var(--ink);min-height:100d
             </div>
           </div>
           <div class="at-action">
-            <button class="btn-outline">
+            <button class="btn-outline" id="btn-call-transporter" onclick="event.stopPropagation(); callTransporterPhone()">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px; color: #e8671a;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
               Transporter
             </button>
-            <button class="btn-outline">
+            <button class="btn-outline" id="btn-call-customer" onclick="event.stopPropagation(); callCustomerPhone()">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px; color: #e8671a;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
               Customer
             </button>
@@ -792,6 +839,119 @@ body{background:var(--bg);font-family:var(--ff);color:var(--ink);min-height:100d
     </div>
   </div>
 
+  <!-- ══ TRIP DETAIL SHEET ══ -->
+  <div class="td-backdrop" id="td-backdrop" onclick="closeTripDetail()"></div>
+  <div class="td-sheet" id="td-sheet">
+    <div class="td-handle"></div>
+    <div class="td-scroll">
+
+      <!-- Hero: Route -->
+      <div class="td-hero">
+        <button class="td-close" onclick="closeTripDetail()">✕</button>
+        <div class="td-trip-id" id="td-id">---</div>
+        <div class="td-route-row">
+          <div class="td-city">
+            <div class="td-city-name" id="td-from"></div>
+            <div class="td-city-addr" id="td-from-addr"></div>
+          </div>
+          <div class="td-arr">
+            <div class="td-arr-dot"></div>
+            <div class="td-arr-line"></div>
+            <div class="td-arr-dot end"></div>
+          </div>
+          <div class="td-city right">
+            <div class="td-city-name" id="td-to"></div>
+            <div class="td-city-addr" id="td-to-addr"></div>
+          </div>
+        </div>
+        <div class="td-chip" id="td-status-chip"></div>
+      </div>
+
+      <!-- Maps link -->
+      <a class="td-maps" id="td-maps-link" href="#" target="_blank" rel="noopener noreferrer">
+        <div class="td-maps-pin">📍</div>
+        <div class="td-maps-body">
+          <div class="td-maps-title">Open Route in Google Maps</div>
+          <div class="td-maps-sub" id="td-maps-sub"></div>
+        </div>
+        <div class="td-maps-chev">›</div>
+      </a>
+
+      <!-- Trip Info Grid -->
+      <div class="td-sec-lbl">Trip Info</div>
+      <div class="td-grid">
+        <div class="td-cell">
+          <div class="td-cell-lbl">Start Date</div>
+          <div class="td-cell-val" id="td-start"></div>
+        </div>
+        <div class="td-cell">
+          <div class="td-cell-lbl">Truck</div>
+          <div class="td-cell-val" id="td-truck"></div>
+        </div>
+        <div class="td-cell">
+          <div class="td-cell-lbl">Distance</div>
+          <div class="td-cell-val" id="td-dist"></div>
+        </div>
+        <div class="td-cell">
+          <div class="td-cell-lbl">LR Number</div>
+          <div class="td-cell-val" id="td-lr"></div>
+        </div>
+        <div class="td-cell full" id="td-client-cell">
+          <div class="td-cell-lbl">Customer / Client</div>
+          <div class="td-cell-val" id="td-client"></div>
+        </div>
+        <div class="td-cell full" id="td-notes-cell" style="display:none">
+          <div class="td-cell-lbl">Notes</div>
+          <div class="td-cell-val" id="td-notes"></div>
+        </div>
+      </div>
+
+      <!-- Payment -->
+      <div class="td-sec-lbl">Payment</div>
+      <div class="td-grid">
+        <div class="td-cell">
+          <div class="td-cell-lbl">Freight</div>
+          <div class="td-cell-val" id="td-freight"></div>
+        </div>
+        <div class="td-cell">
+          <div class="td-cell-lbl">Advance Paid</div>
+          <div class="td-cell-val" id="td-advance"></div>
+        </div>
+        <div class="td-cell full">
+          <div class="td-cell-lbl">Balance Due</div>
+          <div class="td-cell-val hl" id="td-balance"></div>
+        </div>
+      </div>
+
+      <!-- Expense Actions -->
+      <div class="td-sec-lbl">Log Expense for This Trip</div>
+      <div class="td-actions">
+        <button class="td-btn-scan" onclick="tdScanExpense()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="7" width="18" height="13" rx="2"/><circle cx="12" cy="13.5" r="3"/><path d="M9 7V5.5A1.5 1.5 0 0110.5 4h3A1.5 1.5 0 0115 5.5V7"/></svg>
+          Scan Receipt
+        </button>
+        <button class="td-btn-add" onclick="tdAddExpense()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Manual Entry
+        </button>
+      </div>
+
+      <!-- Contacts -->
+      <div class="td-sec-lbl">Contacts</div>
+      <div class="td-actions">
+        <a class="td-btn-call" id="td-call-transporter" href="#">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+          <span>Call Transporter</span>
+        </a>
+        <a class="td-btn-call customer" id="td-call-customer" href="#">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+          <span>Call Customer</span>
+        </a>
+      </div>
+
+    </div>
+  </div>
+
   <div class="app-popup-backdrop" id="app-popup-backdrop">
     <div class="app-popup">
       <div class="app-popup-title" id="app-popup-title">FleetOS</div>
@@ -822,6 +982,8 @@ let EXPENSE_ELIGIBLE_TRIPS = [];
 const DRIVER_SESSION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 let LAST_RECEIPT_DATA_URL = null;
 let APP_POPUP_RESOLVE = null;
+let TRANSPORTER_PHONE = null;
+let TRIP_DETAIL_TRIP = null;
 
 // Auth Logic
 function getDriverAuthHeaders(extra = {}) {
@@ -1461,6 +1623,7 @@ async function refreshDriverData() {
     const data = await response.json();
     window.DRIVER_ALL_TRIPS = data.trips || [];
     CURRENT_ACTIVE_TRIP = data.activeTrip || null;
+    TRANSPORTER_PHONE = data.transporter_phone || null;
     CURRENT_UPCOMING_TRIP = data.upcomingTrip || null;
     EXPENSE_ELIGIBLE_TRIPS = Array.isArray(data.expenseEligibleTrips) ? data.expenseEligibleTrips : [];
     if (!SELECTED_EXPENSE_TRIP || !findTripById(SELECTED_EXPENSE_TRIP.id)) {
@@ -1576,15 +1739,17 @@ async function refreshDriverData() {
     if (tripList) {
       tripList.innerHTML = '';
       const historyTrips = (data.trips || []).filter(t => !['Upcoming', 'Active', 'En Route'].includes(t.status));
+      if (!window.DRIVER_TRIPS_MAP) window.DRIVER_TRIPS_MAP = {};
       if (historyTrips.length === 0) {
         tripList.innerHTML = '<div style="padding:20px;text-align:center;color:var(--mu);font-size:12px;">No trip history found.</div>';
       } else {
         historyTrips.forEach(t => {
+          window.DRIVER_TRIPS_MAP[String(t.id)] = t;
           const statusClass = t.status === 'Cancelled' ? 'cancelled' : 'completed';
           const badgeIcon = t.status === 'Cancelled' ? '✕' : '✓';
           const dateStr = safeDateString(t.end_date || t.start_date || t.startDateRaw || Date.now());
           tripList.innerHTML += `
-            <div class="trip-card">
+            <div class="trip-card" data-trip-id="${t.id}">
               <div class="tc-left ${statusClass}"></div>
               <div class="tc-content">
                 <div class="tc-route">
@@ -1600,6 +1765,13 @@ async function refreshDriverData() {
             </div>
           `;
         });
+        // Wire click via delegation so dynamic cards work
+        tripList.onclick = (e) => {
+          const card = e.target.closest('.trip-card[data-trip-id]');
+          if (!card) return;
+          const trip = window.DRIVER_TRIPS_MAP[card.dataset.tripId];
+          if (trip) openTripDetail(trip);
+        };
       }
     }
 
@@ -1631,6 +1803,10 @@ async function refreshDriverData() {
     const activeCard = document.querySelector('.active-trip');
     const activeId = document.querySelector('.active-trip .at-id');
     if (activeId && activeCard) {
+      // Wire tap-to-open — buttons inside handle stopPropagation themselves
+      activeCard.onclick = (e) => {
+        if (!e.target.closest('button')) openTripDetail(CURRENT_ACTIVE_TRIP);
+      };
       if (data.activeTrip) {
         activeCard.style.display = 'block';
         activeId.innerText = data.activeTrip.id || '---';
@@ -1755,6 +1931,142 @@ async function openUpcomingTripDetails() {
   ].join('\n');
   await showAppPopup({ title: 'Trip Details', message: detailText, confirmText: 'Open Maps' });
   window.open(mapsUrl, '_blank');
+}
+
+// ══ TRIP DETAIL SHEET ══
+
+function fmtMoney(val) {
+  const n = Number(val || 0);
+  if (!n) return '---';
+  return '₹ ' + n.toLocaleString('en-IN');
+}
+
+function openTripDetail(trip) {
+  if (!trip) return;
+  TRIP_DETAIL_TRIP = trip;
+
+  const status = String(trip.status || 'Active');
+  const statusLower = status.toLowerCase().replace(/\s+/g, '-');
+
+  // Hero
+  document.getElementById('td-id').textContent = `Trip ${trip.id || '---'}`;
+  document.getElementById('td-from').textContent = cleanLoc(trip.origin);
+  document.getElementById('td-from-addr').textContent = trip.origin || '---';
+  document.getElementById('td-to').textContent = cleanLoc(trip.destination);
+  document.getElementById('td-to-addr').textContent = trip.destination || '---';
+  const chip = document.getElementById('td-status-chip');
+  chip.textContent = status;
+  chip.className = `td-chip ${statusLower}`;
+
+  // Maps
+  const mapsUrl = buildMapsLink(trip.origin, trip.destination);
+  document.getElementById('td-maps-link').href = mapsUrl;
+  document.getElementById('td-maps-sub').textContent =
+    `${cleanLoc(trip.origin)} → ${cleanLoc(trip.destination)}`;
+
+  // Trip Info
+  document.getElementById('td-start').textContent =
+    safeDateString(trip.start_date || trip.startDate || trip.startDateRaw);
+  document.getElementById('td-truck').textContent =
+    trip.truck || trip.truck_text || '---';
+  document.getElementById('td-dist').textContent =
+    (trip.km || trip.distanceKm || trip.distance_km)
+      ? (trip.km || trip.distanceKm || trip.distance_km) + ' km' : '---';
+  document.getElementById('td-lr').textContent =
+    trip.lr_no || trip.lrNo || '---';
+
+  const clientCell = document.getElementById('td-client-cell');
+  const clientVal = trip.client || '---';
+  document.getElementById('td-client').textContent = clientVal;
+  clientCell.style.display = '';
+
+  const notesCell = document.getElementById('td-notes-cell');
+  const notes = trip.notes || '';
+  if (notes) {
+    document.getElementById('td-notes').textContent = notes;
+    notesCell.style.display = '';
+  } else {
+    notesCell.style.display = 'none';
+  }
+
+  // Payment
+  document.getElementById('td-freight').textContent = fmtMoney(trip.freight);
+  document.getElementById('td-advance').textContent = fmtMoney(trip.advance);
+  document.getElementById('td-balance').textContent = fmtMoney(trip.balance);
+
+  // Call buttons — transporter
+  const tBtn = document.getElementById('td-call-transporter');
+  if (TRANSPORTER_PHONE) {
+    tBtn.href = `tel:${TRANSPORTER_PHONE}`;
+    tBtn.querySelector('span').textContent = `Call Transporter`;
+    tBtn.classList.remove('no-phone');
+  } else {
+    tBtn.href = '#';
+    tBtn.querySelector('span').textContent = 'Transporter (N/A)';
+    tBtn.classList.add('no-phone');
+  }
+
+  // Call buttons — customer
+  const cBtn = document.getElementById('td-call-customer');
+  const custPhone = trip.client_phone || trip.customer_phone || null;
+  if (custPhone) {
+    cBtn.href = `tel:${custPhone}`;
+    cBtn.querySelector('span').textContent = `Call Customer`;
+    cBtn.classList.remove('no-phone');
+  } else {
+    cBtn.href = '#';
+    cBtn.querySelector('span').textContent = 'Customer (N/A)';
+    cBtn.classList.add('no-phone');
+  }
+
+  document.getElementById('td-backdrop').classList.add('active');
+  document.getElementById('td-sheet').classList.add('active');
+}
+
+function closeTripDetail() {
+  document.getElementById('td-backdrop').classList.remove('active');
+  document.getElementById('td-sheet').classList.remove('active');
+  TRIP_DETAIL_TRIP = null;
+}
+
+function openTripDetailById(tripId) {
+  const trip = findTripById(String(tripId));
+  if (trip) openTripDetail(trip);
+}
+
+function tdScanExpense() {
+  closeTripDetail();
+  if (TRIP_DETAIL_TRIP) setSelectedExpenseTrip(TRIP_DETAIL_TRIP.id);
+  setTimeout(() => {
+    setScreen('expenses');
+    openCamera(TRIP_DETAIL_TRIP?.id);
+  }, 180);
+}
+
+function tdAddExpense() {
+  closeTripDetail();
+  if (TRIP_DETAIL_TRIP) setSelectedExpenseTrip(TRIP_DETAIL_TRIP.id);
+  setTimeout(() => {
+    setScreen('expenses');
+    openAddSheet(TRIP_DETAIL_TRIP?.id);
+  }, 180);
+}
+
+function callTransporterPhone() {
+  if (!TRANSPORTER_PHONE) {
+    showAppPopup({ title: 'No Number Saved', message: 'Transporter phone number is not available. Ask your transporter to add it in the FleetOS account.', confirmText: 'OK' });
+    return;
+  }
+  window.location.href = `tel:${TRANSPORTER_PHONE}`;
+}
+
+function callCustomerPhone() {
+  const phone = CURRENT_ACTIVE_TRIP?.client_phone || CURRENT_ACTIVE_TRIP?.customer_phone || null;
+  if (!phone) {
+    showAppPopup({ title: 'No Number Saved', message: 'Customer phone number was not entered when this trip was logged. Ask your transporter to add it.', confirmText: 'OK' });
+    return;
+  }
+  window.location.href = `tel:${phone}`;
 }
 
 function setScreen(s) {
