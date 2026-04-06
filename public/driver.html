@@ -906,23 +906,6 @@ body{background:var(--bg);font-family:var(--ff);color:var(--ink);min-height:100d
         </div>
       </div>
 
-      <!-- Payment -->
-      <div class="td-sec-lbl">Payment</div>
-      <div class="td-grid">
-        <div class="td-cell">
-          <div class="td-cell-lbl">Freight</div>
-          <div class="td-cell-val" id="td-freight"></div>
-        </div>
-        <div class="td-cell">
-          <div class="td-cell-lbl">Advance Paid</div>
-          <div class="td-cell-val" id="td-advance"></div>
-        </div>
-        <div class="td-cell full">
-          <div class="td-cell-lbl">Balance Due</div>
-          <div class="td-cell-val hl" id="td-balance"></div>
-        </div>
-      </div>
-
       <!-- Expense Actions -->
       <div class="td-sec-lbl">Log Expense for This Trip</div>
       <div class="td-actions">
@@ -1988,11 +1971,6 @@ function openTripDetail(trip) {
   } else {
     notesCell.style.display = 'none';
   }
-
-  // Payment
-  document.getElementById('td-freight').textContent = fmtMoney(trip.freight);
-  document.getElementById('td-advance').textContent = fmtMoney(trip.advance);
-  document.getElementById('td-balance').textContent = fmtMoney(trip.balance);
 
   // Call buttons — transporter
   const tBtn = document.getElementById('td-call-transporter');

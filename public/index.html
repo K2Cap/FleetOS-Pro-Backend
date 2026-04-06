@@ -3,7 +3,7 @@
 <head>
 <script>
   (function(){
-    const BUILD = 'v8.0.0';
+    const BUILD = 'v8.2.0';
     const params = new URLSearchParams(window.location.search);
     if(params.get('v') !== BUILD){
       console.log('NUCLEAR SYNC ACTIVATED: Redirecting to ' + BUILD);
@@ -927,7 +927,7 @@ async function clearLegacyMobileCaches() {
 
 <script>
   (function(){
-    const BUILD = 'v8.0.0';
+    const BUILD = 'v8.2.0';
     if(localStorage.getItem('fleetos_v') !== BUILD){
       localStorage.setItem('fleetos_v', BUILD);
       console.log('Syncing Build ' + BUILD + '...');
@@ -938,7 +938,7 @@ async function clearLegacyMobileCaches() {
 
 <script>
   (function(){
-    const BUILD = 'v8.0.0';
+    const BUILD = 'v8.2.0';
     if(localStorage.getItem('fleetos_v') !== BUILD){
       localStorage.setItem('fleetos_v', BUILD);
       console.log('Forcing Global Sync ' + BUILD + '...');
