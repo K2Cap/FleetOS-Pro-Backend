@@ -10,21 +10,8 @@ const C = {
   light:  "#f5f3ec",
 };
 
-// ─── Sample data ──────────────────────────────────────────────────────────────
-const TRIPS = [
-  { id:"T-2041", from:"Mumbai",    to:"Pune",       date:"12 Mar", km:"148", status:"Completed",  earn:"₹4,200" },
-  { id:"T-2038", from:"Pune",      to:"Nashik",     date:"10 Mar", km:"212", status:"Completed",  earn:"₹5,800" },
-  { id:"T-2031", from:"Nashik",    to:"Aurangabad", date:"07 Mar", km:"186", status:"Completed",  earn:"₹4,900" },
-  { id:"T-2026", from:"Aurangabad",to:"Mumbai",     date:"04 Mar", km:"335", status:"Completed",  earn:"₹8,100" },
-  { id:"T-2019", from:"Mumbai",    to:"Nagpur",     date:"28 Feb", km:"838", status:"Completed",  earn:"₹18,500" },
-];
-
-const EXPENSES = [
-  { id:"E-081", label:"Diesel – Nashik",  date:"10 Mar", amount:"₹4,800", status:"Approved",  icon:"⛽" },
-  { id:"E-079", label:"Toll – Mumbai-Pune", date:"12 Mar", amount:"₹320",  status:"Approved",  icon:"🛣️" },
-  { id:"E-076", label:"Tyre puncture",    date:"07 Mar", amount:"₹650",  status:"Pending",   icon:"🔧" },
-  { id:"E-071", label:"Diesel – Aurangabad", date:"04 Mar", amount:"₹5,100", status:"Approved", icon:"⛽" },
-];
+const TRIPS = [];
+const EXPENSES = [];
 
 // ─── Small components ─────────────────────────────────────────────────────────
 const StatusPill = ({ s }) => {

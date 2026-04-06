@@ -1,7 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+  (function(){
+    const BUILD = 'v5.5.0';
+    const params = new URLSearchParams(window.location.search);
+    if(params.get('v') !== BUILD){
+      console.log('NUCLEAR SYNC ACTIVATED: Redirecting to ' + BUILD);
+      params.set('v', BUILD);
+      window.location.search = params.toString();
+    }
+  })();
+</script>
+
 <meta charset="UTF-8">
+<script src="config.js?v=2.5.1"></script>
+<script>
+    (function() {
+        const token = localStorage.getItem('fleetToken') || localStorage.getItem('token');
+        console.log("🔐 Session v2.6.1 Checking - Token:", !!token);
+        if (!token) {
+            console.warn("No active session - staying on page for debugging v2.6.1");
+            // window.location.href = "index.html";
+        }
+    })();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>FleetOS — My Fleet</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,900;1,9..144,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
@@ -18,10 +41,9 @@
   --r:18px;--r-lg:22px;
   --sh-sm:0 2px 8px rgba(26,24,20,.07);--sh-md:0 6px 24px rgba(26,24,20,.11);
 }
-body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:20px 0;}
-
-/* PHONE SHELL */
-.phone{width:390px;background:var(--bg);border-radius:44px;overflow:hidden;transform:translate3d(0,0,0);box-shadow:0 32px 80px rgba(26,24,20,.35),0 0 0 9px #181510;border:5px solid #232018;display:flex;flex-direction:column;height:820px;position:relative;}
+html,body{height:100%;margin:0;padding:0;overflow:hidden;background:var(--bg);}
+body{display:flex;flex-direction:column;}
+.phone{width:100%; max-width:none; margin:0; background:var(--bg); flex:1; display:flex; flex-direction:column; overflow:hidden; position:relative; padding-bottom:env(safe-area-inset-bottom, 20px);}
 
 /* STATUS BAR */
 .sbar{background:var(--g);padding:12px 22px 5px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
@@ -30,7 +52,7 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
 .sbar-dot{width:7px;height:7px;border-radius:50%;background:#0a2c1d;}
 
 /* HEADER */
-.header{background:var(--g);padding:14px 18px 18px;flex-shrink:0;}
+.header{background:var(--g);padding:30px 22px 14px;flex-shrink:0;}
 .hdr-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;}
 .hdr-title{font-family:var(--fd);font-weight:900;font-size:22px;color:#fff;letter-spacing:-.3px;line-height:1;}
 .hdr-title em{color:var(--s);font-style:italic;font-weight:600;}
@@ -61,16 +83,15 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
 .stat-num.idle{color:var(--go);}
 .stat-num.maint{color:var(--cr);}
 
-/* SCROLL BODY */
-.scroll-body{flex:1;overflow-y:auto;padding:14px 14px 80px;-webkit-overflow-scrolling:touch;}
+.scroll-body{flex:1;overflow-y:auto;padding:14px 14px 180px;-webkit-overflow-scrolling:touch;}
 .scroll-body::-webkit-scrollbar{display:none;}
 
 /* SECTION LABEL */
 .section-lbl{font-size:9.5px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--mu);margin-bottom:9px;margin-top:4px;}
 
 /* TRUCK CARD — Option B status strip */
-.truck-card{background:var(--wh);border:1.5px solid var(--bd);border-radius:var(--r);overflow:hidden;display:flex;margin-bottom:10px;transition:all .18s;cursor:pointer;active:opacity:.85;}
-.truck-card:active{transform:scale(.985);}
+.truck-card{background:var(--wh);border:1.5px solid var(--bd);border-radius:var(--r);overflow:hidden;display:flex;margin-bottom:10px;transition:all .18s;cursor:pointer;}
+.truck-card:active{opacity:.85;transform:scale(.985);}
 .tc-strip{width:5px;flex-shrink:0;}
 .tc-strip.active{background:var(--g);}
 .tc-strip.idle{background:var(--go);}
@@ -93,25 +114,38 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
 /* ADD TRUCK FAB */
 /* FAB replaced by BASE nav FAB */
 
-/* BOTTOM NAV */
-/* BOTTOM NAV — BASE style */
-.bnav{position:absolute;bottom:0;left:0;right:0;z-index:300;background:rgba(245,242,236,.94);backdrop-filter:blur(24px) saturate(1.5);-webkit-backdrop-filter:blur(24px) saturate(1.5);border-top:1.5px solid var(--bd);}
-.bnav-inner{display:flex;align-items:stretch;height:64px;padding:0 4px;}
-.nt{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;position:relative;border:none;background:transparent;padding:0;-webkit-tap-highlight-color:transparent;transition:transform .15s;}
-.nt:active{transform:scale(.9);}
-.nt.on::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:26px;height:2.5px;border-radius:0 0 3px 3px;background:linear-gradient(90deg,var(--g),var(--s));}
-.ni{width:40px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;transition:background .2s;}
-.nt.on .ni{background:rgba(26,92,58,.11);}
-.nsvg{width:22px;height:22px;stroke:var(--mu);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s;}
-.nt.on .nsvg{stroke:var(--g);}
-.nl{font-size:10px;font-weight:600;color:var(--mu);line-height:1;transition:color .2s;letter-spacing:.2px;}
-.nt.on .nl{color:var(--g);}
+/* BOTTOM NAV — LUXE DASHBOARD STYLE */
+.bnav{
+  position:sticky;bottom:0;flex-shrink:0;z-index:300;
+  background:rgba(245,242,236,.94);
+  backdrop-filter:blur(24px) saturate(1.5);
+  -webkit-backdrop-filter:blur(24px) saturate(1.5);
+  border-top:1.5px solid var(--bd);
+  padding-bottom:env(safe-area-inset-bottom, 0px);
+}
+.bnav-inner{display:flex;align-items:stretch;min-height:64px;padding:0 4px;}
+
+.nt{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;position:relative;border:none;background:transparent;padding:0;-webkit-tap-highlight-color:transparent;transition:transform .15s}
+.nt:active{transform:scale(.9)}
+
+/* active indicator */
+.nt.on::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:26px;height:2.5px;border-radius:0 0 3px 3px;background:linear-gradient(90deg,var(--g),var(--s))}
+
+.ni{width:40px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;transition:background .2s}
+.nt.on .ni{background:rgba(26,92,58,.11)}
+
+.nsvg{width:22px;height:22px;stroke:var(--mu);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s}
+.nt.on .nsvg{stroke:var(--g)}
+
+.nl{font-size:10px;font-weight:600;color:var(--mu);line-height:1;transition:color .2s;letter-spacing:.2px}
+.nt.on .nl{color:var(--g)}
+
 /* FAB */
-.nfab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;border:none;background:transparent;margin-top:-16px;-webkit-tap-highlight-color:transparent;}
-.fab-circle{width:52px;height:52px;border-radius:16px;background:linear-gradient(145deg,var(--g2),var(--g));display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(26,92,58,.42),0 2px 6px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.14);transition:all .2s;}
-.fab-circle:hover{transform:scale(1.08);box-shadow:0 8px 28px rgba(26,92,58,.52);}
-.fab-circle:active{transform:scale(.94);}
-.fab-lbl{font-size:10px;font-weight:700;color:var(--g);letter-spacing:.3px;}
+.nfab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;border:none;background:transparent;margin-top:-16px;-webkit-tap-highlight-color:transparent}
+.fab-circle{width:52px;height:52px;border-radius:16px;background:#1a5c3a;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(26,92,58,.42),0 2px 6px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.1);transition:all .2s}
+.fab-circle:hover{transform:scale(1.08);box-shadow:0 8px 28px rgba(26,92,58,.52)}
+.fab-circle:active{transform:scale(.94)}
+.fab-lbl{font-size:10px;font-weight:700;color:var(--g);letter-spacing:.3px}
 
 /* DETAIL SHEET */
 .sheet-backdrop{position:absolute;inset:0;background:rgba(26,24,20,.55);z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;}
@@ -137,24 +171,14 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
 <body>
 <div class="phone">
 
-  <!-- STATUS BAR -->
-  <div class="sbar">
-    <span class="sbar-time">9:41</span>
-    <div class="sbar-pill"><div class="sbar-dot"></div></div>
-    <div style="display:flex;gap:5px;align-items:center">
-      <svg width="14" height="10" viewBox="0 0 14 10"><rect x="0" y="7.6" width="2.5" height="2.4" fill="white" opacity=".8" rx=".5"/><rect x="3.5" y="5.2" width="2.5" height="4.8" fill="white" opacity=".8" rx=".5"/><rect x="7" y="2.6" width="2.5" height="7.4" fill="white" opacity=".8" rx=".5"/><rect x="10.5" y="0" width="2.5" height="10" fill="white" opacity=".3" rx=".5"/></svg>
-      <svg width="16" height="10" viewBox="0 0 16 10"><rect x="1" y="2.5" width="10.5" height="6.5" rx="1.5" fill="none" stroke="white" stroke-width="1" opacity=".8"/><rect x="2" y="3.5" width="7.5" height="4.5" rx=".5" fill="white" opacity=".8"/><rect x="12" y="4.5" width="2" height="3" rx=".8" fill="white" opacity=".45"/></svg>
-    </div>
-  </div>
-
   <!-- HEADER -->
   <div class="header">
     <div class="hdr-row">
       <div>
         <div class="hdr-title">My <em>Fleet</em></div>
-        <div class="hdr-sub">12 trucks registered</div>
+        <div class="hdr-sub">Live fleet data will appear here</div>
       </div>
-      <button class="add-btn" onclick="alert('Add Truck')">
+      <button class="add-btn" onclick="window.location.href='/Fleetos_Add_Truck.html'">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
         Add Truck
       </button>
@@ -167,135 +191,35 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
 
   <!-- STATS ROW -->
   <div class="stats-row">
-    <div class="stat-cell"><div class="stat-num active">7</div><div class="stat-lbl">Active</div></div>
-    <div class="stat-cell"><div class="stat-num idle">3</div><div class="stat-lbl">Idle</div></div>
-    <div class="stat-cell"><div class="stat-num maint">2</div><div class="stat-lbl">In Service</div></div>
+    <div class="stat-cell"><div class="stat-num active">0</div><div class="stat-lbl">Active</div></div>
+    <div class="stat-cell"><div class="stat-num idle">0</div><div class="stat-lbl">Idle</div></div>
+    <div class="stat-cell"><div class="stat-num maint">0</div><div class="stat-lbl">In Service</div></div>
   </div>
 
   <!-- FILTER PILLS -->
   <div class="filter-bar">
-    <div class="fpill active" onclick="setFilter('all',this)">All (12)</div>
+    <div class="fpill active" onclick="setFilter('all',this)">All (0)</div>
     <div class="fpill active-pill" onclick="setFilter('active',this)">● Active</div>
     <div class="fpill idle-pill" onclick="setFilter('idle',this)">● Idle</div>
   </div>
 
-  <!-- TRUCK LIST -->
+  <!-- TRUCK LIST (Live Cloud Data will populate here) -->
   <div class="scroll-body" id="truck-list">
-    <div class="section-lbl">Active — On Route</div>
-
-    <div class="truck-card" data-status="active" data-driver="Ravi Kumar" data-reg="MH12AB1234" onclick="openDetail('MH12AB1234','active','HCV','Ravi Kumar','Mumbai → Pune','18 Apr 2027','85%')">
-      <div class="tc-strip active"></div>
-      <div class="tc-body">
-        <div class="tc-icon active">
-          <svg width="22" height="16" viewBox="0 0 24 16" fill="none" stroke="#1a5c3a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="14" height="10" rx="1.5"/><path d="M15 5h5l3 5v4h-8V5z"/><circle cx="5" cy="14" r="2"/><circle cx="19" cy="14" r="2"/></svg>
-        </div>
-        <div class="tc-info">
-          <div class="tc-reg">MH12AB1234</div>
-          <div class="tc-sub">HCV · Ravi Kumar · Mumbai → Pune</div>
-        </div>
-        <div class="tc-right">
-          <div class="status-badge active">● Active</div>
-          <div class="tc-arrow">›</div>
-        </div>
-      </div>
+    <div id="fleet-container"></div>
+    <div id="fleet-empty-state" style="margin:12px 0 18px;background:var(--wh);border:1.5px solid var(--bd);border-radius:var(--r);padding:18px;text-align:center;color:var(--mu);font-size:12px;line-height:1.5;">
+      No fleet records yet. Add trucks or connect live fleet data to populate this page.
     </div>
-
-    <div class="truck-card" data-status="active" data-driver="Suresh Yadav" data-reg="GJ05CX4521" onclick="openDetail('GJ05CX4521','active','LCV','Suresh Yadav','Surat → Ahmedabad','22 Mar 2026','62%')">
-      <div class="tc-strip active"></div>
-      <div class="tc-body">
-        <div class="tc-icon active">
-          <svg width="22" height="16" viewBox="0 0 24 16" fill="none" stroke="#1a5c3a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="14" height="10" rx="1.5"/><path d="M15 5h5l3 5v4h-8V5z"/><circle cx="5" cy="14" r="2"/><circle cx="19" cy="14" r="2"/></svg>
-        </div>
-        <div class="tc-info">
-          <div class="tc-reg">GJ05CX4521</div>
-          <div class="tc-sub">LCV · Suresh Yadav · Surat → Ahmedabad</div>
-        </div>
-        <div class="tc-right">
-          <div class="status-badge active">● Active</div>
-          <div class="tc-arrow">›</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="truck-card" data-status="active" data-driver="Arjun Singh" data-reg="DL01CA7890" onclick="openDetail('DL01CA7890','active','HMV','Arjun Singh','Delhi → Jaipur','09 Jun 2026','91%')">
-      <div class="tc-strip active"></div>
-      <div class="tc-body">
-        <div class="tc-icon active">
-          <svg width="22" height="16" viewBox="0 0 24 16" fill="none" stroke="#1a5c3a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="14" height="10" rx="1.5"/><path d="M15 5h5l3 5v4h-8V5z"/><circle cx="5" cy="14" r="2"/><circle cx="19" cy="14" r="2"/></svg>
-        </div>
-        <div class="tc-info">
-          <div class="tc-reg">DL01CA7890</div>
-          <div class="tc-sub">HMV · Arjun Singh · Delhi → Jaipur</div>
-        </div>
-        <div class="tc-right">
-          <div class="status-badge active">● Active</div>
-          <div class="tc-arrow">›</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="section-lbl" style="margin-top:16px;">Idle — Yard</div>
-
-    <div class="truck-card" data-status="idle" data-driver="Unassigned" data-reg="RJ7TG56" onclick="openDetail('RJ7TG56','idle','HCV','Unassigned','—','14 Nov 2026','—')">
-      <div class="tc-strip idle"></div>
-      <div class="tc-body">
-        <div class="tc-icon idle">
-          <svg width="22" height="16" viewBox="0 0 24 16" fill="none" stroke="#c9930a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="14" height="10" rx="1.5"/><path d="M15 5h5l3 5v4h-8V5z"/><circle cx="5" cy="14" r="2"/><circle cx="19" cy="14" r="2"/></svg>
-        </div>
-        <div class="tc-info">
-          <div class="tc-reg">RJ7TG56</div>
-          <div class="tc-sub">HCV · Unassigned</div>
-        </div>
-        <div class="tc-right">
-          <div class="status-badge idle">● Idle</div>
-          <div class="tc-arrow">›</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="truck-card" data-status="idle" data-driver="Deepak Verma" data-reg="KA03MN2210" onclick="openDetail('KA03MN2210','idle','LCV','Deepak Verma','—','30 Aug 2026','—')">
-      <div class="tc-strip idle"></div>
-      <div class="tc-body">
-        <div class="tc-icon idle">
-          <svg width="22" height="16" viewBox="0 0 24 16" fill="none" stroke="#c9930a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="14" height="10" rx="1.5"/><path d="M15 5h5l3 5v4h-8V5z"/><circle cx="5" cy="14" r="2"/><circle cx="19" cy="14" r="2"/></svg>
-        </div>
-        <div class="tc-info">
-          <div class="tc-reg">KA03MN2210</div>
-          <div class="tc-sub">LCV · Deepak Verma</div>
-        </div>
-        <div class="tc-right">
-          <div class="status-badge idle">● Idle</div>
-          <div class="tc-arrow">›</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="section-lbl" style="margin-top:16px;">In Service — Workshop</div>
-
-    <div class="truck-card" data-status="maintenance" data-driver="—" data-reg="TN22BZ0033" onclick="openDetail('TN22BZ0033','maintenance','HMV','—','—','02 Feb 2027','—')">
-      <div class="tc-strip maintenance"></div>
-      <div class="tc-body">
-        <div class="tc-icon maintenance">
-          <svg width="22" height="16" viewBox="0 0 24 16" fill="none" stroke="#c0392b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="14" height="10" rx="1.5"/><path d="M15 5h5l3 5v4h-8V5z"/><circle cx="5" cy="14" r="2"/><circle cx="19" cy="14" r="2"/></svg>
-        </div>
-        <div class="tc-info">
-          <div class="tc-reg">TN22BZ0033</div>
-          <div class="tc-sub">HMV · Engine overhaul</div>
-        </div>
-        <div class="tc-right">
-          <div class="status-badge maintenance">● Service</div>
-          <div class="tc-arrow">›</div>
-        </div>
-      </div>
+    <div style="font-size:10px;color:var(--mu);text-align:center;padding:15px;opacity:0.6;">
+      Build: CLOUD-PRO-v5.5.0 (NUCLEAR-SYNC) | <a onclick="location.reload(true)" style="text-decoration:underline; cursor:pointer">Force Update</a>
     </div>
 
   </div>
 
-  <!-- BOTTOM NAV — identical to BASE -->
+  <!-- BOTTOM NAV — BEAUTIFUL DASHBOARD SYNC -->
   <nav class="bnav">
     <div class="bnav-inner">
 
-      <button class="nt" id="nt-home">
+      <button class="nt" id="nt-home" onclick="window.location.href='/transporter_dashboard_ULTRA.html?v=4.6.0'">
         <div class="ni">
           <svg class="nsvg" viewBox="0 0 24 24"><path d="M3 10L12 3l9 7v11h-6v-5H9v5H3z"/></svg>
         </div>
@@ -310,7 +234,7 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
       </button>
 
       <!-- FAB -->
-      <button class="nfab" id="newTripFab" type="button">
+      <button class="nfab" id="newTripFab" type="button" onclick="window.location.href='/Fleetos_Log_Trip.html'">
         <div class="fab-circle">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -319,14 +243,14 @@ body{background:var(--bg2);font-family:var(--ff);color:var(--ink);min-height:100
         <span class="fab-lbl">New Trip</span>
       </button>
 
-      <button class="nt" id="nt-finance">
+      <button class="nt" id="nt-finance" onclick="window.location.href='/transporter_dashboard_ULTRA.html?page=ledger'">
         <div class="ni">
           <svg class="nsvg" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="15" rx="2"/><path d="M2 10h20"/><path d="M7 15h.01M11 15h4"/></svg>
         </div>
         <span class="nl">Finance</span>
       </button>
 
-      <button class="nt" id="nt-insights">
+      <button class="nt" id="nt-insights" onclick="window.location.href='/transporter_dashboard_ULTRA.html?page=insights'">
         <div class="ni">
           <svg class="nsvg" viewBox="0 0 24 24"><path d="M2 20h20M6 20V12M10 20V8M14 20V4M18 20v-6"/></svg>
         </div>
@@ -416,6 +340,30 @@ function filterCards(q) {
     c.style.display = match ? '' : 'none';
   });
 }
+</script>
+
+<script>
+  (function(){
+    const BUILD = 'v5.5.0';
+    if(localStorage.getItem('fleetos_v') !== BUILD){
+      localStorage.setItem('fleetos_v', BUILD);
+      console.log('Syncing Build ' + BUILD + '...');
+      location.reload(true);
+    }
+  })();
+</script>
+
+<script>
+  (function(){
+    const BUILD = 'v5.5.0';
+    if(localStorage.getItem('fleetos_v') !== BUILD){
+      localStorage.setItem('fleetos_v', BUILD);
+      console.log('Forcing Global Sync ' + BUILD + '...');
+      // APPEND CACHE BUSTER TO URL
+      const sep = location.href.includes('?') ? '&' : '?';
+      location.href = location.pathname + sep + 'v=' + BUILD;
+    }
+  })();
 </script>
 </body>
 </html>

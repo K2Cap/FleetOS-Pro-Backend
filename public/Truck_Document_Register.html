@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+  (function(){
+    const BUILD = 'v1.0.0';
+    const params = new URLSearchParams(window.location.search);
+    if(params.get('v') !== BUILD){
+      params.set('v', BUILD);
+      window.location.search = params.toString();
+    }
+  })();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Truck Document Register</title>
+<script src="config.js?v=2.5.1"></script>
+<script>
+  (function() {
+    const SESSION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+    const SESSION_EXPIRY_KEY = 'fleetSessionExpiresAt';
+    const token = localStorage.getItem('fleetToken') || localStorage.getItem('gravityToken') || localStorage.getItem('token');
+    if (!token) {
+      window.location.replace('/index.html?v=4.4.0');
+      return;
+    }
+    let expiryMs = Number(localStorage.getItem(SESSION_EXPIRY_KEY) || 0);
+    if (!expiryMs) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        expiryMs = Number(payload.exp || 0) * 1000;
+      } catch (error) {}
+    }
+    if (!expiryMs) expiryMs = Date.now() + SESSION_WINDOW_MS;
+    if (expiryMs <= Date.now()) {
+      ['fleetUser', 'gravityUser', 'fleetToken', 'gravityToken', 'token', SESSION_EXPIRY_KEY].forEach((key) => localStorage.removeItem(key));
+      window.location.replace('/index.html?v=4.4.0');
+      return;
+    }
+    localStorage.setItem(SESSION_EXPIRY_KEY, String(expiryMs));
+  })();
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,900;1,9..144,300&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --forest:#1a5c3a; --forest-d:#133f28; --forest-l:#236b47; --forest-xl:#e8f5ee;
+    --ember:#e8671a; --ember-xl:#fdf0e8; --gold:#c9930a; --gold-xl:#fdf6e3;
+    --cream:#f5f2ec; --paper:#ffffff; --line:#ddd9d0; --line-d:#c8c4bb;
+    --ink:#1a1814; --muted:#7a7570; --mono:'JetBrains Mono', monospace;
+    --serif:'Fraunces', serif; --sans:'DM Sans', sans-serif;
+    --shadow:0 8px 28px rgba(26,24,20,.1); --r:18px; --r-lg:24px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{min-height:100%;background:var(--cream)}
+  body{font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased}
+  .shell{min-height:100vh;padding-bottom:40px}
+  .top{
+    position:sticky;top:0;z-index:20;
+    background:linear-gradient(180deg,var(--forest),var(--forest-d));
+    padding:18px 16px 16px; box-shadow:0 10px 30px rgba(26,92,58,.22);
+  }
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .title{font-family:var(--serif);font-size:28px;font-weight:700;letter-spacing:-.4px;color:#fff}
+  .title em{color:var(--ember);font-style:italic;font-weight:600}
+  .subtitle{font-size:12px;color:rgba(255,255,255,.72);margin-top:4px}
+  .btns{display:flex;align-items:center;gap:8px}
+  .btn{
+    border:none;border-radius:14px;padding:11px 14px;cursor:pointer;font-family:inherit;font-weight:700;
+    display:inline-flex;align-items:center;gap:8px;white-space:nowrap
+  }
+  .btn-back{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.18)}
+  .btn-export{background:var(--ember);color:#fff;box-shadow:0 6px 18px rgba(232,103,26,.25)}
+  .toolbar{
+    margin-top:14px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;
+  }
+  .search{
+    height:44px;border-radius:14px;border:1px solid rgba(255,255,255,.18);
+    background:rgba(255,255,255,.12);color:#fff;padding:0 14px;font-size:14px;outline:none
+  }
+  .search::placeholder{color:rgba(255,255,255,.48)}
+  .content{padding:18px 14px}
+  .summary{
+    background:var(--paper);border:1.5px solid var(--line);border-radius:var(--r-lg);padding:16px 16px 14px;
+    box-shadow:var(--shadow);margin-bottom:14px
+  }
+  .summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .sum-card{background:linear-gradient(180deg,#fff,#f9f6ef);border:1px solid var(--line);border-radius:16px;padding:12px}
+  .sum-num{font-family:var(--serif);font-size:28px;font-weight:800;line-height:1}
+  .sum-lbl{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-top:6px;font-weight:700}
+  .empty,.loading{
+    background:var(--paper);border:1.5px dashed var(--line-d);border-radius:var(--r-lg);padding:28px 18px;
+    text-align:center;color:var(--muted);line-height:1.6
+  }
+  .truck-card{
+    background:var(--paper);border:1.5px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow);
+    overflow:hidden;margin-bottom:14px
+  }
+  .truck-head{
+    padding:16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:flex-start
+  }
+  .reg{font-family:var(--mono);font-size:16px;font-weight:500;letter-spacing:1px}
+  .meta{font-size:11px;color:var(--muted);margin-top:5px}
+  .chip-row{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .chip{padding:5px 9px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.4px;text-transform:uppercase}
+  .chip-ok{background:var(--forest-xl);color:var(--forest)}
+  .chip-warn{background:var(--gold-xl);color:#8a6200}
+  .chip-miss{background:#f4f1eb;color:var(--muted)}
+  .docs{padding:14px;display:grid;gap:10px}
+  .doc{
+    border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#fff
+  }
+  .doc summary{
+    list-style:none;cursor:pointer;padding:14px 14px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px
+  }
+  .doc summary::-webkit-details-marker{display:none}
+  .doc-left{min-width:0}
+  .doc-name{font-size:14px;font-weight:800;color:var(--ink)}
+  .doc-sub{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4}
+  .doc-status{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:5px 8px;border-radius:999px;white-space:nowrap}
+  .doc-status.scanned{background:var(--forest-xl);color:var(--forest)}
+  .doc-status.uploaded{background:var(--gold-xl);color:#8a6200}
+  .doc-status.missing{background:#f4f1eb;color:var(--muted)}
+  .doc-body{padding:0 14px 14px;border-top:1px solid var(--line)}
+  .doc-tools{display:flex;gap:8px;flex-wrap:wrap;padding-top:12px;padding-bottom:10px}
+  .tool{
+    border:1px solid var(--line);background:#faf8f3;border-radius:12px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer
+  }
+  .field-table{width:100%;border-collapse:collapse;border-spacing:0;overflow:hidden;border-radius:14px}
+  .field-table th,.field-table td{padding:10px 12px;border-top:1px solid var(--line);vertical-align:top;text-align:left}
+  .field-table thead th{border-top:none;background:#f7f4ee;font-size:11px;text-transform:uppercase;letter-spacing:.9px;color:var(--muted)}
+  .field-table tbody td:first-child{width:38%;font-weight:700;color:var(--ink)}
+  .field-table tbody td:last-child{color:#2a2823;line-height:1.45}
+  .field-empty{padding:14px 2px 2px;color:var(--muted);font-size:12px}
+  @media (max-width:700px){
+    .title{font-size:24px}
+    .toolbar{grid-template-columns:1fr}
+    .summary-grid{grid-template-columns:1fr 1fr 1fr}
+    .truck-head{flex-direction:column}
+    .chip-row{justify-content:flex-start}
+    .field-table tbody td:first-child{width:42%}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="top">
+    <div class="topbar">
+      <div>
+        <div class="title">Truck <em>Document Register</em></div>
+        <div class="subtitle">Private truckwise OCR register for the logged-in fleet owner</div>
+      </div>
+      <div class="btns">
+        <button class="btn btn-back" type="button" onclick="goBackToFleet()">← Fleet</button>
+        <button class="btn btn-export" type="button" onclick="exportRegister()">Export Excel</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <input id="searchInput" class="search" type="text" placeholder="Search by truck registration or extracted value">
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="summary">
+      <div class="summary-grid">
+        <div class="sum-card">
+          <div class="sum-num" id="sumTrucks">0</div>
+          <div class="sum-lbl">Trucks</div>
+        </div>
+        <div class="sum-card">
+          <div class="sum-num" id="sumDocs">0</div>
+          <div class="sum-lbl">Documents Saved</div>
+        </div>
+        <div class="sum-card">
+          <div class="sum-num" id="sumScanned">0</div>
+          <div class="sum-lbl">OCR Ready</div>
+        </div>
+      </div>
+    </div>
+    <div id="stateBox" class="loading">Loading truck document register…</div>
+    <div id="registerList"></div>
+  </div>
+</div>
+
+<script>
+  const API_BASE = (window.FLEETOS_API_BASE || window.location.origin || '').replace(/\/+$/, '');
+  const APP_BASE = window.FLEETOS_APP_BASE || window.location.origin;
+  const AUTH_KEYS = ['fleetToken', 'gravityToken', 'token'];
+  const DOC_LABELS = {
+    rc_document: 'RC Book',
+    insurance_document: 'Insurance Certificate',
+    fitness_document: 'Fitness Certificate',
+    puc_document: 'PUC Certificate',
+    permit_document: 'Route Permit',
+    roadtax_document: 'Road Tax Receipt'
+  };
+  const DOC_ORDER = ['rc_document', 'insurance_document', 'fitness_document', 'puc_document', 'permit_document', 'roadtax_document'];
+  let allRows = [];
+
+  function getToken() {
+    for (const key of AUTH_KEYS) {
+      const value = localStorage.getItem(key);
+      if (value) return value;
+    }
+    return '';
+  }
+
+  function goBackToFleet() {
+    window.location.href = `${APP_BASE}/Fleet_List_FINAL.html?v=5.5.0`;
+  }
+
+  function formatDateTime(value) {
+    if (!value) return 'Unknown update';
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return 'Unknown update';
+    return date.toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  function sanitizeText(value) {
+    return String(value == null ? '' : value).trim();
+  }
+
+  function parseSnapshot(value) {
+    if (!value) return null;
+    if (typeof value === 'object') return value;
+    try {
+      return JSON.parse(value);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function countDocs(row) {
+    return DOC_ORDER.filter((key) => parseSnapshot(row[key])).length;
+  }
+
+  function countScannedDocs(row) {
+    return DOC_ORDER.filter((key) => {
+      const snapshot = parseSnapshot(row[key]);
+      return snapshot && snapshot.status === 'scanned';
+    }).length;
+  }
+
+  function getRowSearchText(row) {
+    const bits = [row.reg_no || ''];
+    DOC_ORDER.forEach((key) => {
+      const snapshot = parseSnapshot(row[key]);
+      if (!snapshot) return;
+      bits.push(snapshot.documentType || '', snapshot.displayName || '');
+      (snapshot.fields || []).forEach((field) => {
+        bits.push(field.field || '', field.value || '');
+      });
+    });
+    return bits.join(' ').toLowerCase();
+  }
+
+  async function fetchJson(path) {
+    const token = getToken();
+    const response = await fetch(`${API_BASE}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || `Request failed with ${response.status}`);
+    }
+    return response.json();
+  }
+
+  async function exportRegister() {
+    const token = getToken();
+    try {
+      const response = await fetch(`${API_BASE}/api/export/truck-document-register`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'Truck_Document_Register.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      alert(`Export failed: ${error.message || error}`);
+    }
+  }
+
+  async function downloadProtectedFile(relativePath, fallbackName) {
+    if (!relativePath) return;
+    const token = getToken();
+    try {
+      const response = await fetch(`${API_BASE}${relativePath}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fallbackName || relativePath.split('/').pop() || 'document.pdf';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      alert(`Could not open document: ${error.message || error}`);
+    }
+  }
+
+  function renderSummary(rows) {
+    document.getElementById('sumTrucks').textContent = rows.length;
+    document.getElementById('sumDocs').textContent = rows.reduce((sum, row) => sum + countDocs(row), 0);
+    document.getElementById('sumScanned').textContent = rows.reduce((sum, row) => sum + countScannedDocs(row), 0);
+  }
+
+  function renderDocumentSection(snapshotKey, row) {
+    const snapshot = parseSnapshot(row[snapshotKey]);
+    if (!snapshot) {
+      return `
+        <details class="doc">
+          <summary>
+            <div class="doc-left">
+              <div class="doc-name">${DOC_LABELS[snapshotKey]}</div>
+              <div class="doc-sub">No saved document for this truck yet.</div>
+            </div>
+            <div class="doc-status missing">Missing</div>
+          </summary>
+        </details>
+      `;
+    }
+
+    const fields = Array.isArray(snapshot.fields) ? snapshot.fields : [];
+    const fieldRows = fields.length
+      ? `
+        <table class="field-table">
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th>Extracted Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${fields.map((field) => `
+              <tr>
+                <td>${sanitizeText(field.field)}</td>
+                <td>${sanitizeText(field.value)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `
+      : `<div class="field-empty">This document is saved, but no curated OCR fields are available yet.</div>`;
+
+    const mergedFile = snapshot.mergedFile ? `
+      <button class="tool" type="button" onclick="downloadProtectedFile('${snapshot.mergedFile}','${sanitizeText(snapshot.displayName || DOC_LABELS[snapshotKey])}.pdf')">View PDF</button>
+    ` : '';
+
+    return `
+      <details class="doc">
+        <summary>
+          <div class="doc-left">
+            <div class="doc-name">${sanitizeText(snapshot.displayName || DOC_LABELS[snapshotKey])}</div>
+            <div class="doc-sub">
+              ${sanitizeText(snapshot.documentType || DOC_LABELS[snapshotKey])}
+              · ${sanitizeText(snapshot.sourceEngine || 'ocr')}
+              · ${fields.length} field${fields.length === 1 ? '' : 's'}
+            </div>
+          </div>
+          <div class="doc-status ${snapshot.status === 'scanned' ? 'scanned' : 'uploaded'}">${sanitizeText(snapshot.status || 'saved')}</div>
+        </summary>
+        <div class="doc-body">
+          <div class="doc-tools">
+            ${mergedFile}
+            <button class="tool" type="button">Updated ${formatDateTime(snapshot.updatedAt)}</button>
+          </div>
+          ${fieldRows}
+        </div>
+      </details>
+    `;
+  }
+
+  function renderRows(rows) {
+    const stateBox = document.getElementById('stateBox');
+    const list = document.getElementById('registerList');
+    if (!rows.length) {
+      stateBox.className = 'empty';
+      stateBox.textContent = 'No truck document register entries yet. Scan or upload truck documents first, then come back here.';
+      list.innerHTML = '';
+      renderSummary([]);
+      return;
+    }
+
+    stateBox.style.display = 'none';
+    renderSummary(rows);
+    list.innerHTML = rows.map((row) => `
+      <section class="truck-card">
+        <div class="truck-head">
+          <div>
+            <div class="reg">${sanitizeText(row.reg_no || `TRUCK-${row.truck_id}`)}</div>
+            <div class="meta">Truck ID ${row.truck_id} · Updated ${formatDateTime(row.updated_at)}</div>
+          </div>
+          <div class="chip-row">
+            <div class="chip chip-ok">${countScannedDocs(row)} OCR Ready</div>
+            <div class="chip ${countDocs(row) ? 'chip-warn' : 'chip-miss'}">${countDocs(row)} Docs Saved</div>
+          </div>
+        </div>
+        <div class="docs">
+          ${DOC_ORDER.map((key) => renderDocumentSection(key, row)).join('')}
+        </div>
+      </section>
+    `).join('');
+  }
+
+  function applyFilter() {
+    const query = sanitizeText(document.getElementById('searchInput').value).toLowerCase();
+    if (!query) {
+      renderRows(allRows);
+      return;
+    }
+    renderRows(allRows.filter((row) => getRowSearchText(row).includes(query)));
+  }
+
+  async function init() {
+    try {
+      const payload = await fetchJson('/api/fleet/document-register');
+      allRows = Array.isArray(payload.rows) ? payload.rows : [];
+      renderRows(allRows);
+      document.getElementById('searchInput').addEventListener('input', applyFilter);
+    } catch (error) {
+      const stateBox = document.getElementById('stateBox');
+      stateBox.className = 'empty';
+      stateBox.textContent = `Could not load the truck document register. ${error.message || error}`;
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>

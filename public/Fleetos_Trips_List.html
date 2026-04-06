@@ -149,6 +149,7 @@ body{font-family:var(--ff);color:var(--ink);display:flex;flex-direction:column;}
 .dname{font-size:11.5px;font-weight:700;color:var(--g);}
 .dname.amber{color:var(--go);}
 .dname.grey{color:var(--mu);}
+.journey-dates{margin-top:8px;font-size:11px;font-weight:700;color:var(--mu);letter-spacing:.02em}
 
 /* BOTTOM NAV */
 .bnav{position:fixed;bottom:0;left:0;right:0;z-index:300;background:rgba(245,242,236,.94);backdrop-filter:blur(24px) saturate(1.5);-webkit-backdrop-filter:blur(24px) saturate(1.5);border-top:1.5px solid var(--bd);padding-bottom:env(safe-area-inset-bottom, 0px);box-shadow:0 -10px 24px rgba(26,24,20,.08);}
@@ -346,6 +347,7 @@ body{font-family:var(--ff);color:var(--ink);display:flex;flex-direction:column;}
       <div class="ds-section-title">Trip Basics</div>
       <div class="ds-row"><span class="ds-key">Driver</span><span class="ds-val" id="ds-driver">—</span></div>
       <div class="ds-row"><span class="ds-key">Distance</span><span class="ds-val" id="ds-dist">—</span></div>
+      <div class="ds-row"><span class="ds-key">Journey Dates</span><span class="ds-val" id="ds-journey">—</span></div>
       <div class="ds-row"><span class="ds-key">ETA / Date</span><span class="ds-val" id="ds-eta">—</span></div>
       <div class="ds-row"><span class="ds-key">Driver Location</span><a class="ds-val" id="ds-location-link" href="#" target="_blank" rel="noopener noreferrer" style="color:var(--g);text-decoration:none;">Share Link</a></div>
       <div class="ds-row stack">
@@ -422,6 +424,7 @@ const statusMeta = {
 
 const filterState = { status: 'all', enRouteSubstatus: 'all', month: 'all', search: '' };
 let ALL_TRIPS = [];
+let ALL_FLEET_ROWS = [];
 let ACTIVE_TRIP_ID = '';
 const requestedTripId = new URLSearchParams(window.location.search).get('tripId') || '';
 let OTHER_FIXED_EXPENSES_CACHE = [];
@@ -511,6 +514,28 @@ function startOfDay(date) {
 
 function normalizeTruckKey(value) {
   return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+}
+
+function enrichTripsWithFleetData(trips, fleetRows) {
+  if (!Array.isArray(trips) || !trips.length) return [];
+  const fleet = Array.isArray(fleetRows) ? fleetRows : [];
+  return trips.map((trip) => {
+    const tripTruckId = String(trip?.truck_id || trip?.truckId || '').trim();
+    const tripTruckKey = normalizeTruckKey(trip?.truck_text || trip?.truckText || trip?.reg_no || trip?.regNo);
+    const match = fleet.find((row) => {
+      const fleetId = String(row?.id || row?.truck_id || row?.truckId || '').trim();
+      const fleetKey = normalizeTruckKey(row?.reg_no || row?.regNo || row?.truck_number || row?.truckNumber);
+      if (tripTruckId && fleetId && tripTruckId === fleetId) return true;
+      return !!tripTruckKey && !!fleetKey && tripTruckKey === fleetKey;
+    });
+    if (!match) return trip;
+    return {
+      ...trip,
+      truck_purchase_price: trip?.truck_purchase_price ?? trip?.truckPurchasePrice ?? match?.purchase_price ?? match?.purchasePrice ?? 0,
+      truck_tyres_count: trip?.truck_tyres_count ?? trip?.truckTyresCount ?? match?.tyres_count ?? match?.tyresCount ?? 0,
+      truck_id: trip?.truck_id ?? trip?.truckId ?? match?.id ?? match?.truck_id ?? match?.truckId ?? null
+    };
+  });
 }
 
 function resolveTripStartDate(trip) {
@@ -604,10 +629,11 @@ async function loadTripLocationShare(tripId) {
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload?.error || 'Location not available');
-    link.textContent = payload?.latest?.lat !== null && payload?.latest?.lng !== null && payload?.latest?.lat !== undefined && payload?.latest?.lng !== undefined
-      ? 'Open Live Location'
-      : 'Share Link';
-    link.href = payload.mapsUrl || payload.shareUrl || '#';
+    const hasLivePoint = payload?.latest?.lat !== null && payload?.latest?.lng !== null && payload?.latest?.lat !== undefined && payload?.latest?.lng !== undefined;
+    link.textContent = hasLivePoint ? 'Open Driver Location' : 'Share Driver Location';
+    link.href = hasLivePoint ? (payload.mapsUrl || payload.shareUrl || '#') : (payload.shareUrl || '#');
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
   } catch (err) {
     link.textContent = 'Not Live Yet';
     link.href = '#';
@@ -616,7 +642,7 @@ async function loadTripLocationShare(tripId) {
 
 function openTripLedger() {
   if (!ACTIVE_TRIP_ID) return;
-  window.location.href = `/transporter_dashboard_FINAL.html?page=finance&tab=ledger&tripId=${encodeURIComponent(ACTIVE_TRIP_ID)}`;
+  window.location.href = `/Trip_Ledger.html?tripId=${encodeURIComponent(ACTIVE_TRIP_ID)}`;
 }
 
 async function downloadTripExcel() {
@@ -800,6 +826,16 @@ function etaLabel(trip) {
   return formatEtaDate(eta);
 }
 
+function journeyDateLabel(trip) {
+  const start = resolveTripStartDate(trip);
+  const startLabel = formatEtaDate(start);
+  const endLabel = etaLabel(trip);
+  if (startLabel === '—' && endLabel === '—') return '—';
+  if (startLabel === '—') return endLabel;
+  if (endLabel === '—') return startLabel;
+  return `${startLabel} - ${endLabel}`;
+}
+
 function extractCityName(value) {
   const text = String(value || '').replace(/\s+/g, ' ').trim();
   if (!text) return '—';
@@ -824,6 +860,7 @@ function buildTripCard(trip) {
   const driverChipClass = statusKey === 'scheduled' ? 'amber' : statusKey === 'completed' ? 'grey' : '';
   const initials = String(driver || '—').split(/\s+/).filter(Boolean).slice(0, 2).map(s => s[0]).join('').toUpperCase() || 'DR';
   const search = [plate, origin, destination, driver, trip.id, trip.inv_id, trip.client].join(' ').toLowerCase();
+  const journeyDates = journeyDateLabel(trip);
 
   return `
     <div class="trip-card tc-${statusKey === 'completed' ? 'done' : statusKey === 'scheduled' ? 'sched' : substatus === 'delayed' ? 'delay' : 'route'}"
@@ -836,6 +873,7 @@ function buildTripCard(trip) {
          data-freight="${String(freight).replace(/"/g, '&quot;')}"
          data-distance="${String(distance).replace(/"/g, '&quot;')}"
          data-route="${String(origin + ' → ' + destination).replace(/"/g, '&quot;')}"
+         data-journey="${String(journeyDates).replace(/"/g, '&quot;')}"
          data-eta="${String(etaLabel(trip)).replace(/"/g, '&quot;')}">
       <div class="tc-top">
         <div class="tc-head">
@@ -844,16 +882,17 @@ function buildTripCard(trip) {
         <div class="tc-status"><span class="chip ${meta.cls}">${meta.label}</span></div>
       </div>
       <div class="tc-body">
-        <div class="route-row">
-          <div class="rt-city">${origin}</div>
-          <div class="rt-prog">
+      <div class="route-row">
+        <div class="rt-city">${origin}</div>
+        <div class="rt-prog">
             <div class="rt-track"><div class="rt-fill ${fillClass}" style="width:${progressWidth}%"></div></div>
             <div class="rt-truck-wrap" style="left:${progressWidth}%">🚚</div>
             <div class="rt-pct-lbl" style="left:${progressWidth}%">${statusKey === 'completed' ? 'Completed' : statusKey === 'scheduled' ? 'Scheduled' : substatus === 'delayed' ? 'Delayed' : 'On Route'}</div>
-          </div>
-          <div class="rt-city">${destination}</div>
         </div>
-        <div class="tc-meta">
+        <div class="rt-city">${destination}</div>
+      </div>
+      <div class="journey-dates">${journeyDates}</div>
+      <div class="tc-meta">
           <div class="tm">
             <div class="tm-lbl">ETA / Date</div>
             <div class="tm-val ${statusKey === 'scheduled' ? 'au' : statusKey === 'completed' ? 'mu' : substatus === 'delayed' ? 'r' : 'g'}">${etaLabel(trip)}</div>
@@ -984,6 +1023,7 @@ function openTripCard(card) {
   document.getElementById('ds-sub').textContent = s.charAt(0).toUpperCase() + s.slice(1).replace('-', ' ');
   document.getElementById('ds-driver').textContent = card.dataset.driver || '—';
   document.getElementById('ds-dist').textContent = card.dataset.distance || '—';
+  document.getElementById('ds-journey').textContent = card.dataset.journey || '—';
   document.getElementById('ds-eta').textContent = card.dataset.eta || '—';
   renderTripFinancials(trip);
   loadTripLocationShare(ACTIVE_TRIP_ID);
@@ -997,13 +1037,25 @@ function openTripCard(card) {
 
 async function loadTrips() {
   try {
-    const response = await fetch(`${getFleetApiBase()}/api/fleet/trips`, {
-      headers: { ...getFleetAuthHeaders() },
-      cache: 'no-store'
-    });
+    const headers = { ...getFleetAuthHeaders() };
+    const [response, fleetResponse] = await Promise.all([
+      fetch(`${getFleetApiBase()}/api/fleet/trips`, {
+        headers,
+        cache: 'no-store'
+      }),
+      fetch(`${getFleetApiBase()}/api/fleet`, {
+        headers,
+        cache: 'no-store'
+      }).catch(() => null)
+    ]);
     const payload = await response.json().catch(() => []);
     if (!response.ok) throw new Error(payload?.error || 'Failed to load trips');
-    renderTrips(Array.isArray(payload) ? payload : []);
+    let fleetPayload = [];
+    if (fleetResponse) {
+      fleetPayload = await fleetResponse.json().catch(() => []);
+    }
+    ALL_FLEET_ROWS = Array.isArray(fleetPayload) ? fleetPayload : [];
+    renderTrips(enrichTripsWithFleetData(Array.isArray(payload) ? payload : [], ALL_FLEET_ROWS));
     if (requestedTripId) {
       const match = document.querySelector(`.trip-card[data-trip-id="${CSS.escape(requestedTripId)}"]`);
       if (match) {
@@ -1093,9 +1145,23 @@ function setMonthFilter(value) { filterState.month = value; applyFilters(); }
 function filterCards(q) { filterState.search = String(q || '').toLowerCase().trim(); applyFilters(); }
 
 const variableTotalButton = document.getElementById('ds-variable-total');
-if (variableTotalButton) variableTotalButton.addEventListener('click', openTripLedger);
+if (variableTotalButton) {
+  variableTotalButton.addEventListener('click', openTripLedger);
+  const variableRow = variableTotalButton.closest('.ds-row');
+  if (variableRow) {
+    variableRow.style.cursor = 'pointer';
+    variableRow.onclick = openTripLedger;
+  }
+}
 const otherFixedButton = document.getElementById('ds-other-fixed-total');
-if (otherFixedButton) otherFixedButton.addEventListener('click', openOtherFixedExpenses);
+if (otherFixedButton) {
+  otherFixedButton.addEventListener('click', openOtherFixedExpenses);
+  const otherFixedRow = otherFixedButton.closest('.ds-row');
+  if (otherFixedRow) {
+    otherFixedRow.style.cursor = 'pointer';
+    otherFixedRow.onclick = openOtherFixedExpenses;
+  }
+}
 loadTrips();
 
 (function syncVisibleFooter() {

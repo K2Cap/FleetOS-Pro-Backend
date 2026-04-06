@@ -85,6 +85,7 @@
   .status-bar .time { font-size: 15px; font-weight: 700; }
   .status-icons { display: flex; gap: 5px; align-items: center; }
   .status-icons svg { width: 16px; height: 16px; fill: var(--text-dark); }
+  .notch, .status-bar { display: none !important; }
 
   /* ── Screen system ── */
   .screens { flex: 1; position: relative; overflow: hidden; }
@@ -651,8 +652,11 @@ async function clearLegacyMobileCaches() {
 
   (function tick() {
     const now = new Date();
-    document.querySelector('.time').textContent =
-      String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    const timeEl = document.querySelector('.time');
+    if (timeEl) {
+      timeEl.textContent =
+        String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    }
     setTimeout(tick, 30000);
   })();
 

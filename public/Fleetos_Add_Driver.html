@@ -580,8 +580,8 @@ function updateFooterManual() {
 
 /* ─── NEXT / BACK ───────────────────────────── */
 function goNext() {
-  if (mode === 'scan') {
-    setMode('manual');
+  if (mode === 'scan' && currentTab === 'scan') {
+    setTab('personal');
     hydrateDriverFormFromBackend();
     return;
   }
@@ -809,7 +809,11 @@ function applyDriverOcrData(payload) {
   const data = payload || {};
   setDriverFieldValue('full-name', data['Full Name'] || data.fullName || data['Name'] || data.name || data['Driver Name'] || data['Card Holder Name']);
   setDriverFieldValue('dob', data['DOB'] || data.dob || data['Date of Birth'] || data['Birth Date'], normalizeDateInput);
-  setDriverFieldValue('mobile', data['Phone'] || data.phone || data['Mobile'] || data['Contact Number'], digitsOnly);
+  const currentMobile = digitsOnly(getDriverFormValue('mobile'));
+  const mobileCandidate = digitsOnly(data.phone || data.mobile || '');
+  if (!currentMobile && mobileCandidate.length === 10) {
+    setDriverFieldValue('mobile', mobileCandidate, digitsOnly);
+  }
   setDriverFieldValue('address', data['Address'] || data.address);
   setDriverFieldValue('city', data['City'] || data.city);
   setDriverFieldValue('pin', data['PIN Code'] || data.pin, digitsOnly);

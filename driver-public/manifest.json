@@ -1,8 +1,8 @@
 {
-  "name": "FleetOS Pro - v2.8",
-  "short_name": "FleetOS Pro",
-  "description": "Premium Fleet Management & Logistics Intelligence",
-  "start_url": "index.html?v=2.8",
+  "name": "FleetOS Driver",
+  "short_name": "FleetOS Driver",
+  "description": "FleetOS Driver App",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#1a3028",

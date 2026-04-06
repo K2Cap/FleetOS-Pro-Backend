@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+  (function(){
+    const BUILD = 'v1.0.0';
+    const params = new URLSearchParams(window.location.search);
+    if(params.get('v') !== BUILD){
+      params.set('v', BUILD);
+      window.location.search = params.toString();
+    }
+  })();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<script src="config.js?v=2.5.1"></script>
+<title>FleetOS — Truck Detail</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,900;1,9..144,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --g:#1a5c3a;--g2:#236b47;--glt:#e8f5ee;--glt2:#d1ead9;
+  --s:#e8671a;--go:#c9930a;--golt:#fdf6e3;--cr:#c0392b;--crlt:#fdecea;
+  --bg:#f5f2ec;--bg2:#edeae2;--wh:#ffffff;--ink:#1a1814;--ink2:#3d3a34;--mu:#7a7570;--bd:#ddd9d0;--bd2:#c8c4bb;
+  --ff:'DM Sans',sans-serif;--fd:'Fraunces',serif;--fm:'JetBrains Mono',monospace;--r:18px;
+}
+html,body{min-height:100%;background:var(--bg);overflow:auto}
+body{font-family:var(--ff);color:var(--ink)}
+.page{min-height:100%;display:flex;flex-direction:column}
+.hero{background:linear-gradient(180deg,var(--g) 0%,var(--g2) 100%);padding:22px 18px 14px;color:#fff}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.topbar-actions{display:flex;align-items:center;gap:10px}
+.back-btn,.action-btn{border:none;cursor:pointer}
+.back-btn{width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.12);color:#fff;font-size:18px;font-weight:700}
+.action-btn{padding:10px 14px;border-radius:12px;background:#fff;color:var(--g);font-size:12px;font-weight:800}
+.delete-btn{padding:8px 14px;border-radius:20px;background:var(--s);color:#fff;font-size:12px;font-weight:700;font-family:var(--ff);box-shadow:0 4px 14px rgba(232,103,26,.35);transition:transform .14s ease, box-shadow .18s ease}
+.delete-btn:active{transform:scale(.97);box-shadow:0 2px 10px rgba(232,103,26,.22)}
+.hero-card{margin-top:14px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:14px 16px}
+.hero-reg{font-family:var(--fm);font-size:22px;font-weight:700;letter-spacing:1.2px}
+.content{flex:1;overflow:visible;padding:14px}
+.section{background:var(--wh);border:1.5px solid var(--bd);border-radius:18px;padding:14px;margin-bottom:12px}
+.section h3{font-family:var(--fd);font-size:18px;color:var(--ink);margin-bottom:10px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.field{background:var(--bg);border:1px solid var(--bd);border-radius:12px;padding:10px}
+.field b{display:block;font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--mu);margin-bottom:4px}
+.field span{display:block;font-size:12px;font-weight:700;color:var(--ink2);word-break:break-word}
+.doc-list{display:flex;flex-direction:column;gap:10px}
+.doc-item{background:var(--bg);border:1px solid var(--bd);border-radius:14px;padding:12px}
+.doc-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.doc-name{font-size:13px;font-weight:800;color:var(--ink)}
+.doc-meta{font-size:11px;color:var(--mu);margin-top:4px}
+.doc-badge{font-size:10px;font-weight:800;padding:4px 8px;border-radius:999px;background:var(--glt);color:var(--g)}
+.doc-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.doc-btn{padding:8px 10px;border-radius:10px;border:1px solid var(--bd);background:#fff;font:700 11px var(--ff);color:var(--ink2);cursor:pointer}
+.doc-btn.primary{background:var(--g);border-color:var(--g);color:#fff}
+.doc-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.doc-field{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:8px}
+.doc-field b{display:block;font-size:9px;letter-spacing:.7px;text-transform:uppercase;color:var(--mu);margin-bottom:3px}
+.doc-field span{display:block;font-size:11px;font-weight:700;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.empty{padding:18px;border-radius:14px;border:1.5px dashed var(--bd);text-align:center;color:var(--mu);font-size:12px;background:var(--wh)}
+.loading{padding:22px;text-align:center;color:var(--mu)}
+.confirm-backdrop{position:fixed;inset:0;background:rgba(26,24,20,.56);display:flex;align-items:flex-end;justify-content:center;padding:20px;z-index:400;opacity:0;pointer-events:none;transition:opacity .22s ease}
+.confirm-backdrop.active{opacity:1;pointer-events:auto}
+.confirm-sheet{width:100%;max-width:390px;background:var(--bg);border-radius:24px;padding:14px 16px calc(20px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 36px rgba(26,24,20,.24);transform:translateY(24px);transition:transform .24s ease}
+.confirm-backdrop.active .confirm-sheet{transform:translateY(0)}
+.confirm-handle{width:38px;height:4px;border-radius:999px;background:var(--bd2);margin:0 auto 14px}
+.confirm-icon{width:58px;height:58px;border-radius:18px;background:var(--crlt);color:var(--cr);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:28px}
+.confirm-title{font-family:var(--fd);font-size:24px;font-weight:800;color:var(--ink);text-align:center}
+.confirm-sub{font-size:12.5px;color:var(--mu);line-height:1.6;text-align:center;margin:8px 0 16px}
+.confirm-card{background:var(--wh);border:1.5px solid var(--bd);border-radius:16px;padding:12px 14px;margin-bottom:14px}
+.confirm-card b{display:block;font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--mu);margin-bottom:5px}
+.confirm-card span{display:block;font-size:13px;font-weight:800;color:var(--ink)}
+.confirm-actions{display:flex;flex-direction:column;gap:10px}
+.confirm-btn{width:100%;border:none;border-radius:14px;padding:14px 16px;font-family:var(--ff);font-size:14px;font-weight:800;cursor:pointer}
+.confirm-btn.delete{background:var(--s);color:#fff;box-shadow:0 8px 22px rgba(232,103,26,.24)}
+.confirm-btn.cancel{background:transparent;color:var(--ink2);border:1.5px solid var(--bd)}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="hero">
+    <div class="topbar">
+      <button class="back-btn" type="button" onclick="window.location.href='/Fleet_List_FINAL.html'">←</button>
+      <div class="topbar-actions">
+        <button class="action-btn delete-btn" type="button" onclick="deleteCurrentTruck()">Delete Entry</button>
+      </div>
+    </div>
+    <div class="hero-card">
+      <div class="hero-reg" id="hero-reg">Loading…</div>
+    </div>
+  </div>
+  <div class="content">
+    <div id="loading" class="loading">Loading truck details…</div>
+    <div id="detail-content" style="display:none">
+      <div class="section">
+        <h3>Basic Info</h3>
+        <div class="grid">
+          <div class="field"><b>Registration No</b><span id="f-reg">—</span></div>
+          <div class="field"><b>Chassis No</b><span id="f-chassis">—</span></div>
+          <div class="field"><b>Engine No</b><span id="f-engine">—</span></div>
+          <div class="field"><b>Make</b><span id="f-make">—</span></div>
+          <div class="field"><b>Model</b><span id="f-model">—</span></div>
+          <div class="field"><b>Purchase Date</b><span id="f-purchase-date">—</span></div>
+          <div class="field"><b>Purchase Price</b><span id="f-purchase-price">—</span></div>
+          <div class="field"><b>Fuel Type</b><span id="f-fuel">—</span></div>
+        </div>
+      </div>
+      <div class="section">
+        <h3>Compliance</h3>
+        <div class="grid">
+          <div class="field"><b>Insurance Provider</b><span id="f-ins-prov">—</span></div>
+          <div class="field"><b>Policy Number</b><span id="f-ins-pol">—</span></div>
+          <div class="field"><b>Insurance Expiry</b><span id="f-ins-exp">—</span></div>
+          <div class="field"><b>Coverage Type</b><span id="f-ins-cov">—</span></div>
+          <div class="field"><b>Fitness Cert No</b><span id="f-fit-no">—</span></div>
+          <div class="field"><b>Fitness Expiry</b><span id="f-fit-exp">—</span></div>
+          <div class="field"><b>PUC Cert No</b><span id="f-puc-no">—</span></div>
+          <div class="field"><b>PUC Expiry</b><span id="f-puc-exp">—</span></div>
+          <div class="field"><b>Permit No</b><span id="f-permit-no">—</span></div>
+          <div class="field"><b>Permit Expiry</b><span id="f-permit-exp">—</span></div>
+          <div class="field"><b>Purchase Invoice</b><span id="f-invoice">Saved in documents</span></div>
+          <div class="field"><b>Status</b><span id="f-status">—</span></div>
+        </div>
+      </div>
+      <div class="section">
+        <h3>Documents</h3>
+        <div id="doc-list" class="doc-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="confirm-backdrop" id="delete-confirm-backdrop">
+  <div class="confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
+    <div class="confirm-handle"></div>
+    <div class="confirm-icon">🗑️</div>
+    <div class="confirm-title" id="delete-confirm-title">Delete Entry?</div>
+    <div class="confirm-sub">This will permanently remove the truck from this user account and hide it from Fleet Register.</div>
+    <div class="confirm-card">
+      <b>Truck</b>
+      <span id="delete-confirm-reg">—</span>
+    </div>
+    <div class="confirm-actions">
+      <button class="confirm-btn delete" type="button" id="delete-confirm-submit">Yes, Delete Entry</button>
+      <button class="confirm-btn cancel" type="button" onclick="closeDeleteConfirm()">Keep Entry</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const FLEET_API_BASE = window.FLEET_API_BASE || window.APP_API_BASE || 'https://fleetos-pro-backend-production.up.railway.app';
+let currentTruckId = null;
+let currentTruckData = null;
+let deleteInFlight = false;
+
+function getFleetAuthToken() {
+  return localStorage.getItem('fleetToken') || localStorage.getItem('token') || '';
+}
+
+async function authFetch(path, options = {}) {
+  const token = getFleetAuthToken();
+  const headers = new Headers(options.headers || {});
+  if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
+  return fetch(path.startsWith('http') ? path : `${FLEET_API_BASE}${path}`, { cache:'no-store', ...options, headers });
+}
+
+function formatDate(value) {
+  if (!value) return '—';
+  const raw = String(value).trim();
+  if (!raw) return '—';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const [y,m,d] = raw.split('-');
+    return `${d}/${m}/${y}`;
+  }
+  return raw;
+}
+
+function normalizeStatus(value) {
+  const text = String(value || '').trim().toLowerCase();
+  if (text.includes('service') || text.includes('maint')) return 'Service';
+  if (text.includes('idle') || text.includes('park')) return 'Idle';
+  return 'Active';
+}
+
+function formatIndianNumber(value, prefix = '') {
+  const raw = String(value ?? '').replace(/,/g, '').trim();
+  if (!raw) return '—';
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return String(value ?? '—');
+  return `${prefix}${parsed.toLocaleString('en-IN')}`;
+}
+
+function formatDocumentFieldValue(fieldName, value) {
+  const label = String(fieldName || '').toLowerCase();
+  if (!label) return value || '—';
+  if (/(price|amount|value|freight|advance|balance|expense|distance|km)/.test(label)) {
+    return formatIndianNumber(value, /price|amount|value|freight|advance|balance|expense/.test(label) ? '₹ ' : '');
+  }
+  return value || '—';
+}
+
+function summarizeTruckType(row) {
+  return [row.make, row.model, row.truck_type || row.truckType].filter(Boolean).join(' · ') || 'Truck profile';
+}
+
+function setText(id, value, formatter) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = formatter ? formatter(value) : (value || '—');
+  }
+
+  function formatTruckRegNo(value) {
+    const compact = String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+    const match = compact.match(/^([A-Z]{2})(\d{1,2})([A-Z]{1,3})(\d{1,4})$/);
+    if (!match) return String(value || '').trim().toUpperCase() || '—';
+    return `${match[1]} ${match[2].padStart(2, '0')} ${match[3]} ${match[4].padStart(4, '0')}`;
+  }
+
+function buildProtectedDownloadPath(path, name) {
+  const raw = String(path || '').trim();
+  if (!raw) return '';
+  const filename = raw.split('/').pop();
+  if (!filename) return '';
+  const params = new URLSearchParams();
+  if (name) params.set('name', name);
+  return `/api/download/${encodeURIComponent(filename)}${params.toString() ? `?${params.toString()}` : ''}`;
+}
+
+async function downloadProtectedFile(path, name) {
+  if (!path) return;
+  const response = await authFetch(path);
+  if (!response.ok) {
+    alert('Could not download this document right now.');
+    return;
+  }
+  const blob = await response.blob();
+  if (!blob || !blob.size) {
+    alert('Could not download this document right now.');
+    return;
+  }
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  const disposition = response.headers.get('content-disposition') || '';
+  const match = disposition.match(/filename\*?=(?:UTF-8''|\"?)([^\";]+)/i);
+  anchor.download = decodeURIComponent((match && match[1]) || name || 'document');
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+async function replaceTruckDocument(documentType) {
+  if (!currentTruckId || !documentType) return;
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*,application/pdf';
+  input.multiple = true;
+  input.onchange = async () => {
+    const files = Array.from(input.files || []);
+    if (!files.length) return;
+    try {
+      const formData = new FormData();
+      formData.append('documentType', documentType);
+      formData.append('regNo', currentTruckData?.reg_no || '');
+      formData.append('truckId', String(currentTruckId));
+      for (const file of files) formData.append('documents', file);
+
+      const uploadRes = await authFetch('/api/fleet/documents/batch', {
+        method: 'POST',
+        body: formData,
+      });
+      const uploadData = await uploadRes.json().catch(() => ({}));
+      if (!uploadRes.ok || !uploadData?.documentId) throw new Error(uploadData?.error || 'Document could not be uploaded.');
+
+      const scanRes = await authFetch(`/api/fleet/documents/${encodeURIComponent(uploadData.documentId)}/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          regNo: currentTruckData?.reg_no || '',
+          truckId: currentTruckId,
+        }),
+      });
+      const scanData = await scanRes.json().catch(() => ({}));
+      if (!scanRes.ok) throw new Error(scanData?.error || 'Document could not be scanned.');
+
+      await loadTruckDetail();
+      alert('Document updated successfully.');
+    } catch (error) {
+      alert(error.message || 'Could not update this document right now.');
+    }
+  };
+  input.click();
+}
+
+async function deleteCurrentTruck() {
+  if (!currentTruckId) {
+    alert('Truck entry is not loaded yet.');
+    return;
+  }
+  document.getElementById('delete-confirm-reg').textContent =
+    document.getElementById('hero-reg')?.textContent || 'This truck';
+  document.getElementById('delete-confirm-backdrop').classList.add('active');
+}
+
+function closeDeleteConfirm() {
+  if (deleteInFlight) return;
+  document.getElementById('delete-confirm-backdrop').classList.remove('active');
+}
+
+async function confirmDeleteCurrentTruck() {
+  if (!currentTruckId || deleteInFlight) return;
+  deleteInFlight = true;
+  const submitBtn = document.getElementById('delete-confirm-submit');
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = 'Deleting…';
+  submitBtn.disabled = true;
+  try {
+    const response = await authFetch(`/api/fleet/${encodeURIComponent(currentTruckId)}`, {
+      method: 'DELETE'
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || 'Truck could not be deleted right now.');
+    }
+    window.location.href = '/Fleet_List_FINAL.html';
+  } catch (error) {
+    console.error('Truck delete failed:', error);
+    alert(error.message || 'Truck could not be deleted right now.');
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+    deleteInFlight = false;
+  }
+}
+
+function renderTruckDocuments(documents) {
+  const container = document.getElementById('doc-list');
+  if (!Array.isArray(documents) || !documents.length) {
+    container.innerHTML = '<div class="empty">No scanned documents saved for this truck yet.</div>';
+    return;
+  }
+  container.innerHTML = documents.map((doc) => {
+    const fields = Array.isArray(doc.fieldRows) ? doc.fieldRows.slice(0, 6) : [];
+    const pageCount = doc.pageCount || doc.storedPages?.length || 0;
+    const primaryDownloadPath = `/api/fleet/documents/${encodeURIComponent(doc.documentId)}/download-pdf`;
+    const primaryDownloadName = `${doc.displayName || doc.documentType || 'document'} PDF`;
+    const editable = !['rc','purchase_invoice'].includes(String(doc.documentType || '').toLowerCase());
+    return `
+      <div class="doc-item">
+        <div class="doc-top">
+          <div>
+            <div class="doc-name">${doc.displayName || doc.documentType || 'Document'}</div>
+            <div class="doc-meta">${(doc.documentType || '').toUpperCase()} · ${pageCount} page(s) · ${doc.status || 'saved'}</div>
+          </div>
+          <div class="doc-badge">${doc.status || 'saved'}</div>
+        </div>
+        <div class="doc-actions">
+          <button class="doc-btn primary" type="button" data-download-path="${primaryDownloadPath}" data-download-name="${primaryDownloadName}">Download PDF</button>
+          ${editable ? `<button class="doc-btn" type="button" data-replace-type="${doc.documentType}">Upload Fresh Document</button>` : ''}
+        </div>
+        <div class="doc-fields">
+          ${fields.length ? fields.map((field) => `<div class="doc-field"><b>${field.fieldName}</b><span>${formatDocumentFieldValue(field.fieldName, field.fieldValue)}</span></div>`).join('') : '<div class="doc-field"><b>OCR</b><span>No field rows available yet.</span></div>'}
+        </div>
+      </div>
+    `;
+  }).join('');
+  container.querySelectorAll('[data-download-path]').forEach((button) => {
+    button.addEventListener('click', async (event) => {
+      const path = event.currentTarget.getAttribute('data-download-path');
+      const name = event.currentTarget.getAttribute('data-download-name') || 'document';
+      await downloadProtectedFile(path, name);
+    });
+  });
+  container.querySelectorAll('[data-replace-type]').forEach((button) => {
+    button.addEventListener('click', async (event) => {
+      const type = event.currentTarget.getAttribute('data-replace-type');
+      await replaceTruckDocument(type);
+    });
+  });
+}
+
+async function loadTruckDetail() {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('id');
+  if (!id) {
+    document.getElementById('loading').textContent = 'Truck id is missing.';
+    return;
+  }
+  currentTruckId = id;
+  try {
+    const response = await authFetch(`/api/fleet/${encodeURIComponent(id)}/documents`);
+    if (!response.ok) throw new Error('Truck details could not be loaded.');
+    const data = await response.json().catch(() => null);
+    if (!data?.truck) throw new Error('Truck details could not be loaded.');
+    const truck = data.truck;
+    currentTruckData = truck;
+    setText('hero-reg', truck.reg_no || 'UNREGISTERED', formatTruckRegNo);
+
+    setText('f-reg', truck.reg_no, formatTruckRegNo);
+    setText('f-chassis', truck.chassis_no);
+    setText('f-engine', truck.engine_no);
+    setText('f-make', truck.make);
+    setText('f-model', truck.model);
+    setText('f-purchase-date', truck.purchase_date, formatDate);
+    setText('f-purchase-price', truck.purchase_price_display || truck.purchase_price, (value) => value ? (String(value).includes('₹') ? value : formatIndianNumber(value, '₹ ')) : '—');
+    setText('f-fuel', truck.fuel_type);
+    setText('f-ins-prov', truck.insurance_provider);
+    setText('f-ins-pol', truck.policy_no);
+    setText('f-ins-exp', truck.ins_expiry_date, formatDate);
+    setText('f-ins-cov', truck.coverage_type);
+    setText('f-fit-no', truck.fitness_cert_no);
+    setText('f-fit-exp', truck.fitness_expiry_date, formatDate);
+    setText('f-puc-no', truck.puc_cert_no);
+    setText('f-puc-exp', truck.puc_expiry_date, formatDate);
+    setText('f-permit-no', truck.permit_no);
+    setText('f-permit-exp', truck.permit_expiry_date, formatDate);
+    setText('f-status', normalizeStatus(truck.status));
+
+    const hasInvoice = Array.isArray(data.documents) && data.documents.some((doc) => String(doc.documentType || '').toLowerCase() === 'purchase_invoice');
+    setText('f-invoice', hasInvoice ? 'Saved in documents' : 'Not uploaded');
+    renderTruckDocuments(data.documents || []);
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('detail-content').style.display = '';
+  } catch (error) {
+    document.getElementById('loading').innerHTML = `<div class="empty">${error.message || 'Truck details could not be loaded.'}</div>`;
+  }
+}
+
+loadTruckDetail();
+document.getElementById('delete-confirm-submit').addEventListener('click', confirmDeleteCurrentTruck);
+document.getElementById('delete-confirm-backdrop').addEventListener('click', (event) => {
+  if (event.target === event.currentTarget) closeDeleteConfirm();
+});
+</script>
+</body>
+</html>

@@ -6,332 +6,583 @@
     const BUILD = 'v5.5.0';
     const params = new URLSearchParams(window.location.search);
     if(params.get('v') !== BUILD){
-      console.log('NUCLEAR SYNC ACTIVATED: Redirecting to ' + BUILD);
       params.set('v', BUILD);
       window.location.search = params.toString();
     }
   })();
 </script>
-
 <meta charset="UTF-8">
 <script src="config.js?v=2.5.1"></script>
 <script>
-    (function() {
-        const token = localStorage.getItem('fleetToken') || localStorage.getItem('token');
-        console.log("🔐 Session v2.6.1 Checking - Token:", !!token);
-        if (!token) {
-            console.warn("No active session - staying on page for debugging v2.6.1");
-            // window.location.href = "index.html";
-        }
-    })();
+  (function() {
+    const token = localStorage.getItem('fleetToken') || localStorage.getItem('token');
+    if (!token) {
+      console.warn('No active fleet session found.');
+    }
+  })();
 </script>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>FleetOS — My Fleet</title>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,900;1,9..144,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>My Fleet — FleetOS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:ital,wght@0,700;1,700&family=Oswald:wght@700&display=swap" rel="stylesheet">
 <style>
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{
-  --g:#1a5c3a;--g2:#236b47;--glt:#e8f5ee;--glt2:#d1ead9;
-  --s:#e8671a;--slt:#fdf0e8;--slt2:#fcd9c0;
-  --go:#c9930a;--golt:#fdf6e3;
-  --cr:#c0392b;--crlt:#fdecea;
-  --bg:#f5f2ec;--bg2:#edeae2;--wh:#ffffff;
-  --ink:#1a1814;--ink2:#3d3a34;--mu:#7a7570;--mu2:#b0aca4;--bd:#ddd9d0;--bd2:#c8c4bb;
-  --ff:'DM Sans',sans-serif;--fd:'Fraunces',serif;--fm:'JetBrains Mono',monospace;
-  --r:18px;--r-lg:22px;
-  --sh-sm:0 2px 8px rgba(26,24,20,.07);--sh-md:0 6px 24px rgba(26,24,20,.11);
-}
-html,body{height:100%;margin:0;padding:0;overflow:hidden;background:var(--bg);}
-body{display:flex;flex-direction:column;}
-.phone{width:100%; max-width:none; margin:0; background:var(--bg); flex:1; display:flex; flex-direction:column; overflow:hidden; position:relative; padding-bottom:env(safe-area-inset-bottom, 20px);}
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* STATUS BAR */
-.sbar{background:var(--g);padding:12px 22px 5px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
-.sbar-time{font-family:var(--fm);font-size:11px;font-weight:700;color:#fff;}
-.sbar-pill{width:80px;height:16px;background:#0d3626;border-radius:18px;display:flex;align-items:center;justify-content:center;}
-.sbar-dot{width:7px;height:7px;border-radius:50%;background:#0a2c1d;}
+  :root {
+    --green-dark:  #1a5c3a;
+    --green-mid:   #2d6b47;
+    --green-tint:  #eaf5ee;
+    --orange:      #e07028;
+    --cream:       #f2ede3;
+    --cream-dark:  #e4ddd0;
+    --cream-deep:  #d6cfc0;
+    --white:       #ffffff;
+    --text-dark:   #1a1a1a;
+    --text-muted:  #7a7a6e;
+    --text-light:  #b0aa98;
+    --amber:       #c47d14;
+    --red:         #b83b2a;
+  }
 
-/* HEADER */
-.header{background:var(--g);padding:30px 22px 14px;flex-shrink:0;}
-.hdr-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;}
-.hdr-title{font-family:var(--fd);font-weight:900;font-size:22px;color:#fff;letter-spacing:-.3px;line-height:1;}
-.hdr-title em{color:var(--s);font-style:italic;font-weight:600;}
-.hdr-sub{font-size:11px;color:rgba(255,255,255,.6);font-weight:500;margin-top:3px;}
-.add-btn{display:flex;align-items:center;gap:5px;background:var(--s);color:#fff;border:none;border-radius:11px;padding:9px 15px;font-family:var(--ff);font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;box-shadow:0 4px 14px rgba(232,103,26,.38);}
+  html, body {
+    height: 100%;
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--text-dark);
+    -webkit-font-smoothing: antialiased;
+  }
 
-/* SEARCH BAR */
-.search-wrap{position:relative;margin-bottom:0;}
-.search-input{width:100%;height:40px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:0 14px 0 36px;font-family:var(--ff);font-size:13px;color:#fff;outline:none;}
-.search-input::placeholder{color:rgba(255,255,255,.45);}
-.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.5;pointer-events:none;}
+  body {
+    overflow: hidden;
+  }
 
-/* FILTER PILLS */
-.filter-bar{display:flex;gap:7px;padding:12px 16px;justify-content:center;flex-shrink:0;background:var(--wh);border-bottom:1px solid var(--bd);}
-.filter-bar::-webkit-scrollbar{display:none;}
-.fpill{padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;border:1.5px solid var(--bd);background:var(--bg);color:var(--mu);cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0;letter-spacing:.2px;}
-.fpill.active{background:var(--g);color:#fff;border-color:var(--g);}
-.fpill.idle-pill.active{background:var(--go);border-color:var(--go);color:#fff;}
-.fpill.active-pill.active{background:var(--g);border-color:var(--g);}
-.fpill.maintenance-pill.active{background:var(--cr);border-color:var(--cr);}
+  .screen {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    max-width: 430px;
+    margin: 0 auto;
+    background: var(--cream);
+    position: relative;
+  }
 
-/* STATS ROW */
-.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--bd);flex-shrink:0;}
-.stat-cell{background:var(--wh);padding:10px 0;text-align:center;}
-.stat-num{font-family:'Fraunces',serif;font-size:20px;font-weight:900;color:var(--ink);line-height:1;}
-.stat-lbl{font-size:9.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--mu);margin-top:2px;}
-.stat-num.active{color:var(--g);}
-.stat-num.idle{color:var(--go);}
-.stat-num.maint{color:var(--cr);}
+  .app-header {
+    background: var(--green-dark);
+    padding: 52px 20px 16px;
+    flex-shrink: 0;
+  }
 
-.scroll-body{flex:1;overflow-y:auto;padding:14px 14px 180px;-webkit-overflow-scrolling:touch;}
-.scroll-body::-webkit-scrollbar{display:none;}
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 14px;
+  }
 
-/* SECTION LABEL */
-.section-lbl{font-size:9.5px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--mu);margin-bottom:9px;margin-top:4px;}
+  .header-title h1 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 3px;
+    line-height: 1.1;
+  }
 
-/* TRUCK CARD — Option B status strip */
-.truck-card{background:var(--wh);border:1.5px solid var(--bd);border-radius:var(--r);overflow:hidden;display:flex;margin-bottom:10px;transition:all .18s;cursor:pointer;}
-.truck-card:active{opacity:.85;transform:scale(.985);}
-.tc-strip{width:5px;flex-shrink:0;}
-.tc-strip.active{background:var(--g);}
-.tc-strip.idle{background:var(--go);}
-.tc-strip.maintenance{background:var(--cr);}
-.tc-body{flex:1;padding:13px 14px;display:flex;align-items:center;gap:12px;min-width:0;}
-.tc-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.tc-icon.active{background:var(--glt);}
-.tc-icon.idle{background:var(--golt);}
-.tc-icon.maintenance{background:var(--crlt);}
-.tc-info{flex:1;min-width:0;}
-.tc-reg{font-family:var(--fm);font-size:13.5px;font-weight:500;color:var(--ink);letter-spacing:1.2px;}
-.tc-sub{font-size:11px;color:var(--mu);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.tc-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 10px;margin-top:9px;}
-.tc-chip{display:flex;flex-direction:column;gap:2px;padding:7px 8px;border-radius:10px;background:var(--bg);border:1px solid var(--bd);}
-.tc-chip b{font-size:9px;letter-spacing:.7px;text-transform:uppercase;color:var(--mu);font-weight:800;}
-.tc-chip span{font-size:11px;color:var(--ink2);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.tc-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;}
-.status-badge{font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;letter-spacing:.3px;}
-.status-badge.active{background:var(--glt);color:var(--g);}
-.status-badge.idle{background:var(--golt);color:#7a5200;}
-.status-badge.maintenance{background:var(--crlt);color:var(--cr);}
-.tc-arrow{width:28px;height:28px;border-radius:8px;background:var(--bg);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--mu);font-weight:400;}
+  .header-title h1 em {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 700;
+    color: #f0a85a;
+  }
 
-/* ADD TRUCK FAB */
-/* FAB replaced by BASE nav FAB */
+  .header-title .sub {
+    font-size: 11.5px;
+    color: rgba(255,255,255,0.5);
+  }
 
-/* BOTTOM NAV — LUXE DASHBOARD STYLE */
-.bnav{
-  position:sticky;bottom:0;flex-shrink:0;z-index:300;
-  background:rgba(245,242,236,.94);
-  backdrop-filter:blur(24px) saturate(1.5);
-  -webkit-backdrop-filter:blur(24px) saturate(1.5);
-  border-top:1.5px solid var(--bd);
-  padding-bottom:env(safe-area-inset-bottom, 0px);
-}
-.bnav-inner{display:flex;align-items:stretch;min-height:64px;padding:0 4px;}
+  .add-btn {
+    background: var(--orange);
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .14s ease, box-shadow .18s ease, background .18s ease;
+  }
 
-.nt{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;position:relative;border:none;background:transparent;padding:0;-webkit-tap-highlight-color:transparent;transition:transform .15s}
-.nt:active{transform:scale(.9)}
+  .add-btn:active {
+    transform: scale(0.97);
+  }
 
-/* active indicator */
-.nt.on::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:26px;height:2.5px;border-radius:0 0 3px 3px;background:linear-gradient(90deg,var(--g),var(--s))}
+  .search-bar {
+    background: rgba(255,255,255,0.11);
+    border-radius: 12px;
+    padding: 9px 14px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
 
-.ni{width:40px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;transition:background .2s}
-.nt.on .ni{background:rgba(26,92,58,.11)}
+  .search-bar input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: #fff;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+  }
 
-.nsvg{width:22px;height:22px;stroke:var(--mu);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s}
-.nt.on .nsvg{stroke:var(--g)}
+  .search-bar input::placeholder {
+    color: rgba(255,255,255,0.42);
+  }
 
-.nl{font-size:10px;font-weight:600;color:var(--mu);line-height:1;transition:color .2s;letter-spacing:.2px}
-.nt.on .nl{color:var(--g)}
+  .stat-strip {
+    display: flex;
+    background: var(--white);
+    border-bottom: 1px solid var(--cream-dark);
+    flex-shrink: 0;
+  }
 
-/* FAB */
-.nfab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;border:none;background:transparent;margin-top:-16px;-webkit-tap-highlight-color:transparent}
-.fab-circle{width:52px;height:52px;border-radius:16px;background:#1a5c3a;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(26,92,58,.42),0 2px 6px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.1);transition:all .2s}
-.fab-circle:hover{transform:scale(1.08);box-shadow:0 8px 28px rgba(26,92,58,.52)}
-.fab-circle:active{transform:scale(.94)}
-.fab-lbl{font-size:10px;font-weight:700;color:var(--g);letter-spacing:.3px}
+  .stat-item {
+    flex: 1;
+    padding: 11px 6px;
+    text-align: center;
+    border-right: 1px solid var(--cream-dark);
+  }
 
-/* DETAIL SHEET */
-.sheet-backdrop{position:absolute;inset:0;background:rgba(26,24,20,.55);z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;}
-.sheet-backdrop.active{opacity:1;pointer-events:all;}
-.detail-sheet{position:absolute;bottom:0;left:0;right:0;background:var(--bg);border-radius:26px 26px 0 0;z-index:201;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);}
-.detail-sheet.active{transform:translateY(0);}
-.ds-handle{width:36px;height:4px;border-radius:2px;background:var(--bd2);margin:12px auto 0;}
-.ds-header{padding:16px 18px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px;}
-.ds-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.ds-reg{font-family:var(--fm);font-size:18px;font-weight:700;color:var(--ink);}
-.ds-type{font-size:11.5px;color:var(--mu);margin-top:2px;}
-.ds-rows{padding:14px 18px;}
-.ds-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bg2);}
-.ds-row:last-child{border-bottom:none;}
-.ds-key{font-size:12px;color:var(--mu);font-weight:600;}
-.ds-val{font-size:12.5px;color:var(--ink);font-weight:700;font-family:var(--fm);}
-.ds-val.plain{font-family:var(--ff);}
-.ds-section{padding:0 18px 18px;}
-.ds-section-title{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--mu);margin:4px 0 10px;}
-.doc-list{display:flex;flex-direction:column;gap:10px;max-height:260px;overflow:auto;padding-right:2px;}
-.doc-item{background:var(--wh);border:1.5px solid var(--bd);border-radius:14px;padding:12px;}
-.doc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
-.doc-name{font-size:13px;font-weight:800;color:var(--ink);}
-.doc-meta{font-size:11px;color:var(--mu);margin-top:4px;line-height:1.45;}
-.doc-preview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px;}
-.doc-preview-card{background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:8px;}
-.doc-preview-card b{display:block;font-size:9px;letter-spacing:.7px;text-transform:uppercase;color:var(--mu);margin-bottom:3px;}
-.doc-preview-card span{display:block;font-size:11px;color:var(--ink2);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.doc-badge{font-size:10px;font-weight:800;padding:4px 8px;border-radius:999px;background:var(--glt);color:var(--g);white-space:nowrap;}
-.doc-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
-.doc-btn{padding:8px 10px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);font:700 11px var(--ff);color:var(--ink2);cursor:pointer;}
-.doc-btn.primary{background:var(--g);border-color:var(--g);color:#fff;}
-.doc-fields{margin-top:10px;border-top:1px solid var(--bg2);padding-top:8px;display:grid;gap:6px;}
-.doc-field{display:grid;grid-template-columns:110px 1fr;gap:8px;font-size:11px;}
-.doc-field b{color:var(--mu);}
-.doc-empty{background:var(--wh);border:1.5px dashed var(--bd);border-radius:14px;padding:18px;text-align:center;color:var(--mu);font-size:12px;}
-.ds-actions{display:flex;gap:9px;padding:0 18px 28px;}
-.ds-btn-g{flex:1;padding:12px;border-radius:var(--r);border:1.5px solid var(--bd);background:var(--bg);font-family:var(--ff);font-size:13px;font-weight:700;color:var(--ink2);cursor:pointer;}
-.ds-btn-p{flex:1;padding:12px;border-radius:var(--r);border:none;background:var(--g);color:#fff;font-family:var(--ff);font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(26,92,58,.32);}
+  .stat-item:last-child { border-right: none; }
+
+  .stat-num {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 3px;
+  }
+
+  .stat-num.green { color: var(--green-dark); }
+  .stat-num.amber { color: var(--amber); }
+  .stat-num.red   { color: var(--red); }
+
+  .stat-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .filter-row {
+    display: flex;
+    gap: 8px;
+    padding: 10px 16px 6px;
+    flex-shrink: 0;
+    overflow-x: auto;
+    background: var(--cream);
+  }
+
+  .filter-row::-webkit-scrollbar { display: none; }
+
+  .pill {
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    white-space: nowrap;
+    border: none;
+    transition: transform .12s ease, box-shadow .16s ease, background .16s ease, border-color .16s ease;
+  }
+
+  .pill.active {
+    background: var(--green-dark);
+    color: white;
+  }
+
+  .pill.inactive {
+    border: 1.5px solid var(--cream-deep);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: transparent;
+  }
+
+  .pill:active {
+    transform: scale(0.96);
+  }
+
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .status-dot.green { background: #2ecc71; }
+  .status-dot.amber { background: #f0a030; }
+  .status-dot.red { background: #d25545; }
+
+  .fleet-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 16px 100px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .truck-card {
+    background: var(--white);
+    border-radius: 16px;
+    border: 1px solid var(--cream-dark);
+    margin-bottom: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .16s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+
+  .truck-card:active {
+    transform: scale(0.985);
+    box-shadow: 0 8px 20px rgba(26,24,20,.10);
+  }
+
+  .truck-card-head {
+    padding: 12px 14px 11px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .truck-model {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    font-weight: 500;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 10.5px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .status-badge.active { background: var(--green-tint); color: var(--green-dark); }
+  .status-badge.idle   { background: #fff8e6; color: var(--amber); }
+  .status-badge.maintenance { background: #fdecea; color: var(--red); }
+
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.25; }
+  }
+
+  .plate-section { padding: 0 14px 14px; }
+
+  .plate {
+    display: flex;
+    align-items: center;
+    background: #e9e9e9;
+    border: 2.5px solid #888;
+    border-radius: 7px;
+    padding: 9px 14px 9px 10px;
+    gap: 10px;
+    width: 100%;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -1px 0 rgba(0,0,0,0.07);
+  }
+
+  .plate-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+
+  .ind-label {
+    font-size: 7.5px;
+    font-weight: 700;
+    color: #1a4fa0;
+    letter-spacing: 0.03em;
+    line-height: 1;
+  }
+
+  .plate-divider {
+    width: 1.5px;
+    height: 36px;
+    background: #bbb;
+    flex-shrink: 0;
+  }
+
+  .plate-reg {
+    font-family: 'Oswald', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: #111;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    flex: 1;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .build-tag {
+    text-align: center;
+    font-size: 10px;
+    color: var(--text-light);
+    padding: 4px 0 8px;
+  }
+
+  .build-tag a {
+    color: var(--orange);
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    text-align: center;
+    gap: 10px;
+    background: var(--white);
+    border: 1px solid var(--cream-dark);
+    border-radius: 16px;
+  }
+
+  .empty-icon {
+    width: 56px;
+    height: 56px;
+    background: var(--cream-dark);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 6px;
+  }
+
+  .empty-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-dark);
+  }
+
+  .empty-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 430px;
+    background: var(--white);
+    border-top: 1px solid var(--cream-dark);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 8px 0 env(safe-area-inset-bottom, 16px);
+    z-index: 100;
+  }
+
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    color: var(--text-muted);
+    cursor: pointer;
+    min-width: 52px;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+    text-decoration: none;
+    transition: transform .14s ease, color .18s ease;
+  }
+
+  .nav-item:active {
+    transform: scale(0.94);
+  }
+
+  .nav-item.active { color: var(--green-dark); font-weight: 600; }
+
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 28px;
+    height: 3px;
+    background: var(--orange);
+    border-radius: 0 0 4px 4px;
+  }
+
+  .nav-fab {
+    width: 50px;
+    height: 50px;
+    background: var(--green-dark);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: -18px;
+    box-shadow: 0 6px 20px rgba(26,92,58,0.4);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .14s ease, box-shadow .18s ease;
+  }
+
+  .nav-fab:active {
+    transform: scale(0.94);
+    box-shadow: 0 4px 14px rgba(26,92,58,0.3);
+  }
+
+  .fab-label {
+    color: var(--green-dark);
+    font-weight: 600;
+    font-size: 10px;
+  }
 </style>
 </head>
 <body>
-<div class="phone">
-
-  <!-- HEADER -->
-  <div class="header">
-    <div class="hdr-row">
-      <div>
-        <div class="hdr-title">My <em>Fleet</em></div>
-        <div class="hdr-sub">Live fleet data will appear here</div>
+<div class="screen">
+  <div class="app-header">
+    <div class="header-top">
+      <div class="header-title">
+        <h1><strong>My</strong> <em>Fleet</em></h1>
+        <div class="sub">Live fleet data will appear here</div>
       </div>
-      <div style="display:flex; gap:8px; align-items:center;">
-        <button class="add-btn" type="button" onclick="window.location.href='/Truck_Document_Register.html?v=1.0.0'" style="background:#f5f2ec;color:var(--g);box-shadow:none;border:1.5px solid rgba(255,255,255,.18);">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2h8v8H2z" stroke="currentColor" stroke-width="1.6"/><path d="M4 4h4M4 6h4M4 8h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-          Docs
-        </button>
-        <button class="add-btn" onclick="window.location.href='/Fleetos_Add_Truck.html'">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
-          Add Truck
-        </button>
-      </div>
+      <button class="add-btn" onclick="window.location.href='/Fleetos_Add_Truck.html'">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round">
+          <path d="M6 1v10M1 6h10"/>
+        </svg>
+        Add Truck
+      </button>
     </div>
-    <div class="search-wrap">
-      <svg class="search-icon" width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="white" stroke-width="1.5"/><path d="M10.5 10.5L13 13" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
-      <input class="search-input" type="text" placeholder="Search by reg number, driver…" oninput="filterCards(this.value)">
+    <div class="search-bar">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="1.6">
+        <circle cx="6.5" cy="6.5" r="4.5"/><path d="M10 10l3 3"/>
+      </svg>
+      <input id="fleet-search" type="text" placeholder="Search by reg number, driver…" oninput="filterCards(this.value)">
     </div>
   </div>
 
-  <!-- STATS ROW -->
-  <div class="stats-row">
-    <div class="stat-cell"><div class="stat-num active">0</div><div class="stat-lbl">Active</div></div>
-    <div class="stat-cell"><div class="stat-num idle">0</div><div class="stat-lbl">Idle</div></div>
-    <div class="stat-cell"><div class="stat-num maint">0</div><div class="stat-lbl">In Service</div></div>
+  <div class="stat-strip">
+    <div class="stat-item">
+      <div class="stat-num green" id="countActive">0</div>
+      <div class="stat-label">Active</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num amber" id="countIdle">0</div>
+      <div class="stat-label">Idle</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num red" id="countService">0</div>
+      <div class="stat-label">In Service</div>
+    </div>
   </div>
 
-  <!-- FILTER PILLS -->
-  <div class="filter-bar">
-    <div class="fpill active" onclick="setFilter('all',this)">All (0)</div>
-    <div class="fpill active-pill" onclick="setFilter('active',this)">● Active</div>
-    <div class="fpill idle-pill" onclick="setFilter('idle',this)">● Idle</div>
+  <div class="filter-row">
+    <div class="pill active" onclick="setFilter('all', this)">All (0)</div>
+    <div class="pill inactive" onclick="setFilter('active', this)">
+      <span class="status-dot green"></span>Active
+    </div>
+    <div class="pill inactive" onclick="setFilter('idle', this)">
+      <span class="status-dot amber"></span>Idle
+    </div>
+    <div class="pill inactive" onclick="setFilter('maintenance', this)">
+      <span class="status-dot red"></span>Service
+    </div>
   </div>
 
-  <!-- TRUCK LIST (Live Cloud Data will populate here) -->
-  <div class="scroll-body" id="truck-list">
+  <div class="fleet-scroll" id="fleetScroll">
     <div id="fleet-container"></div>
-    <div id="fleet-empty-state" style="margin:12px 0 18px;background:var(--wh);border:1.5px solid var(--bd);border-radius:var(--r);padding:18px;text-align:center;color:var(--mu);font-size:12px;line-height:1.5;">
-      No fleet records yet. Add trucks or connect live fleet data to populate this page.
-    </div>
-    <div style="font-size:10px;color:var(--mu);text-align:center;padding:15px;opacity:0.6;">
-      Build: CLOUD-PRO-v5.5.0 (FINAL-RELEASE) | <a onclick="location.reload(true)" style="text-decoration:underline; cursor:pointer">Force Update</a>
-    </div>
-
-  </div>
-
-  <!-- BOTTOM NAV — BEAUTIFUL DASHBOARD SYNC -->
-  <nav class="bnav">
-    <div class="bnav-inner">
-
-      <button class="nt" id="nt-home" onclick="window.location.href='/transporter_dashboard_FINAL.html?v=4.6.0'">
-        <div class="ni">
-          <svg class="nsvg" viewBox="0 0 24 24"><path d="M3 10L12 3l9 7v11h-6v-5H9v5H3z"/></svg>
-        </div>
-        <span class="nl">Home</span>
-      </button>
-
-      <button class="nt on" id="nt-trips">
-        <div class="ni">
-          <svg class="nsvg" viewBox="0 0 24 24"><rect x="1" y="9" width="22" height="11" rx="2.5"/><path d="M6 9V7a3 3 0 016 0v2M16 9V6a2 2 0 014 0v3"/><circle cx="7" cy="20" r="2"/><circle cx="17" cy="20" r="2"/></svg>
-        </div>
-        <span class="nl">Trips</span>
-      </button>
-
-      <!-- FAB -->
-      <button class="nfab" id="newTripFab" type="button" onclick="window.location.href='/Fleetos_Log_Trip.html'">
-        <div class="fab-circle">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-        </div>
-        <span class="fab-lbl">New Trip</span>
-      </button>
-
-      <button class="nt" id="nt-finance" onclick="window.location.href='/transporter_dashboard_FINAL.html?page=ledger'">
-        <div class="ni">
-          <svg class="nsvg" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="15" rx="2"/><path d="M2 10h20"/><path d="M7 15h.01M11 15h4"/></svg>
-        </div>
-        <span class="nl">Finance</span>
-      </button>
-
-      <button class="nt" id="nt-insights" onclick="window.location.href='/transporter_dashboard_FINAL.html?page=insights'">
-        <div class="ni">
-          <svg class="nsvg" viewBox="0 0 24 24"><path d="M2 20h20M6 20V12M10 20V8M14 20V4M18 20v-6"/></svg>
-        </div>
-        <span class="nl">Insights</span>
-      </button>
-
-    </div>
-  </nav>
-
-  <!-- DETAIL BOTTOM SHEET -->
-  <div class="sheet-backdrop" id="sheet-backdrop" onclick="closeDetail()"></div>
-  <div class="detail-sheet" id="detail-sheet">
-    <div class="ds-handle"></div>
-    <div class="ds-header">
-      <div class="ds-icon" id="ds-icon"></div>
-      <div>
-        <div class="ds-reg" id="ds-reg">—</div>
-        <div class="ds-type" id="ds-type">—</div>
+    <div id="fleet-empty-state" class="empty-state">
+      <div class="empty-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7a7a6e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="7" width="14" height="9" rx="2"/>
+          <path d="M16 10h3l3 3v3h-6z"/>
+          <circle cx="7" cy="18" r="2"/>
+          <circle cx="18" cy="18" r="2"/>
+        </svg>
       </div>
-      <div style="flex:1"></div>
-      <div class="status-badge" id="ds-badge">—</div>
+      <div class="empty-title">No trucks yet</div>
+      <div class="empty-sub">Add your first truck and it will appear here with its live registration and status.</div>
     </div>
-    <div class="ds-rows">
-      <div class="ds-row"><span class="ds-key">Registration No</span><span class="ds-val" id="ds-regno">—</span></div>
-      <div class="ds-row"><span class="ds-key">Chassis No</span><span class="ds-val" id="ds-chassis">—</span></div>
-      <div class="ds-row"><span class="ds-key">Engine No</span><span class="ds-val" id="ds-engine">—</span></div>
-      <div class="ds-row"><span class="ds-key">Make / Model</span><span class="ds-val plain" id="ds-make-model">—</span></div>
-      <div class="ds-row"><span class="ds-key">Fuel Type</span><span class="ds-val plain" id="ds-fuel">—</span></div>
-      <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val plain" id="ds-status-val">—</span></div>
-      <div class="ds-row"><span class="ds-key">Insurance Expiry</span><span class="ds-val" id="ds-ins">—</span></div>
-      <div class="ds-row"><span class="ds-key">Fitness Expiry</span><span class="ds-val" id="ds-fit">—</span></div>
-      <div class="ds-row"><span class="ds-key">PUC Expiry</span><span class="ds-val" id="ds-puc">—</span></div>
-      <div class="ds-row"><span class="ds-key">Permit Expiry</span><span class="ds-val" id="ds-permit">—</span></div>
-    </div>
-    <div class="ds-section">
-      <div class="ds-section-title">Documents</div>
-      <div class="doc-list" id="ds-documents"></div>
-    </div>
-    <div class="ds-actions">
-      <button class="ds-btn-g" onclick="closeDetail()">Close</button>
-      <button class="ds-btn-p" type="button" onclick="window.location.href='/Truck_Document_Register.html?v=1.0.0'">Docs Register →</button>
+
+    <div class="build-tag">
+      Build: CLOUD-PRO-v5.5.0 (FINAL-RELEASE) &nbsp;|&nbsp;
+      <a onclick="location.reload(true)">Force Update</a>
     </div>
   </div>
 
+  <nav class="bottom-nav">
+    <a class="nav-item" href="/transporter_dashboard_FINAL.html?v=4.6.0">
+      <svg width="21" height="21" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M3 9l7-7 7 7v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9z"/>
+      </svg>
+      Home
+    </a>
+    <a class="nav-item active" href="/Fleet_List_FINAL.html">
+      <svg width="21" height="21" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="3" y="3" width="14" height="4" rx="1"/>
+        <rect x="3" y="10" width="14" height="7" rx="1"/>
+      </svg>
+      Trips
+    </a>
+    <a class="nav-item" href="/Fleetos_Log_Trip.html">
+      <div class="nav-fab">
+        <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round">
+          <path d="M10 4v12M4 10h12"/>
+        </svg>
+      </div>
+      <span class="fab-label">New Trip</span>
+    </a>
+    <a class="nav-item" href="/transporter_dashboard_FINAL.html?page=ledger">
+      <svg width="21" height="21" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="2" y="5" width="16" height="12" rx="2"/>
+        <path d="M2 10h16"/>
+      </svg>
+      Finance
+    </a>
+    <a class="nav-item" href="/transporter_dashboard_FINAL.html?page=insights">
+      <svg width="21" height="21" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M3 15l4-6 4 4 3-4 3 6"/>
+      </svg>
+      Insights
+    </a>
+  </nav>
 </div>
 
 <script>
-const statusColors = {
-  active:      { strip:'#1a5c3a', icon:'#1a5c3a', bg:'var(--glt)' },
-  idle:        { strip:'#c9930a', icon:'#c9930a', bg:'var(--golt)' },
-  maintenance: { strip:'#c0392b', icon:'#c0392b', bg:'var(--crlt)' },
-};
 const FLEET_API_BASE = window.FLEET_API_BASE || window.APP_API_BASE || 'https://fleetos-pro-backend-production.up.railway.app';
 let fleetRows = [];
 let currentFilter = 'all';
@@ -355,27 +606,18 @@ function humanizeStatus(value) {
   return 'Active';
 }
 
-function formatDate(value) {
-  if (!value) return '—';
-  const raw = String(value).trim();
-  if (!raw) return '—';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    const [y, m, d] = raw.split('-');
-    return `${d}/${m}/${y}`;
-  }
-  return raw;
+function formatTruckRegNo(value) {
+  const compact = String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+  const match = compact.match(/^([A-Z]{2})(\d{1,2})([A-Z]{1,3})(\d{1,4})$/);
+  if (!match) return String(value || '').trim().toUpperCase();
+  return `${match[1]} ${match[2].padStart(2, '0')} ${match[3]} ${match[4].padStart(4, '0')}`;
 }
 
 function summarizeTruckType(row) {
   return [row.make, row.model, row.truck_type || row.truckType].filter(Boolean).join(' · ') || 'Truck profile';
 }
 
-function createTruckIcon(status) {
-  const s = statusColors[status] || statusColors.active;
-  return `<svg width="22" height="16" viewBox="0 0 24 16" fill="none" stroke="${s.icon}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="14" height="10" rx="1.5"/><path d="M15 5h5l3 5v4h-8V5z"/><circle cx="5" cy="14" r="2"/><circle cx="19" cy="14" r="2"/></svg>`;
-}
-
-async function authFetch(path, options = {}) {
+function authFetch(path, options = {}) {
   const token = getFleetAuthToken();
   const headers = new Headers(options.headers || {});
   if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
@@ -386,24 +628,70 @@ function updateStats(rows) {
   const active = rows.filter((row) => normalizeStatus(row.status) === 'active').length;
   const idle = rows.filter((row) => normalizeStatus(row.status) === 'idle').length;
   const maintenance = rows.filter((row) => normalizeStatus(row.status) === 'maintenance').length;
-  document.querySelector('.stat-num.active').textContent = active;
-  document.querySelector('.stat-num.idle').textContent = idle;
-  document.querySelector('.stat-num.maint').textContent = maintenance;
-  const allCount = rows.length;
-  const pills = document.querySelectorAll('.fpill');
-  if (pills[0]) pills[0].textContent = `All (${allCount})`;
+  document.getElementById('countActive').textContent = active;
+  document.getElementById('countIdle').textContent = idle;
+  document.getElementById('countService').textContent = maintenance;
+  const pills = document.querySelectorAll('.filter-row .pill');
+  if (pills[0]) pills[0].textContent = `All (${rows.length})`;
 }
 
 function getFilteredFleetRows() {
   return fleetRows.filter((row) => {
     const status = normalizeStatus(row.status);
-    const reg = String(row.reg_no || row.regNo || '').toLowerCase();
+    const reg = formatTruckRegNo(row.reg_no || row.regNo || '').toLowerCase();
+    const compactReg = reg.replace(/\s+/g, '');
     const driver = String(row.driver_assigned || row.driver || '').toLowerCase();
     const makeModel = summarizeTruckType(row).toLowerCase();
     const matchesFilter = currentFilter === 'all' ? true : status === currentFilter;
-    const matchesSearch = !currentSearch || reg.includes(currentSearch) || driver.includes(currentSearch) || makeModel.includes(currentSearch);
+    const normalizedSearch = String(currentSearch || '').replace(/\s+/g, '');
+    const matchesSearch = !currentSearch || reg.includes(currentSearch) || compactReg.includes(normalizedSearch) || driver.includes(currentSearch) || makeModel.includes(currentSearch);
     return matchesFilter && matchesSearch;
   });
+}
+
+function makePlateMarkup(regNo) {
+  const formattedReg = formatTruckRegNo(regNo || '');
+  return `
+    <div class="plate">
+      <div class="plate-left">
+        <svg width="28" height="28" viewBox="0 0 100 100" aria-hidden="true">
+          <circle cx="50" cy="50" r="45" fill="none" stroke="#1a4fa0" stroke-width="4.5"/>
+          <circle cx="50" cy="50" r="38" fill="none" stroke="#1a4fa0" stroke-width="2"/>
+          <circle cx="50" cy="50" r="7.5" fill="none" stroke="#1a4fa0" stroke-width="2.6"/>
+          <circle cx="50" cy="50" r="2.6" fill="#1a4fa0"/>
+          <g stroke="#1a4fa0" stroke-width="2.6" stroke-linecap="round">
+            <line x1="50" y1="50" x2="50" y2="12"/>
+            <line x1="50" y1="50" x2="59.84" y2="13.3"/>
+            <line x1="50" y1="50" x2="69" y2="17.09"/>
+            <line x1="50" y1="50" x2="77.17" y2="22.83"/>
+            <line x1="50" y1="50" x2="83.91" y2="31"/>
+            <line x1="50" y1="50" x2="86.7" y2="40.16"/>
+            <line x1="50" y1="50" x2="88" y2="50"/>
+            <line x1="50" y1="50" x2="86.7" y2="59.84"/>
+            <line x1="50" y1="50" x2="83.91" y2="69"/>
+            <line x1="50" y1="50" x2="77.17" y2="77.17"/>
+            <line x1="50" y1="50" x2="69" y2="83.91"/>
+            <line x1="50" y1="50" x2="59.84" y2="86.7"/>
+            <line x1="50" y1="50" x2="50" y2="88"/>
+            <line x1="50" y1="50" x2="40.16" y2="86.7"/>
+            <line x1="50" y1="50" x2="31" y2="83.91"/>
+            <line x1="50" y1="50" x2="22.83" y2="77.17"/>
+            <line x1="50" y1="50" x2="16.09" y2="69"/>
+            <line x1="50" y1="50" x2="13.3" y2="59.84"/>
+            <line x1="50" y1="50" x2="12" y2="50"/>
+            <line x1="50" y1="50" x2="13.3" y2="40.16"/>
+            <line x1="50" y1="50" x2="16.09" y2="31"/>
+            <line x1="50" y1="50" x2="22.83" y2="22.83"/>
+            <line x1="50" y1="50" x2="31" y2="16.09"/>
+            <line x1="50" y1="50" x2="40.16" y2="13.3"/>
+          </g>
+        </svg>
+        <div class="ind-label">IND</div>
+      </div>
+      <div class="plate-divider"></div>
+      <div class="plate-reg">${formattedReg || 'UNREGISTERED'}</div>
+    </div>
+  `;
 }
 
 function renderFleetCards() {
@@ -419,56 +707,31 @@ function renderFleetCards() {
   const fragment = document.createDocumentFragment();
   rows.forEach((row) => {
     const status = normalizeStatus(row.status);
-    const docsReady = [
-      row.doc_rc_path,
-      row.doc_insurance_path,
-      row.doc_fitness_path,
-      row.doc_puc_path,
-      row.doc_permit_path,
-      row.doc_roadtax_path
-    ].filter(Boolean).length;
-    const card = document.createElement('button');
-    card.type = 'button';
+    const card = document.createElement('div');
     card.className = 'truck-card';
     card.dataset.status = status;
-    card.dataset.reg = row.reg_no || '';
-    card.dataset.driver = row.driver_assigned || row.driver || '';
     card.innerHTML = `
-      <div class="tc-strip ${status}"></div>
-      <div class="tc-body">
-        <div class="tc-icon ${status}">${createTruckIcon(status)}</div>
-        <div class="tc-info">
-          <div class="tc-reg">${row.reg_no || 'UNREGISTERED'}</div>
-          <div class="tc-sub">${summarizeTruckType(row)}</div>
-          <div class="tc-meta">
-            <div class="tc-chip">
-              <b>Chassis</b>
-              <span>${row.chassis_no || 'Pending'}</span>
-            </div>
-            <div class="tc-chip">
-              <b>Documents</b>
-              <span>${docsReady}/6 ready</span>
-            </div>
-            <div class="tc-chip">
-              <b>Insurance</b>
-              <span>${formatDate(row.ins_expiry_date)}</span>
-            </div>
-            <div class="tc-chip">
-              <b>Permit</b>
-              <span>${formatDate(row.permit_expiry_date)}</span>
-            </div>
-          </div>
-        </div>
-        <div class="tc-right">
-          <div class="status-badge ${status}">${humanizeStatus(row.status)}</div>
-          <div class="tc-arrow">→</div>
+      <div class="truck-card-head">
+        <div class="truck-model">${summarizeTruckType(row)}</div>
+        <div class="status-badge ${status}">
+          <span class="live-dot"></span>${humanizeStatus(row.status)}
         </div>
       </div>
+      <div class="plate-section">${makePlateMarkup(row.reg_no || row.regNo)}</div>
     `;
-    card.addEventListener('click', () => openTruckDetail(row.id));
+    card.addEventListener('click', () => {
+      window.location.href = `/Truck_Detail.html?id=${encodeURIComponent(row.id)}`;
+    });
     fragment.appendChild(card);
   });
   container.appendChild(fragment);
+  document.querySelectorAll('.plate-reg').forEach((el) => {
+    let size = 24;
+    while (el.scrollWidth > el.clientWidth && size > 12) {
+      size--;
+      el.style.fontSize = size + 'px';
+    }
+  });
 }
 
 async function loadFleetRows() {
@@ -481,135 +744,33 @@ async function loadFleetRows() {
     renderFleetCards();
   } catch (error) {
     console.error('Fleet load failed:', error);
-    document.getElementById('fleet-empty-state').textContent = error.message || 'Fleet could not be loaded right now.';
-  }
-}
-
-function buildProtectedDownloadPath(path, name) {
-  const raw = String(path || '').trim();
-  if (!raw) return '';
-  const filename = raw.split('/').pop();
-  if (!filename) return '';
-  const params = new URLSearchParams();
-  if (name) params.set('name', name);
-  return `/api/download/${encodeURIComponent(filename)}${params.toString() ? `?${params.toString()}` : ''}`;
-}
-
-function renderTruckDocuments(documents) {
-  const container = document.getElementById('ds-documents');
-  if (!Array.isArray(documents) || !documents.length) {
-    container.innerHTML = '<div class="doc-empty">No scanned documents saved for this truck yet.</div>';
-    return;
-  }
-  container.innerHTML = documents.map((doc) => {
-    const fields = Array.isArray(doc.fieldRows) ? doc.fieldRows.slice(0, 6) : [];
-    const pageButtons = Array.isArray(doc.storedPages)
-      ? doc.storedPages.map((page, index) => {
-          const path = page.storedPath || '';
-          const name = page.pageLabel || page.storedName || `Page ${index + 1}`;
-          return `<button class="doc-btn" type="button" data-download-path="${buildProtectedDownloadPath(path, name)}" data-download-name="${name}">${name}</button>`;
-        }).join('')
-      : '';
-    const previewFields = Array.isArray(doc.fieldRows) ? doc.fieldRows.slice(0, 4) : [];
-    return `
-      <div class="doc-item">
-        <div class="doc-top">
-          <div>
-            <div class="doc-name">${doc.displayName || doc.documentType || 'Document'}</div>
-            <div class="doc-meta">${(doc.documentType || '').toUpperCase()} · ${doc.pageCount || doc.storedPages?.length || 0} page(s) · ${doc.status || 'saved'}</div>
-          </div>
-          <div class="doc-badge">${doc.status || 'saved'}</div>
-        </div>
-        <div class="doc-actions">
-          ${doc.mergedFile ? `<button class="doc-btn primary" type="button" data-download-path="${buildProtectedDownloadPath(doc.mergedFile, doc.displayName || doc.documentType || 'document')}" data-download-name="${doc.displayName || doc.documentType || 'document'}">Download</button>` : ''}
-          ${pageButtons}
-        </div>
-        <div class="doc-preview">
-          ${previewFields.length ? previewFields.map((field) => `<div class="doc-preview-card"><b>${field.fieldName}</b><span>${field.fieldValue || '—'}</span></div>`).join('') : '<div class="doc-preview-card"><b>OCR</b><span>No field rows available yet.</span></div>'}
-        </div>
-        <div class="doc-fields">
-          ${fields.length ? fields.map((field) => `<div class="doc-field"><b>${field.fieldName}</b><span>${field.fieldValue || '—'}</span></div>`).join('') : '<div class="doc-field"><b>OCR</b><span>No field rows available yet.</span></div>'}
-        </div>
+    const emptyState = document.getElementById('fleet-empty-state');
+    emptyState.style.display = '';
+    emptyState.innerHTML = `
+      <div class="empty-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7a7a6e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle><path d="M12 8v5"></path><circle cx="12" cy="16" r="1"></circle>
+        </svg>
       </div>
+      <div class="empty-title">Fleet unavailable</div>
+      <div class="empty-sub">${error.message || 'Fleet could not be loaded right now.'}</div>
     `;
-  }).join('');
-  container.querySelectorAll('[data-download-path]').forEach((button) => {
-    button.addEventListener('click', async (event) => {
-      const path = event.currentTarget.getAttribute('data-download-path');
-      const name = event.currentTarget.getAttribute('data-download-name') || 'document';
-      await downloadProtectedFile(path, name);
-    });
+  }
+}
+
+function setFilter(filter, pill) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-row .pill').forEach((el) => {
+    el.classList.remove('active');
+    el.classList.add('inactive');
   });
-}
-
-async function downloadProtectedFile(path, name) {
-  if (!path) return;
-  const response = await authFetch(path);
-  if (!response.ok) {
-    alert('Could not download this document right now.');
-    return;
-  }
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = name;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
-}
-
-async function openTruckDetail(id) {
-  try {
-    const response = await authFetch(`/api/fleet/${id}/documents`);
-    if (!response.ok) throw new Error('Truck details could not be loaded.');
-    const data = await response.json().catch(() => null);
-    if (!data?.truck) throw new Error('Truck details could not be loaded.');
-    const truck = data.truck;
-    const status = normalizeStatus(truck.status);
-    const colors = statusColors[status] || statusColors.active;
-    document.getElementById('ds-reg').textContent = truck.reg_no || '—';
-    document.getElementById('ds-type').textContent = summarizeTruckType(truck);
-    document.getElementById('ds-regno').textContent = truck.reg_no || '—';
-    document.getElementById('ds-chassis').textContent = truck.chassis_no || '—';
-    document.getElementById('ds-engine').textContent = truck.engine_no || '—';
-    document.getElementById('ds-make-model').textContent = [truck.make, truck.model].filter(Boolean).join(' / ') || '—';
-    document.getElementById('ds-fuel').textContent = truck.fuel_type || '—';
-    document.getElementById('ds-status-val').textContent = humanizeStatus(truck.status);
-    document.getElementById('ds-ins').textContent = formatDate(truck.ins_expiry_date);
-    document.getElementById('ds-fit').textContent = formatDate(truck.fitness_expiry_date);
-    document.getElementById('ds-puc').textContent = formatDate(truck.puc_expiry_date);
-    document.getElementById('ds-permit').textContent = formatDate(truck.permit_expiry_date);
-    const badge = document.getElementById('ds-badge');
-    badge.textContent = `● ${humanizeStatus(truck.status)}`;
-    badge.className = `status-badge ${status}`;
-    const icon = document.getElementById('ds-icon');
-    icon.style.background = colors.bg;
-    icon.innerHTML = createTruckIcon(status);
-    renderTruckDocuments(data.documents || []);
-    document.getElementById('sheet-backdrop').classList.add('active');
-    document.getElementById('detail-sheet').classList.add('active');
-  } catch (error) {
-    console.error('Truck detail load failed:', error);
-    alert(error.message || 'Truck details could not be loaded.');
-  }
-}
-
-function closeDetail() {
-  document.getElementById('sheet-backdrop').classList.remove('active');
-  document.getElementById('detail-sheet').classList.remove('active');
-}
-
-function setFilter(f, el) {
-  currentFilter = f;
-  document.querySelectorAll('.fpill').forEach((pill) => pill.classList.remove('active'));
-  el.classList.add('active');
+  pill.classList.remove('inactive');
+  pill.classList.add('active');
   renderFleetCards();
 }
 
-function filterCards(q) {
-  currentSearch = String(q || '').trim().toLowerCase();
+function filterCards(query) {
+  currentSearch = String(query || '').trim().toLowerCase();
   renderFleetCards();
 }
 
@@ -621,21 +782,7 @@ loadFleetRows();
     const BUILD = 'v5.5.0';
     if(localStorage.getItem('fleetos_v') !== BUILD){
       localStorage.setItem('fleetos_v', BUILD);
-      console.log('Syncing Build ' + BUILD + '...');
       location.reload(true);
-    }
-  })();
-</script>
-
-<script>
-  (function(){
-    const BUILD = 'v5.5.0';
-    if(localStorage.getItem('fleetos_v') !== BUILD){
-      localStorage.setItem('fleetos_v', BUILD);
-      console.log('Forcing Global Sync ' + BUILD + '...');
-      // APPEND CACHE BUSTER TO URL
-      const sep = location.href.includes('?') ? '&' : '?';
-      location.href = location.pathname + sep + 'v=' + BUILD;
     }
   })();
 </script>

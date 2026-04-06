@@ -1,4 +1,6 @@
-window.FLEETOS_API_BASE = "http://localhost:7331";
+window.FLEETOS_API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? "http://localhost:7331"
+  : "https://fleetos-pro-backend-production.up.railway.app";
 (function configureFleetPaths() {
   const path = window.location.pathname || "";
   const rootMatch = path.match(/^(.*?)(\/(?:APP|app))(?:\/|$)/);

@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>FleetOS — Log New Trip</title>
+  <script src="config.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,900;1,9..144,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
   <style>
     * {
@@ -43,30 +44,41 @@
       --r-lg: 22px;
       --sh-sm: 0 2px 8px rgba(26,24,20,.07);
       --sh-md: 0 6px 24px rgba(26,24,20,.11);
+      --app-footer-height: 92px;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: var(--bg);
     }
 
     body {
-      background: var(--bg2);
       font-family: var(--ff);
       color: var(--ink);
-      min-height: 100vh;
       display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      padding: 20px 0;
+      flex-direction: column;
     }
 
     /* ── PHONE SHELL ── */
     .phone {
-      width: 390px;
+      width: 100%;
+      max-width: none;
+      margin: 0;
       background: var(--bg);
-      border-radius: 44px;
+      border-radius: 0;
       overflow: hidden;
-      box-shadow: 0 32px 80px rgba(26, 24, 20, .35), 0 0 0 9px #181510;
-      border: 5px solid #232018;
+      box-shadow: none;
+      border: none;
       display: flex;
       flex-direction: column;
-      height: 820px;
+      flex: 1;
+      min-height: 100vh;
+      min-height: 100svh;
+      min-height: 100dvh;
       position: relative;
     }
 
@@ -108,6 +120,10 @@
       display: flex;
       gap: 5px;
       align-items: center;
+    }
+    .sbar,
+    .live-chip {
+      display: none !important;
     }
 
     /* top nav */
@@ -253,8 +269,9 @@
     /* scrollable body */
     .form-body {
       flex: 1;
+      min-height: 0;
       overflow-y: auto;
-      padding: 14px 14px 0;
+      padding: 14px 14px calc(var(--app-footer-height) + env(safe-area-inset-bottom, 0px) + 28px);
       -webkit-overflow-scrolling: touch;
     }
 
@@ -650,6 +667,80 @@
       border-bottom: none;
     }
 
+    .drop-group-label {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding: 9px 15px 7px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--g);
+      background: linear-gradient(180deg, #eef8f1 0%, #f7fbf8 100%);
+      border-bottom: 1px solid rgba(18, 92, 54, .10);
+    }
+
+    .drop-item.sub-item {
+      padding-left: 28px;
+      font-weight: 600;
+      color: var(--ink);
+      background: #fcfdfb;
+    }
+
+    .drop-item.sub-item::before {
+      content: "•";
+      color: rgba(18, 92, 54, .55);
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .loadtype-combo {
+      cursor: text;
+      padding-right: 10px;
+      gap: 8px;
+    }
+
+    .loadtype-search {
+      flex: 1;
+      min-width: 0;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      font-family: var(--ff);
+    }
+
+    .loadtype-search::placeholder {
+      color: var(--mu2);
+      font-weight: 400;
+    }
+
+    .loadtype-clear {
+      border: none;
+      background: transparent;
+      color: var(--mu2);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 0 2px;
+      display: none;
+    }
+
+    .drop-trigger.has-val .loadtype-clear {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .drop-item-empty {
+      cursor: default;
+      color: var(--mu);
+      background: #fcfdfb;
+      font-weight: 500;
+    }
+
     .drop-check {
       font-size: 11px;
       color: var(--g);
@@ -721,154 +812,116 @@
       transform: rotate(180deg);
     }
 
-    .cal-wrap {
+    /* ── CALENDAR BOTTOM SHEET ── */
+    .cal-wrap { display: none; }
+    .cal-wrap.open { display: block; }
+
+    .cal-backdrop {
       position: absolute;
-      top: calc(100% + 6px);
+      inset: 0;
+      background: rgba(26,24,20,.52);
+      z-index: 8000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s;
+      border-radius: 44px;
+    }
+    .cal-backdrop.open { opacity: 1; pointer-events: all; }
+
+    .cal-sheet {
+      position: absolute;
+      bottom: 0;
       left: 0;
       right: 0;
-      z-index: 9999;
       background: var(--wh);
-      border: 1.5px solid var(--bd);
-      border-radius: 16px;
-      box-shadow: 0 16px 48px rgba(26, 24, 20, .22);
-      overflow: hidden;
-      display: none;
+      border-radius: 26px 26px 0 0;
+      z-index: 8001;
+      padding-bottom: 32px;
+      box-shadow: 0 -8px 48px rgba(26,24,20,.22);
+      transform: translateY(100%);
+      transition: transform .32s cubic-bezier(.4,0,.2,1);
+    }
+    .cal-sheet.open { transform: translateY(0); }
+
+    .cal-handle {
+      width: 36px; height: 4px; border-radius: 2px;
+      background: var(--bd2); margin: 12px auto 0;
     }
 
-    .cal-wrap.open {
-      display: block;
-    }
-
+    /* month nav */
     .cal-header {
-      background: var(--g);
-      padding: 13px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px 4px;
     }
-
-    .cal-nav {
-      width: 30px;
-      height: 30px;
-      border-radius: 8px;
-      border: 1px solid rgba(255, 255, 255, .2);
-      background: rgba(255, 255, 255, .12);
-      cursor: pointer;
-      color: #fff;
-      font-size: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
     .cal-month {
-      color: #fff;
-      font-weight: 800;
-      font-size: 14px;
+      font-family: 'Fraunces', serif;
+      font-size: 20px; font-weight: 900;
+      color: var(--ink); letter-spacing: -.4px; text-align: center;
     }
+    .cal-month span { color: var(--g); }
+    .cal-nav {
+      width: 36px; height: 36px; border-radius: 11px;
+      border: 1.5px solid var(--bd); background: var(--bg);
+      cursor: pointer; color: var(--ink); font-size: 18px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .15s;
+    }
+    .cal-nav:hover { background: var(--glt); border-color: var(--g); color: var(--g); }
 
+    /* day names */
     .cal-days-hd {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      padding: 8px 10px 4px;
-      background: var(--glt);
+      display: grid; grid-template-columns: repeat(7,1fr);
+      padding: 12px 16px 6px;
     }
-
     .cal-day-name {
-      text-align: center;
-      font-size: 9px;
-      font-weight: 800;
-      color: var(--g);
+      text-align: center; font-size: 10px; font-weight: 700;
+      letter-spacing: .8px; color: var(--mu2); text-transform: uppercase;
     }
 
+    /* day grid */
     .cal-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      padding: 4px 8px 10px;
-      gap: 1px;
+      display: grid; grid-template-columns: repeat(7,1fr);
+      padding: 2px 16px 10px; gap: 2px;
     }
-
     .cal-cell {
-      aspect-ratio: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 9px;
-      font-size: 12.5px;
-      font-weight: 400;
-      cursor: pointer;
-      user-select: none;
+      aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+      border-radius: 50%; font-size: 13px; font-weight: 500;
+      cursor: pointer; user-select: none;
       border: 1.5px solid transparent;
-      transition: all .1s;
-      color: var(--ink);
+      transition: all .12s; color: var(--ink);
     }
-
-    .cal-cell:hover {
-      background: var(--glt);
-    }
-
-    .cal-cell.other-month {
-      color: var(--mu2);
-      cursor: default;
-    }
-
-    .cal-cell.other-month:hover {
-      background: transparent;
-    }
-
+    .cal-cell:hover { background: var(--glt); color: var(--g); }
+    .cal-cell.other-month { color: var(--mu2); cursor: default; }
+    .cal-cell.other-month:hover { background: transparent; color: var(--mu2); }
     .cal-cell.today {
-      font-weight: 700;
-      color: var(--g);
-      border-color: var(--g);
+      font-weight: 800; color: var(--g); border-color: var(--g);
     }
-
     .cal-cell.selected {
-      background: var(--g) !important;
-      color: #fff !important;
-      font-weight: 800;
-      border-color: var(--g) !important;
+      background: var(--g) !important; color: #fff !important;
+      font-weight: 800; border-color: var(--g) !important;
+      box-shadow: 0 4px 12px rgba(26,92,58,.35);
     }
 
+    /* footer */
     .cal-footer {
-      border-top: 1px solid var(--bd);
-      padding: 10px 14px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: var(--bg);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 20px 0; border-top: 1px solid var(--bg2); margin: 4px 0 0;
     }
-
     .cal-sel-lbl {
-      font-size: 10.5px;
-      font-family: var(--fm);
-      color: var(--mu2);
-      font-weight: 600;
+      font-family: var(--fm); font-size: 11px; color: var(--mu2); font-weight: 500;
     }
-
-    .cal-sel-lbl.has-val {
-      color: var(--g);
-    }
-
-    .cal-today-btn {
-      font-size: 10.5px;
-      font-weight: 700;
-      color: var(--g);
-      background: var(--glt);
-      border: 1px solid var(--glt2);
-      border-radius: 6px;
-      padding: 4px 10px;
-      cursor: pointer;
-    }
-
+    .cal-sel-lbl.has-val { color: var(--g); font-weight: 700; }
+    .cal-footer-btns { display: flex; gap: 8px; }
     .cal-clear-btn {
-      font-size: 10.5px;
-      font-weight: 700;
-      color: var(--cr);
-      background: var(--crlt);
-      border: 1px solid var(--cr);
-      border-radius: 6px;
-      padding: 4px 10px;
-      cursor: pointer;
+      font-size: 11px; font-weight: 700; color: var(--cr);
+      background: var(--crlt); border: 1px solid rgba(192,57,43,.2);
+      border-radius: 9px; padding: 7px 13px; cursor: pointer; font-family: var(--ff);
+    }
+    .cal-today-btn {
+      font-size: 11px; font-weight: 700; color: #fff;
+      background: var(--g); border: none;
+      border-radius: 9px; padding: 7px 16px; cursor: pointer; font-family: var(--ff);
+      box-shadow: 0 3px 10px rgba(26,92,58,.3);
     }
 
     /* cost row */
@@ -957,6 +1010,43 @@
       color: var(--cr);
     }
 
+    .estimate-line {
+      margin-top: 14px;
+      border-top: 1px dashed rgba(201,147,10,.28);
+      padding-top: 12px;
+    }
+
+    .estimate-line-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .estimate-line-label {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--go);
+      white-space: nowrap;
+    }
+
+    .estimate-line-value {
+      font-family: var(--fm);
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--g);
+      text-align: right;
+    }
+
+    .estimate-line-foot {
+      margin-top: 6px;
+      font-size: 10.5px;
+      line-height: 1.45;
+      color: #8b7a55;
+    }
+
     /* upload slots */
     .upload-grid {
       display: grid;
@@ -1002,9 +1092,14 @@
     .form-footer {
       background: var(--wh);
       border-top: 1px solid var(--bd);
-      padding: 12px 16px 14px;
+      padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px));
       flex-shrink: 0;
       box-shadow: 0 -4px 16px rgba(26, 24, 20, .08);
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 20;
     }
 
     .footer-btns {
@@ -1200,6 +1295,100 @@
     .spacer {
       height: 16px;
     }
+    /* ── TIME PICKER SHEET ── */
+    .time-sheet {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: var(--wh); border-radius: 26px 26px 0 0;
+      z-index: 8002; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+      max-height: calc(100dvh - 20px);
+      overflow-y: auto;
+      box-shadow: 0 -8px 48px rgba(26,24,20,.22);
+      transform: translateY(100%);
+      transition: transform .32s cubic-bezier(.4,0,.2,1);
+    }
+    .time-sheet.open { transform: translateY(0); }
+    .time-handle { width:36px;height:4px;border-radius:2px;background:var(--bd2);margin:12px auto 14px; }
+    .time-title {
+      font-family:'Fraunces',serif; font-size:19px; font-weight:900;
+      color:var(--ink); text-align:center; padding:0 20px 14px;
+      letter-spacing:-.3px;
+    }
+    .time-title span { color:var(--g); }
+    .time-grid-wrap { display:flex; align-items:center; gap:10px; padding:0 18px; }
+    .time-grid {
+      flex:1; display:grid; grid-template-columns:repeat(4,1fr); gap:7px;
+    }
+    .time-box {
+      border:1.5px solid var(--bd); border-radius:12px;
+      background:var(--bg); padding:10px 0;
+      text-align:center; cursor:pointer;
+      font-family:var(--fm); font-size:13px; font-weight:500;
+      color:var(--ink2); transition:all .15s; letter-spacing:.5px;
+    }
+    .time-box:hover { border-color:var(--g); background:var(--glt); color:var(--g); }
+    .time-box.selected {
+      background:var(--g); color:#fff; border-color:var(--g);
+      font-weight:700; box-shadow:0 3px 10px rgba(26,92,58,.3);
+    }
+    .time-ampm-col { display:flex; flex-direction:column; gap:8px; flex-shrink:0; }
+    .time-ampm-btn {
+      width:50px; height:40px; border-radius:12px;
+      border:1.5px solid var(--bd); background:var(--bg);
+      font-family:var(--ff); font-size:12px; font-weight:700;
+      color:var(--mu); cursor:pointer; transition:all .15s;
+    }
+    .time-ampm-btn.active {
+      background:var(--g); color:#fff; border-color:var(--g);
+      box-shadow:0 3px 10px rgba(26,92,58,.28);
+    }
+    .time-actions {
+      display:flex;
+      gap:9px;
+      padding:14px 18px 0;
+      position: sticky;
+      bottom: 0;
+      background: var(--wh);
+    }
+    .time-btn-g {
+      flex:1; padding:13px; border-radius:var(--r);
+      border:1.5px solid var(--bd); background:var(--bg);
+      font-family:var(--ff); font-size:13px; font-weight:700;
+      color:var(--ink2); cursor:pointer;
+    }
+    .time-btn-p {
+      flex:1; padding:13px; border-radius:var(--r); border:none;
+      background:var(--g); color:#fff;
+      font-family:var(--ff); font-size:13px; font-weight:700;
+      cursor:pointer; box-shadow:0 4px 16px rgba(26,92,58,.32);
+    }
+
+    /* ── ADDRESS SEARCH SHEET ── */
+    .addr-sheet {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: var(--wh); border-radius: 26px 26px 0 0;
+      z-index: 8003; height: 85%; display: flex; flex-direction: column;
+      box-shadow: 0 -8px 48px rgba(26,24,20,.22);
+      transform: translateY(100%);
+      transition: transform .32s cubic-bezier(.4,0,.2,1);
+    }
+    .addr-sheet.open { transform: translateY(0); }
+    .addr-handle { width:36px;height:4px;border-radius:2px;background:var(--bd2);margin:12px auto 14px; flex-shrink: 0; }
+    .addr-header { padding: 0 20px 14px; flex-shrink: 0; }
+    .addr-title { font-family:'Fraunces',serif; font-size:19px; font-weight:900; color:var(--s); margin-bottom: 12px; letter-spacing:-.3px; }
+    .addr-search-wrap { position: relative; }
+    .addr-search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; color: var(--mu2); }
+    .addr-search-input { width: 100%; box-sizing: border-box; background: var(--wh); border: 1.5px solid var(--bd); border-radius: 12px; padding: 12px 14px 12px 38px; font-size: 14px; outline: none; transition: border .15s; font-family: var(--ff); color: var(--ink); }
+    .addr-search-input:focus { border-color: var(--s); box-shadow: 0 0 0 3px var(--slt); }
+    
+    .addr-results { flex: 1; overflow-y: auto; padding: 0 10px 20px; }
+    .addr-item { display: flex; align-items: center; gap: 14px; padding: 16px 10px; border-bottom: 1px solid var(--bg2); cursor: pointer; }
+    .addr-item:last-child { border-bottom: none; }
+    .addr-item:hover { background: var(--bg); border-radius: 10px; }
+    .addr-icon-wrap { width: 34px; height: 34px; border-radius: 50%; background: var(--bg2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 14px; color: var(--mu); }
+    .addr-item-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 3px; }
+    .addr-item-title { font-size: 14px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .addr-item-title strong { color: var(--s); }
+    .addr-item-sub { font-size: 12px; color: var(--mu); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   </style>
 </head>
 
@@ -1208,30 +1397,9 @@
   <div class="phone">
 
     <!-- STATUS BAR -->
-    <div class="sbar">
-      <div class="sbar-time">9:41</div>
-      <div class="sbar-pill">
-        <div class="sbar-pill-dot"></div>
-      </div>
-      <div class="sbar-icons">
-        <svg width="14" height="10" viewBox="0 0 14 10">
-          <rect x="0" y="7.6" width="2.5" height="2.4" fill="#3d3a34" opacity=".8" rx=".5" />
-          <rect x="3.5" y="5.2" width="2.5" height="4.8" fill="#3d3a34" opacity=".8" rx=".5" />
-          <rect x="7" y="2.6" width="2.5" height="7.4" fill="#3d3a34" opacity=".8" rx=".5" />
-          <rect x="10.5" y="0" width="2.5" height="10" fill="#3d3a34" opacity=".25" rx=".5" />
-        </svg>
-        <svg width="16" height="10" viewBox="0 0 16 10">
-          <rect x="1" y="2.5" width="10.5" height="6.5" rx="1.5" fill="none" stroke="#3d3a34" stroke-width="1"
-            opacity=".7" />
-          <rect x="2" y="3.5" width="7.5" height="4.5" rx=".5" fill="#3d3a34" opacity=".7" />
-          <rect x="12" y="4.5" width="2" height="3" rx=".8" fill="#3d3a34" opacity=".35" />
-        </svg>
-      </div>
-    </div>
-
     <!-- TOP NAV -->
     <div class="topnav">
-      <a href="#" class="back-btn">←</a>
+      <button type="button" class="back-btn" onclick="goBack('dashboard.html?page=trips')">←</button>
       <div class="brand">
         <div class="brand-icon">🚛</div>
         <div class="brand-name">FleetOS</div>
@@ -1242,14 +1410,6 @@
     </div>
 
     <!-- FORM HEADER -->
-    <div class="form-header">
-      <div class="fh-top">
-        <div>
-          <div class="fh-title">Log New Trip</div>
-        </div>
-        <div class="draft-tag">DRAFT</div>
-      </div>
-    </div>
 
     <!-- SCROLLABLE FORM BODY -->
     <div class="form-body" id="form-body">
@@ -1299,8 +1459,8 @@
                   <div class="route-from-lbl">
                     <div class="route-dot-g"></div>FROM
                   </div>
-                  <input class="route-input" id="origin" placeholder="Origin" oninput="updateRoute()"
-                    autocomplete="off">
+                  <input class="route-input" id="origin" placeholder="Origin" readonly onclick="openAddrSheet('origin')"
+                    autocomplete="off" style="cursor: pointer;">
                   <div class="err-tip" id="err-origin" style="display:none">⚠ Enter origin</div>
                 </div>
                 <div class="route-mid">
@@ -1311,8 +1471,8 @@
                 <div class="route-col">
                   <div class="route-to-lbl">TO<div class="route-dot-s"></div>
                   </div>
-                  <input class="route-input right" id="dest" placeholder="Destination" oninput="updateRoute()"
-                    autocomplete="off">
+                  <input class="route-input right" id="dest" placeholder="Destination" readonly onclick="openAddrSheet('dest')"
+                    autocomplete="off" style="cursor: pointer;">
                   <div class="err-tip" id="err-dest" style="display:none;text-align:right">⚠ Enter destination</div>
                 </div>
               </div>
@@ -1332,14 +1492,11 @@
                 </div>
               </div>
               <div>
-                <label class="lbl">Expected Arrival</label>
-                <div class="drop-wrap" id="cal-wrap-ed" style="position:relative;">
-                  <div class="date-trigger" onclick="toggleCal('ed')" id="ed-trigger">
-                    <span class="date-icon">📅</span>
-                    <span class="date-text" id="ed-text">Select date</span>
-                    <span class="date-chev" id="ed-chev">▼</span>
-                  </div>
-                  <div class="cal-wrap" id="cal-ed"></div>
+                <label class="lbl">Start Time</label>
+                <div class="date-trigger" onclick="toggleTime()" id="time-trigger">
+                  <span class="date-icon">🕐</span>
+                  <span class="date-text" id="time-text">Select time</span>
+                  <span class="date-chev" id="time-chev">▼</span>
                 </div>
               </div>
             </div>
@@ -1350,20 +1507,31 @@
                 <label class="lbl">Distance (km)</label>
                 <div class="finput">
                   <input type="text" inputmode="numeric" placeholder="e.g. 150" id="distance"
-                    oninput="this.value=this.value.replace(/\D/g,'')">
+                    oninput="formatIndianIntegerInput(this);triggerEstimatedExpenseUpdate()">
                   <span class="suffix">km</span>
                 </div>
               </div>
               <div>
                 <label class="lbl">Load Type</label>
                 <div class="drop-wrap" id="drop-loadtype">
-                  <div class="drop-trigger" onclick="toggleDrop('loadtype')" id="loadtype-trigger">
-                    <span class="drop-text" id="loadtype-text">Select type</span>
+                  <div class="drop-trigger loadtype-combo" id="loadtype-trigger" onclick="focusLoadTypeSearch()">
+                    <input type="text" id="loadtype-input" class="loadtype-search" placeholder="Search material type"
+                      autocomplete="off" autocapitalize="words" spellcheck="false"
+                      onfocus="openLoadTypeMenu()" oninput="handleLoadTypeInput()" onkeydown="handleLoadTypeKeydown(event)">
+                    <button type="button" class="loadtype-clear" id="loadtype-clear" onclick="clearLoadTypeSelection(event)">✕</button>
                     <span class="drop-chevron" id="loadtype-chev">▼</span>
                   </div>
                   <div class="drop-menu" id="loadtype-menu"></div>
                 </div>
               </div>
+            </div>
+
+            <div class="estimate-line" id="estimated-expense-card">
+              <div class="estimate-line-row">
+                <div class="estimate-line-label">Estimated Expense*</div>
+                <div class="estimate-line-value" id="estimate-total">—</div>
+              </div>
+              <div class="estimate-line-foot" id="estimate-foot">* Estimated cost excluding Driver Salary and Other Overheads</div>
             </div>
 
           </div>
@@ -1385,8 +1553,8 @@
               <label class="lbl">Freight Amount (₹)</label>
               <div class="finput mono" id="freight-wrap">
                 <span class="prefix">₹</span>
-                <input type="text" inputmode="numeric" placeholder="0" id="freight"
-                  oninput="this.value=this.value.replace(/\D/g,'');clearErr('freight')">
+<input type="text" inputmode="numeric" placeholder="0" id="freight"
+oninput="formatIndianIntegerInput(this);clearErr('freight')">
               </div>
               <div class="err-tip" id="err-freight" style="display:none">⚠ Enter freight amount</div>
             </div>
@@ -1394,8 +1562,8 @@
               <label class="lbl">Advance Received (₹)</label>
               <div class="finput mono">
                 <span class="prefix">₹</span>
-                <input type="text" inputmode="numeric" placeholder="0" id="advance"
-                  oninput="this.value=this.value.replace(/\D/g,'')">
+<input type="text" inputmode="numeric" placeholder="0" id="advance"
+oninput="formatIndianIntegerInput(this)">
               </div>
             </div>
             <div class="r2">
@@ -1404,8 +1572,8 @@
                 <div class="finput"><input type="text" placeholder="Company name" id="client"></div>
               </div>
               <div>
-                <label class="lbl">LR Number</label>
-                <div class="finput mono"><input type="text" placeholder="Lorry Receipt No." id="lr"></div>
+                <label class="lbl">Contact Number</label>
+                <div class="finput"><span class="prefix" style="font-family:var(--fm);font-size:11px;color:var(--mu);font-weight:500;margin-right:6px;flex-shrink:0">+91</span><input type="tel" placeholder="Client's phone no." id="lr" inputmode="numeric" maxlength="10"></div>
               </div>
             </div>
           </div>
@@ -1479,7 +1647,7 @@
           <span class="success-pnl-val" id="s-pnl">—</span>
         </div>
       </div>
-      <button
+      <button id="view-trip-details-btn"
         style="width:100%;max-width:340px;padding:14px;border-radius:13px;border:none;background:var(--g);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;box-shadow:0 4px 20px rgba(26,92,58,.35);font-family:var(--ff)">View
         Trip Details</button>
       <button onclick="resetForm()"
@@ -1487,36 +1655,473 @@
         Log Another Trip</button>
     </div>
 
+
+  <!-- CALENDAR BOTTOM SHEET (inside phone) -->
+  <div class="cal-backdrop" id="cal-backdrop" onclick="calBackdropClose()"></div>
+  <div class="cal-sheet" id="cal-sheet">
+    <div class="cal-handle"></div>
+    <div class="cal-header">
+      <button class="cal-nav" id="cal-nav-prev" onclick="calNavClick(-1)">‹</button>
+      <div class="cal-month" id="cal-month-label">March <span>2026</span></div>
+      <button class="cal-nav" id="cal-nav-next" onclick="calNavClick(1)">›</button>
+    </div>
+    <div class="cal-days-hd">
+      <div class="cal-day-name">Su</div><div class="cal-day-name">Mo</div>
+      <div class="cal-day-name">Tu</div><div class="cal-day-name">We</div>
+      <div class="cal-day-name">Th</div><div class="cal-day-name">Fr</div>
+      <div class="cal-day-name">Sa</div>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-footer">
+      <div class="cal-sel-lbl" id="cal-sel-lbl">No date selected</div>
+      <div class="cal-footer-btns">
+        <button class="cal-clear-btn" id="cal-clear-btn" onclick="calClear()" style="display:none">Clear</button>
+        <button class="cal-today-btn" onclick="calPickToday()">Today</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIME PICKER SHEET -->
+  <div class="time-sheet" id="time-sheet">
+    <div class="time-handle"></div>
+    <div class="time-title">Start <span>Time</span></div>
+    <div class="time-grid-wrap">
+      <div class="time-grid" id="time-grid"></div>
+      <div class="time-ampm-col">
+        <button class="time-ampm-btn active" id="btn-am" onclick="setAmPm('AM')">AM</button>
+        <button class="time-ampm-btn" id="btn-pm" onclick="setAmPm('PM')">PM</button>
+      </div>
+    </div>
+    <div class="time-actions">
+      <button class="time-btn-g" onclick="closeTimeSheet()">Cancel</button>
+      <button class="time-btn-p" onclick="confirmTime()">Confirm</button>
+    </div>
+  </div>
+
+  <!-- ADDRESS SEARCH SHEET -->
+  <div class="addr-sheet" id="addr-sheet">
+    <div class="addr-handle"></div>
+    <div class="addr-header">
+      <div class="addr-title" id="addr-sheet-title">Add Delivery Address</div>
+      <div class="addr-search-wrap">
+        <span class="addr-search-icon">🔍</span>
+        <input type="text" class="addr-search-input" id="addr-search-input" placeholder="Search address..." autocomplete="off">
+      </div>
+    </div>
+    <div class="addr-results" id="addr-results">
+        <!-- Results appended here -->
+    </div>
+  </div>
+
   </div><!-- end phone -->
 
   <script>
     /* ── Data ── */
-    const TRUCKS = ["MH 04 AB 1234", "KA 03 EF 7890", "MH 12 XY 9012", "GJ 01 AB 5432", "DL 04 CD 6789", "RJ 14 MN 4321", "TN 09 PQ 8765"];
-    const DRIVERS = ["Ramesh Kumar", "Vijay Singh", "Arun Patel", "Suresh Mehta", "Mohan Lal", "Pradeep Sharma", "Karthik Raja"];
-    const LOAD_TYPES = ["FMCG", "Steel", "Chemicals", "Electronics", "Textiles", "Cement", "Food Grains", "Machinery", "Auto Parts", "Pharma", "Furniture", "Perishables"];
+    let TRUCKS = [];
+    let DRIVERS = [];
+    let TRUCK_ROWS = [];
+    let DRIVER_ROWS = [];
+    let ALL_TRIPS = [];
+    const LOAD_TYPES = [
+      "FMCG — Mixed Consumer Goods",
+      "FMCG — Packaged Food",
+      "FMCG — Biscuits & Snacks",
+      "FMCG — Beverages",
+      "FMCG — Mineral Water",
+      "FMCG — Soap & Detergent",
+      "FMCG — Personal Care",
+      "FMCG — Household Cleaning",
+      "Food & Agriculture — Food Grains",
+      "Food & Agriculture — Rice",
+      "Food & Agriculture — Wheat",
+      "Food & Agriculture — Maize",
+      "Food & Agriculture — Pulses / Dal",
+      "Food & Agriculture — Sugar",
+      "Food & Agriculture — Salt",
+      "Food & Agriculture — Flour / Atta",
+      "Food & Agriculture — Edible Oil",
+      "Food & Agriculture — Spices",
+      "Food & Agriculture — Animal Feed",
+      "Food & Agriculture — Cattle Feed",
+      "Food & Agriculture — Poultry Feed",
+      "Perishables — Fruits",
+      "Perishables — Vegetables",
+      "Perishables — Dairy Products",
+      "Perishables — Frozen Food",
+      "Perishables — Meat & Poultry",
+      "Perishables — Seafood",
+      "Construction — Cement",
+      "Construction — Clinker",
+      "Construction — Fly Ash",
+      "Construction — Sand",
+      "Construction — Aggregate / Gitti",
+      "Construction — Bricks / Blocks",
+      "Construction — Ready Mix Materials",
+      "Construction — Tiles",
+      "Construction — Ceramic Tiles",
+      "Construction — Sanitary Ware",
+      "Construction — Bath Fittings",
+      "Construction — Glass",
+      "Construction — Plywood",
+      "Construction — Timber / Wood",
+      "Construction — Marble",
+      "Construction — Granite",
+      "Construction — Quartz Stone",
+      "Construction — Aluminium Profiles",
+      "Construction — PVC Pipes",
+      "Metals — Steel Coils",
+      "Metals — TMT Bars",
+      "Metals — Structural Steel",
+      "Metals — Steel Pipes",
+      "Metals — Stainless Steel",
+      "Metals — Iron Rods",
+      "Metals — Copper",
+      "Metals — Aluminium",
+      "Metals — Scrap Metal",
+      "Chemicals — Industrial Chemicals",
+      "Chemicals — Solvents",
+      "Chemicals — Acids",
+      "Chemicals — Caustic Soda",
+      "Chemicals — Paints & Varnishes",
+      "Chemicals — Resins",
+      "Chemicals — Adhesives",
+      "Chemicals — Lubricants",
+      "Chemicals — Fertilisers",
+      "Chemicals — Pesticides",
+      "Petroleum & Energy — Petrol",
+      "Petroleum & Energy — Diesel",
+      "Petroleum & Energy — Furnace Oil",
+      "Petroleum & Energy — Bitumen / Asphalt",
+      "Petroleum & Energy — LPG Cylinders",
+      "Petroleum & Energy — CNG Equipment",
+      "Petroleum & Energy — Coal",
+      "Petroleum & Energy — Charcoal",
+      "Petroleum & Energy — Batteries",
+      "Electronics — Consumer Electronics",
+      "Electronics — Mobile Phones",
+      "Electronics — IT Hardware",
+      "Electronics — Home Appliances",
+      "Electronics — Electrical Cables",
+      "Electronics — Transformers",
+      "Electronics — Solar Panels",
+      "Electronics — Inverters",
+      "Textiles — Raw Cotton",
+      "Textiles — Cotton Yarn",
+      "Textiles — Fabric / Cloth",
+      "Textiles — Readymade Garments",
+      "Textiles — Hosiery",
+      "Textiles — Footwear",
+      "Machinery — Industrial Machinery",
+      "Machinery — Industrial Tools",
+      "Machinery — Generators",
+      "Machinery — Pumps & Motors",
+      "Machinery — Compressors",
+      "Machinery — Machine Parts",
+      "Machinery — Electrical Panels",
+      "Automotive — Auto Parts",
+      "Automotive — Tyres & Tubes",
+      "Automotive — Trucks / Commercial Vehicles",
+      "Automotive — Cars",
+      "Automotive — Tractors",
+      "Automotive — Two-Wheelers",
+      "Automotive — Agricultural Equipment",
+      "Automotive — Spare Parts",
+      "Pharma & Medical — Pharmaceuticals",
+      "Pharma & Medical — Bulk Drugs",
+      "Pharma & Medical — Vaccines (Cold Chain)",
+      "Pharma & Medical — Medical Devices",
+      "Pharma & Medical — Hospital Equipment",
+      "Paper & Packaging — Paper Reams",
+      "Paper & Packaging — Kraft Paper",
+      "Paper & Packaging — Corrugated Boxes",
+      "Paper & Packaging — Packaging Material",
+      "Paper & Packaging — Stationery",
+      "Retail & E-commerce — Courier Packages",
+      "Retail & E-commerce — Retail Goods",
+      "Retail & E-commerce — E-commerce Parcels",
+      "Retail & E-commerce — Books & Publications",
+      "Household & Lifestyle — Furniture",
+      "Household & Lifestyle — Mattresses",
+      "Household & Lifestyle — Home Decor",
+      "Miscellaneous — Plastic Granules",
+      "Miscellaneous — Rubber Goods",
+      "Miscellaneous — Jute Products",
+      "Miscellaneous — Scrap Paper",
+      "Miscellaneous — Mixed Load"
+    ];
     const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const MS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    function getFleetAuthToken() {
+      return (
+        localStorage.getItem('fleetToken') ||
+        localStorage.getItem('gravityToken') ||
+        localStorage.getItem('token') ||
+        localStorage.getItem('transporterToken') ||
+        sessionStorage.getItem('fleetToken') ||
+        sessionStorage.getItem('gravityToken') ||
+        sessionStorage.getItem('token') ||
+        sessionStorage.getItem('transporterToken') ||
+        ''
+      );
+    }
+
+    function getFleetAuthHeaders(extra = {}) {
+      const token = getFleetAuthToken();
+      return token ? { ...extra, Authorization: `Bearer ${token}` } : extra;
+    }
 
     /* ── State ── */
     const state = { truck: "", driver: "", origin: "", dest: "", loadtype: "", sd: "", ed: "" };
     const calState = { sd: { yr: 0, mo: 0 }, ed: { yr: 0, mo: 0 } };
     let plOpen = false;
+    let currentTripId = "";
+
+    function goBack(fallbackUrl) {
+      if (window.history.length > 1) {
+        window.history.back();
+        return;
+      }
+      window.location.href = fallbackUrl || 'dashboard.html?page=trips';
+    }
+
+    function formatRegNo(raw) {
+      if (!raw) return "";
+      const v = String(raw).toUpperCase().replace(/[^A-Z0-9]/g, "");
+      const m = v.match(/^([A-Z]{2})(\d{1,2})([A-Z]{1,3})(\d{1,4})$/);
+      if (m) return `${m[1]} ${m[2].padStart(2, "0")} ${m[3]} ${m[4].padStart(4, "0")}`;
+      return raw;
+    }
+
+    function getAvailabilityStatus(value) {
+      return String(value || '').trim().toLowerCase();
+    }
+
+    function isUnavailableTruck(truck, busyTruckSet) {
+      const reg = String(truck?.reg_no || '').trim();
+      if (!reg) return true;
+      const accountStatus = getAvailabilityStatus(truck?.account_status);
+      const operationalStatus = getAvailabilityStatus(truck?.status);
+      if (accountStatus && accountStatus !== 'active') return true;
+      if (['maintenance', 'service', 'holiday', 'inactive', 'breakdown', 'sold'].includes(operationalStatus)) return true;
+      return busyTruckSet.has(reg);
+    }
+
+    function isUnavailableDriver(driver, busyDriverSet) {
+      const name = String(driver?.full_name || '').trim();
+      if (!name) return true;
+      const accountStatus = getAvailabilityStatus(driver?.account_status);
+      const operationalStatus = getAvailabilityStatus(driver?.status);
+      if (accountStatus && accountStatus !== 'active') return true;
+      if (['maintenance', 'service', 'holiday', 'inactive', 'leave', 'on leave', 'off duty'].includes(operationalStatus)) return true;
+      return busyDriverSet.has(name);
+    }
+
+    function asList(payload) {
+      if (Array.isArray(payload)) return payload;
+      if (Array.isArray(payload?.rows)) return payload.rows;
+      if (Array.isArray(payload?.data)) return payload.data;
+      if (Array.isArray(payload?.items)) return payload.items;
+      return [];
+    }
+
+    function parseLooseNumber(value) {
+      if (value === null || value === undefined || value === "") return 0;
+      const num = Number(String(value).replace(/,/g, '').replace(/[^\d.-]/g, ''));
+      return Number.isFinite(num) ? num : 0;
+    }
+
+    function normalizeTruckKey(value) {
+      return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    }
+
+    function getTruckRecord(selectedRegNo) {
+      const key = normalizeTruckKey(selectedRegNo);
+      if (!key) return null;
+      return TRUCK_ROWS.find((truck) => normalizeTruckKey(truck?.reg_no) === key) || null;
+    }
+
+    function resolveTripDateValue(trip, preferredKeys = []) {
+      const allKeys = [
+        ...preferredKeys,
+        'endDateRaw', 'end_date', 'endDate', 'etaDate', 'eta_date',
+        'startDateRaw', 'start_date', 'startDate', 'created_at'
+      ];
+      for (const key of allKeys) {
+        const value = trip?.[key];
+        if (!value) continue;
+        const date = new Date(value);
+        if (!Number.isNaN(date.getTime())) return date;
+      }
+      return null;
+    }
+
+    function computeIdleDaysForTruck(selectedRegNo, startDateIso) {
+      const start = startDateIso ? new Date(startDateIso) : new Date();
+      if (Number.isNaN(start.getTime())) return 0;
+      const key = normalizeTruckKey(selectedRegNo);
+      if (!key) return 0;
+      const previousTrips = ALL_TRIPS
+        .filter((trip) => normalizeTruckKey(trip?.reg_no || trip?.truck_reg || trip?.truckText) === key)
+        .map((trip) => resolveTripDateValue(trip, ['endDateRaw', 'end_date', 'endDate']))
+        .filter(Boolean)
+        .filter((date) => date.getTime() <= start.getTime())
+        .sort((a, b) => b.getTime() - a.getTime());
+      if (!previousTrips.length) return 0;
+      const lastEnd = previousTrips[0];
+      const startDay = new Date(start);
+      startDay.setHours(0, 0, 0, 0);
+      const endDay = new Date(lastEnd);
+      endDay.setHours(0, 0, 0, 0);
+      const diffDays = Math.floor((startDay.getTime() - endDay.getTime()) / (24 * 60 * 60 * 1000));
+      return Math.max(0, diffDays);
+    }
+
+    function renderEstimatedExpenses() {
+      const totalEl = document.getElementById('estimate-total');
+      const footEl = document.getElementById('estimate-foot');
+      if (!totalEl) return;
+
+      const hasOrigin = !!String(document.getElementById('origin')?.value || '').trim();
+      const hasDest = !!String(document.getElementById('dest')?.value || '').trim();
+      const shouldShow = hasOrigin && hasDest;
+      if (!shouldShow) {
+        totalEl.textContent = '—';
+        if (footEl) footEl.textContent = '* Estimated cost excluding Driver Salary and Other Overheads';
+        return;
+      }
+
+      const distanceKm = n('distance') || 0;
+      const tripDays = Math.max(1, Math.ceil(Math.max(0, distanceKm) / 500));
+      const truck = getTruckRecord(state.truck);
+      const purchasePrice = parseLooseNumber(truck?.purchase_price ?? truck?.purchasePrice ?? truck?.purchase_price_display);
+      const tyreCount = parseLooseNumber(truck?.tyres_count ?? truck?.tyresCount ?? truck?.no_of_tyres ?? truck?.tyres ?? truck?.tyres_count_display);
+      const effectiveStartDate = state.sd || todayIsoDate();
+      const idleDays = state.truck ? computeIdleDaysForTruck(state.truck, effectiveStartDate) : 0;
+      const fuelCost = distanceKm > 0 ? (91 * (distanceKm / 3)) : 0;
+      const depreciationCost = purchasePrice > 0 ? ((tripDays + idleDays) * (purchasePrice / (365 * 7))) : 0;
+      const wearAndTear = (distanceKm > 0 && tyreCount > 0) ? (distanceKm * tyreCount * (25000 / 50000)) : 0;
+      const tolls = distanceKm > 0 ? (distanceKm * 10) : 0;
+      const estimatedTotal = fuelCost + depreciationCost + wearAndTear + tolls;
+
+      totalEl.textContent = estimatedTotal > 0 ? fmtINR(Math.round(estimatedTotal)) : '—';
+      if (footEl) {
+        footEl.textContent = '* Estimated cost excluding Driver Salary and Other Overheads';
+      }
+    }
+
+    function triggerEstimatedExpenseUpdate() {
+      renderEstimatedExpenses();
+    }
+
+    async function fetchData() {
+      try {
+        const [trucksRes, driversRes, tripsRes] = await Promise.allSettled([
+          fetch((window.FLEETOS_API_BASE || "") + '/api/fleet', { headers: getFleetAuthHeaders() }).then(r => r.json()),
+          fetch((window.FLEETOS_API_BASE || "") + '/api/drivers', { headers: getFleetAuthHeaders() }).then(r => r.json()),
+          fetch((window.FLEETOS_API_BASE || "") + '/api/fleet/trips', { headers: getFleetAuthHeaders() }).then(r => r.json())
+        ]);
+
+        const trucksR = trucksRes.status === "fulfilled" ? trucksRes.value : [];
+        const driversR = driversRes.status === "fulfilled" ? driversRes.value : [];
+        const tripsR = tripsRes.status === "fulfilled" ? tripsRes.value : [];
+
+        if (trucksRes.status !== "fulfilled") console.error("Failed to load trucks:", trucksRes.reason);
+        if (driversRes.status !== "fulfilled") console.error("Failed to load drivers:", driversRes.reason);
+        if (tripsRes.status !== "fulfilled") console.warn("Failed to load trips for availability filtering:", tripsRes.reason);
+
+        const truckRows = asList(trucksR);
+        const driverRows = asList(driversR);
+        const tripRows = asList(tripsR);
+        TRUCK_ROWS = truckRows;
+        DRIVER_ROWS = driverRows;
+        ALL_TRIPS = tripRows;
+        const rawTrucks = truckRows
+          .map((truck) => truck?.reg_no)
+          .filter(Boolean);
+        const rawDrivers = driverRows
+          .map((driver) => driver?.full_name || driver?.name || driver?.driver_name)
+          .filter(Boolean);
+
+        TRUCKS = rawTrucks;
+        DRIVERS = rawDrivers;
+
+        if (!TRUCKS.length && rawTrucks.length) TRUCKS = rawTrucks;
+        if (!DRIVERS.length && rawDrivers.length) DRIVERS = rawDrivers;
+
+        if (!TRUCKS.length) {
+          try {
+            const registerPayload = await fetch((window.FLEETOS_API_BASE || "") + '/api/fleet/document-register', { headers: getFleetAuthHeaders() }).then(r => r.json());
+            const registerRows = asList(registerPayload);
+            TRUCKS = registerRows
+              .map((row) => row?.reg_no)
+              .filter(Boolean);
+          } catch (err) {
+            console.warn("Failed to load truck register fallback:", err);
+          }
+        }
+
+        if (!DRIVERS.length) {
+          try {
+            const registerPayload = await fetch((window.FLEETOS_API_BASE || "") + '/api/drivers/document-register', { headers: getFleetAuthHeaders() }).then(r => r.json());
+            const registerRows = asList(registerPayload);
+            DRIVERS = registerRows
+              .map((row) => row?.full_name)
+              .filter(Boolean);
+          } catch (err) {
+            console.warn("Failed to load driver register fallback:", err);
+          }
+        }
+
+        TRUCKS = Array.from(new Set(TRUCKS.filter(Boolean)));
+        DRIVERS = Array.from(new Set(DRIVERS.filter(Boolean)));
+      } catch (err) {
+        console.error("Failed to load dropdown data:", err);
+        TRUCKS = [];
+        DRIVERS = [];
+      }
+
+      buildDropMenu("truck", TRUCKS);
+      buildDropMenu("driver", DRIVERS);
+      buildDropMenu("loadtype", LOAD_TYPES);
+      renderEstimatedExpenses();
+    }
 
     /* ── Init dropdowns ── */
     function buildDropMenu(id, options) {
       const menu = document.getElementById(id + "-menu");
+      menu.innerHTML = "";
+      if (!Array.isArray(options) || !options.length) {
+        if (id === "truck" || id === "driver") {
+          const empty = document.createElement("div");
+          empty.className = "drop-item";
+          empty.style.opacity = "0.65";
+          empty.style.cursor = "default";
+          empty.textContent = id === "truck" ? "No available trucks right now" : "No available drivers right now";
+          menu.appendChild(empty);
+        }
+        return;
+      }
+      if (id === "loadtype") {
+        renderLoadTypeMenu(options);
+        return;
+      }
       options.forEach(o => {
         const d = document.createElement("div");
-        d.className = "drop-item"; d.textContent = o;
+        d.className = "drop-item"; d.textContent = id === "truck" ? formatRegNo(o) : o;
         d.onclick = () => selectDrop(id, o);
         menu.appendChild(d);
       });
     }
-    buildDropMenu("truck", TRUCKS);
-    buildDropMenu("driver", DRIVERS);
-    buildDropMenu("loadtype", LOAD_TYPES);
+    fetchData();
 
     function toggleDrop(id) {
+      if (id === "loadtype") {
+        const menu = document.getElementById("loadtype-menu");
+        if (menu.classList.contains("open")) closeLoadTypeMenu();
+        else openLoadTypeMenu();
+        return;
+      }
       const menu = document.getElementById(id + "-menu");
       const chev = document.getElementById(id + "-chev");
       const trigger = document.getElementById(id + "-trigger");
@@ -1531,22 +2136,160 @@
 
     function selectDrop(id, val) {
       state[id] = val;
-      const text = document.getElementById(id + "-text");
       const menu = document.getElementById(id + "-menu");
       const chev = document.getElementById(id + "-chev");
       const trigger = document.getElementById(id + "-trigger");
-      text.textContent = val;
+      const text = document.getElementById(id + "-text");
+      if (text) text.textContent = id === "truck" ? formatRegNo(val) : val;
+      if (id === "loadtype") {
+        const input = document.getElementById("loadtype-input");
+        if (input) input.value = val;
+        renderLoadTypeMenu(getLoadTypeSuggestions(val));
+      }
       trigger.classList.add("has-val");
       trigger.classList.remove("open");
       chev.classList.remove("open");
       menu.classList.remove("open");
       // update selected state in menu
       menu.querySelectorAll(".drop-item").forEach(item => {
-        if (item.textContent === val) { item.classList.add("selected"); if (!item.querySelector(".drop-check")) { const c = document.createElement("span"); c.className = "drop-check"; c.textContent = "✓"; item.prepend(c); } }
+        if (item.textContent === (id === "truck" ? formatRegNo(val) : val)) { item.classList.add("selected"); if (!item.querySelector(".drop-check")) { const c = document.createElement("span"); c.className = "drop-check"; c.textContent = "✓"; item.prepend(c); } }
         else { item.classList.remove("selected"); const c = item.querySelector(".drop-check"); if (c) c.remove(); }
       });
       clearErr(id);
+      triggerEstimatedExpenseUpdate();
 
+    }
+
+    function normalizeLoadTypeSearch(value) {
+      return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    }
+
+    function getLoadTypeSuggestions(query) {
+      const normalizedQuery = normalizeLoadTypeSearch(query);
+      if (!normalizedQuery) return LOAD_TYPES.slice(0, 80);
+      const tokens = normalizedQuery.split(' ').filter(Boolean);
+      return LOAD_TYPES.map((option) => {
+        const [groupRaw, subRaw] = String(option).split("—");
+        const group = (groupRaw || '').trim();
+        const sub = (subRaw || option).trim();
+        const full = normalizeLoadTypeSearch(option);
+        const subNorm = normalizeLoadTypeSearch(sub);
+        let score = 0;
+        if (subNorm === normalizedQuery || full === normalizedQuery) score = 1000;
+        else if (subNorm.startsWith(normalizedQuery)) score = 850;
+        else if (full.startsWith(normalizedQuery)) score = 760;
+        else if (subNorm.includes(normalizedQuery)) score = 640;
+        else if (full.includes(normalizedQuery)) score = 560;
+        else if (tokens.length && tokens.every((token) => full.includes(token))) score = 430 - Math.max(0, full.length - normalizedQuery.length);
+        return { option, group, sub, score };
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score || a.option.localeCompare(b.option))
+      .slice(0, 50)
+      .map((entry) => entry.option);
+    }
+
+    function renderLoadTypeMenu(options = LOAD_TYPES) {
+      const menu = document.getElementById("loadtype-menu");
+      if (!menu) return;
+      menu.innerHTML = "";
+      if (!options.length) {
+        const empty = document.createElement("div");
+        empty.className = "drop-item drop-item-empty";
+        empty.textContent = "No close match found";
+        menu.appendChild(empty);
+        return;
+      }
+      let currentGroup = "";
+      options.forEach((option) => {
+        const [groupRaw, subRaw] = String(option).split("—");
+        const group = (groupRaw || '').trim();
+        const sub = (subRaw || option).trim();
+        if (group && group !== currentGroup) {
+          currentGroup = group;
+          const label = document.createElement("div");
+          label.className = "drop-group-label";
+          label.textContent = group;
+          menu.appendChild(label);
+        }
+        const item = document.createElement("div");
+        item.className = "drop-item sub-item";
+        item.textContent = sub;
+        if (state.loadtype === option) {
+          item.classList.add("selected");
+          const check = document.createElement("span");
+          check.className = "drop-check";
+          check.textContent = "✓";
+          item.prepend(check);
+        }
+        item.onclick = () => selectDrop("loadtype", option);
+        menu.appendChild(item);
+      });
+    }
+
+    function focusLoadTypeSearch() {
+      const input = document.getElementById("loadtype-input");
+      if (input) input.focus();
+    }
+
+    function openLoadTypeMenu() {
+      renderLoadTypeMenu(getLoadTypeSuggestions(document.getElementById("loadtype-input")?.value || ""));
+      const menu = document.getElementById("loadtype-menu");
+      const chev = document.getElementById("loadtype-chev");
+      const trigger = document.getElementById("loadtype-trigger");
+      document.querySelectorAll(".drop-menu").forEach(m => { if (m.id !== "loadtype-menu") m.classList.remove("open"); });
+      document.querySelectorAll(".drop-chevron").forEach(c => { if (c.id !== "loadtype-chev") c.classList.remove("open"); });
+      document.querySelectorAll(".drop-trigger").forEach(t => { if (t.id !== "loadtype-trigger") t.classList.remove("open"); });
+      menu.classList.add("open");
+      chev.classList.add("open");
+      trigger.classList.add("open");
+    }
+
+    function closeLoadTypeMenu() {
+      const menu = document.getElementById("loadtype-menu");
+      const chev = document.getElementById("loadtype-chev");
+      const trigger = document.getElementById("loadtype-trigger");
+      menu?.classList.remove("open");
+      chev?.classList.remove("open");
+      trigger?.classList.remove("open");
+    }
+
+    function handleLoadTypeInput() {
+      const input = document.getElementById("loadtype-input");
+      if (!input) return;
+      const query = input.value.trim();
+      if (!query) state.loadtype = "";
+      renderLoadTypeMenu(getLoadTypeSuggestions(query));
+      openLoadTypeMenu();
+      const trigger = document.getElementById("loadtype-trigger");
+      if (trigger) trigger.classList.toggle("has-val", !!state.loadtype || !!query);
+    }
+
+    function handleLoadTypeKeydown(event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        const firstMatch = getLoadTypeSuggestions(event.target.value)[0];
+        if (firstMatch) selectDrop("loadtype", firstMatch);
+      } else if (event.key === "Escape") {
+        closeLoadTypeMenu();
+        event.target.blur();
+      }
+    }
+
+    function clearLoadTypeSelection(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      state.loadtype = "";
+      const input = document.getElementById("loadtype-input");
+      const menu = document.getElementById("loadtype-menu");
+      const trigger = document.getElementById("loadtype-trigger");
+      if (input) input.value = "";
+      trigger?.classList.remove("has-val");
+      menu?.querySelectorAll(".selected").forEach(el => el.classList.remove("selected"));
+      menu?.querySelectorAll(".drop-check").forEach(el => el.remove());
+      renderLoadTypeMenu(LOAD_TYPES);
+      clearErr("loadtype");
+      focusLoadTypeSearch();
     }
 
     /* ── Route inputs ── */
@@ -1555,18 +2298,23 @@
       const d = document.getElementById("dest");
       if (o.value) { o.classList.add("has-val"); o.classList.remove("err"); } else o.classList.remove("has-val");
       if (d.value) { d.classList.add("has-val"); d.classList.remove("err"); } else d.classList.remove("has-val");
+      triggerEstimatedExpenseUpdate();
 
     }
 
-    /* ── Calendar ── */
+    /* ── Calendar bottom-sheet ── */
+    let _calActiveId = null;
+
     function initCal(id) {
       const today = new Date();
       calState[id] = { yr: today.getFullYear(), mo: today.getMonth() };
-      renderCal(id);
     }
-    function renderCal(id) {
+
+    function renderSheetCal() {
+      const id = _calActiveId;
+      if (!id) return;
       const { yr, mo } = calState[id];
-      const wrap = document.getElementById("cal-" + id);
+      const MONTHS_FULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
       const first = new Date(yr, mo, 1).getDay();
       const daysIn = new Date(yr, mo + 1, 0).getDate();
       const today = new Date();
@@ -1574,54 +2322,99 @@
       let sY = null, sM = null, sD = null;
       if (selVal) { const p = selVal.split("-"); sY = +p[0]; sM = +p[1] - 1; sD = +p[2]; }
 
-      let html = `<div class="cal-header">
-    <button class="cal-nav" onclick="calNav('${id}',-1)">‹</button>
-    <div class="cal-month">${MONTHS[mo]} ${yr}</div>
-    <button class="cal-nav" onclick="calNav('${id}',1)">›</button>
-  </div>
-  <div class="cal-days-hd">${["S", "M", "T", "W", "T", "F", "S"].map(d => `<div class="cal-day-name">${d}</div>`).join("")}</div>
-  <div class="cal-grid">`;
+      // month label
+      const lbl = document.getElementById("cal-month-label");
+      lbl.innerHTML = `${MONTHS_FULL[mo]} <span>${yr}</span>`;
 
-      for (let i = 0; i < first; i++)html += `<div class="cal-cell other-month"></div>`;
+      // grid
+      let html = "";
+      for (let i = 0; i < first; i++) html += `<div class="cal-cell other-month"></div>`;
       for (let d = 1; d <= daysIn; d++) {
         const isSel = sY === yr && sM === mo && sD === d;
         const isTod = today.getFullYear() === yr && today.getMonth() === mo && today.getDate() === d;
         let cls = "cal-cell";
         if (isSel) cls += " selected";
         else if (isTod) cls += " today";
-        html += `<div class="${cls}" onclick="pickDate('${id}',${yr},${mo + 1},${d})">${d}</div>`;
+        html += `<div class="${cls}" onclick="calPickDay(${yr},${mo+1},${d})">${d}</div>`;
       }
-      html += `</div><div class="cal-footer">
-    <span class="cal-sel-lbl${selVal ? ' has-val' : ''}">${selVal ? fmtDate(selVal) : "No date selected"}</span>
-    <div style="display:flex;gap:8px">
-      ${selVal ? `<button class="cal-clear-btn" onclick="clearDate('${id}')">Clear</button>` : ""}
-      <button class="cal-today-btn" onclick="pickToday('${id}')">Today</button>
-    </div>
-  </div>`;
-      wrap.innerHTML = html;
+      document.getElementById("cal-grid").innerHTML = html;
+
+      // footer label
+      const footLbl = document.getElementById("cal-sel-lbl");
+      footLbl.textContent = selVal ? fmtDate(selVal) : "No date selected";
+      footLbl.className = "cal-sel-lbl" + (selVal ? " has-val" : "");
+      document.getElementById("cal-clear-btn").style.display = selVal ? "" : "none";
     }
-    function calNav(id, dir) {
+
+    function calNavClick(dir) {
+      const id = _calActiveId; if (!id) return;
       let { yr, mo } = calState[id];
       mo += dir;
       if (mo > 11) { mo = 0; yr++; } else if (mo < 0) { mo = 11; yr--; }
       calState[id] = { yr, mo };
-      renderCal(id);
+      renderSheetCal();
     }
-    function pickDate(id, yr, mo, d) {
-      const ds = `${yr}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+    function calPickDay(yr, mo, d) {
+      const id = _calActiveId; if (!id) return;
+      const ds = `${yr}-${String(mo).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
       state[id] = ds;
       updateDateTrigger(id);
-      closeCal(id);
+      renderSheetCal();
+      setTimeout(() => closeCalSheet(), 260);
     }
-    function pickToday(id) {
+
+    function calPickToday() {
       const t = new Date();
-      pickDate(id, t.getFullYear(), t.getMonth() + 1, t.getDate());
+      calPickDay(t.getFullYear(), t.getMonth()+1, t.getDate());
     }
-    function clearDate(id) {
+
+    function calClear() {
+      const id = _calActiveId; if (!id) return;
       state[id] = "";
       updateDateTrigger(id);
-      renderCal(id);
+      renderSheetCal();
     }
+
+    function calBackdropClose() { 
+      closeCalSheet(); 
+      if (typeof closeTimeSheet === 'function') closeTimeSheet();
+      if (typeof closeAddrSheet === 'function') closeAddrSheet();
+    }
+
+    function closeCalSheet() {
+      document.getElementById("cal-backdrop").classList.remove("open");
+      document.getElementById("cal-sheet").classList.remove("open");
+      if (_calActiveId) {
+        const trig = document.getElementById(_calActiveId + "-trigger");
+        const chev = document.getElementById(_calActiveId + "-chev");
+        if (trig) trig.classList.remove("open");
+        if (chev) chev.classList.remove("open");
+      }
+      _calActiveId = null;
+    }
+
+    function toggleCal(id) {
+      // close dropdowns
+      document.querySelectorAll(".drop-menu").forEach(m => m.classList.remove("open"));
+      document.querySelectorAll(".drop-trigger,.date-trigger").forEach(t => t.classList.remove("open"));
+      document.querySelectorAll(".drop-chevron,.date-chev").forEach(c => c.classList.remove("open"));
+
+      if (_calActiveId === id) { closeCalSheet(); return; }
+      _calActiveId = id;
+      if (!calState[id] || !calState[id].yr) initCal(id);
+      renderSheetCal();
+
+      document.getElementById("cal-backdrop").classList.add("open");
+      document.getElementById("cal-sheet").classList.add("open");
+      const trig = document.getElementById(id + "-trigger");
+      const chev = document.getElementById(id + "-chev");
+      if (trig) trig.classList.add("open");
+      if (chev) chev.classList.add("open");
+    }
+
+    function closeCal(id) { if (_calActiveId === id) closeCalSheet(); }
+
     function updateDateTrigger(id) {
       const val = state[id];
       const trigger = document.getElementById(id + "-trigger");
@@ -1631,13 +2424,12 @@
         text.textContent = fmtDate(val);
         text.classList.add("has-val");
         trigger.classList.add("active");
-        // replace chevron with clear x
         const existing = trigger.querySelector(".date-clear");
         if (!existing) {
           chev.style.display = "none";
           const clr = document.createElement("span");
           clr.className = "date-clear"; clr.textContent = "×";
-          clr.onclick = e => { e.stopPropagation(); clearDate(id); };
+          clr.onclick = e => { e.stopPropagation(); state[id]=""; updateDateTrigger(id); renderSheetCal(); };
           trigger.appendChild(clr);
         }
       } else {
@@ -1648,31 +2440,10 @@
         if (clr) clr.remove();
         chev.style.display = "";
       }
-      renderCal(id);
+      triggerEstimatedExpenseUpdate();
     }
-    function toggleCal(id) {
-      const wrap = document.getElementById("cal-" + id);
-      const trigger = document.getElementById(id + "-trigger");
-      const chev = document.getElementById(id + "-chev");
-      const isOpen = wrap.classList.contains("open");
-      // close all cals
-      document.querySelectorAll(".cal-wrap").forEach(c => c.classList.remove("open"));
-      document.querySelectorAll(".drop-menu").forEach(m => m.classList.remove("open"));
-      document.querySelectorAll(".drop-trigger,.date-trigger").forEach(t => t.classList.remove("open"));
-      document.querySelectorAll(".drop-chevron,.date-chev").forEach(c => c.classList.remove("open"));
-      if (!isOpen) {
-        if (!calState[id].yr) initCal(id);
-        wrap.classList.add("open");
-        trigger.classList.add("open");
-        chev.classList.add("open");
-      }
-    }
-    function closeCal(id) {
-      document.getElementById("cal-" + id).classList.remove("open");
-      document.getElementById(id + "-trigger").classList.remove("open");
-      document.getElementById(id + "-chev").classList.remove("open");
-    }
-    function fmtDate(v) { if (!v) return ""; const [y, m, d] = v.split("-"); return `${d} ${MS[parseInt(m) - 1]} ${y}`; }
+
+    function fmtDate(v) { if (!v) return ""; const [y, m, d] = v.split("-"); return `${d} ${MS[parseInt(m)-1]} ${y}`; }
 
     /* close dropdowns on outside click */
     document.addEventListener("click", e => {
@@ -1683,7 +2454,19 @@
     });
 
     /* ── P&L ── */
-    function n(id) { return parseInt(document.getElementById(id)?.value) || 0; }
+    function parseIndianInteger(value) {
+      return parseInt(String(value || '').replace(/,/g, ''), 10) || 0;
+    }
+    function formatIndianIntegerInput(input) {
+      if (!input) return;
+      const digits = String(input.value || '').replace(/\D/g, '');
+      if (!digits) {
+        input.value = '';
+        return;
+      }
+      input.value = Number(digits).toLocaleString("en-IN");
+    }
+    function n(id) { return parseIndianInteger(document.getElementById(id)?.value); }
     function fmtINR(v) { return v === 0 ? "₹0" : "₹" + v.toLocaleString("en-IN"); }
 
 
@@ -1693,8 +2476,41 @@
     function clearErr(id) { document.getElementById("err-" + id).style.display = "none"; }
     function showErr(id) { document.getElementById("err-" + id).style.display = "flex"; }
 
+    function generateTripId() {
+      return `TR-${Date.now().toString().slice(-6)}`;
+    }
+
+    function todayIsoDate() {
+      const now = new Date();
+      const yr = now.getFullYear();
+      const mo = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      return `${yr}-${mo}-${day}`;
+    }
+
+    function computeTripEtaDate(startDateIso, distanceKm) {
+      const start = startDateIso ? new Date(startDateIso) : new Date();
+      const km = Number(distanceKm || 0);
+      if (Number.isNaN(start.getTime())) return '';
+      const tripDays = Math.max(1, Math.ceil(Math.max(0, km) / 500));
+      const eta = new Date(start);
+      eta.setDate(eta.getDate() + tripDays);
+      const yr = eta.getFullYear();
+      const mo = String(eta.getMonth() + 1).padStart(2, '0');
+      const day = String(eta.getDate()).padStart(2, '0');
+      return `${yr}-${mo}-${day}`;
+    }
+
+    function openTripDetails() {
+      if (!currentTripId) {
+        window.location.href = '/Fleetos_Trips_List.html';
+        return;
+      }
+      window.location.href = `/Fleetos_Trips_List.html?tripId=${encodeURIComponent(currentTripId)}`;
+    }
+
     /* ── Submit ── */
-    function handleSubmit() {
+    async function handleSubmit() {
       let valid = true;
       if (!state.truck) { showErr("truck"); valid = false; }
       if (!state.driver) { showErr("driver"); valid = false; }
@@ -1714,24 +2530,72 @@
       btn.innerHTML = '<div class="spinner"></div>Saving…';
       btn.disabled = true;
 
-      setTimeout(() => {
+      try {
+        const tripId = generateTripId();
+        const f = n("freight");
+        const distanceKm = n("distance") || 0;
+        const effectiveStartDate = state.sd || todayIsoDate();
+        const computedEtaDate = computeTripEtaDate(effectiveStartDate, distanceKm);
+        const tripDateLabel = [effectiveStartDate, document.getElementById('time-text')?.textContent].filter(Boolean).join(' · ');
+        const payload = {
+          id: tripId,
+          truckText: state.truck,
+          driverText: state.driver,
+          origin: document.getElementById("origin").value || "",
+          destination: document.getElementById("dest").value || "",
+          startDate: effectiveStartDate,
+          startDateRaw: effectiveStartDate,
+          endDate: state.ed || computedEtaDate,
+          endDateRaw: state.ed || computedEtaDate,
+          freight: f,
+          advance: n("advance") || 0,
+          balance: Math.max(0, (f || 0) - (n("advance") || 0)),
+          client: document.getElementById("client")?.value || "",
+          lrNo: document.getElementById("lr")?.value || "",
+          notes: document.getElementById("notes")?.value || "",
+          distanceKm,
+          status: "Upcoming",
+          ownerUserId: localStorage.getItem('fleetUserId') || localStorage.getItem('userId') || ""
+        };
+
+        const response = await fetch((window.FLEETOS_API_BASE || "") + '/api/fleet/trips', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getFleetAuthHeaders()
+          },
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result?.error || 'Could not save trip right now.');
+        currentTripId = result?.id || tripId;
+
         document.getElementById("s-truck").textContent = state.truck || "—";
         document.getElementById("s-driver").textContent = state.driver || "—";
         const o = document.getElementById("origin").value;
         const d = document.getElementById("dest").value;
         document.getElementById("s-route").textContent = o && d ? `${o} → ${d}` : "—";
-        const f = n("freight");
         document.getElementById("s-freight").textContent = fmtINR(f);
         document.getElementById("s-costs").textContent = "—";
         const pnlEl = document.getElementById("s-pnl");
         pnlEl.textContent = `₹${f.toLocaleString("en-IN")}`;
         pnlEl.style.color = "var(--g)";
+        const refEl = document.querySelector(".success-ref");
+        if (refEl) refEl.textContent = currentTripId + (tripDateLabel ? ` · ${tripDateLabel}` : '');
+        const viewBtn = document.getElementById('view-trip-details-btn');
+        if (viewBtn) viewBtn.onclick = openTripDetails;
 
         document.getElementById("form-body").style.display = "none";
 
         document.getElementById("form-footer").style.display = "none";
         document.getElementById("success-screen").style.display = "flex";
-      }, 1400);
+      } catch (error) {
+        alert(error.message || 'Could not save trip right now.');
+      } finally {
+        btn.classList.remove("loading");
+        btn.innerHTML = "✔ Submit Trip Log";
+        btn.disabled = false;
+      }
     }
 
     function resetForm() {
@@ -1739,24 +2603,237 @@
 
       document.getElementById("form-footer").style.display = "block";
       document.getElementById("success-screen").style.display = "none";
+      currentTripId = "";
       state.truck = ""; state.driver = ""; state.loadtype = ""; state.sd = ""; state.ed = "";
       ["truck", "driver", "loadtype"].forEach(id => {
-        document.getElementById(id + "-text").textContent = id === "truck" ? "— Select Truck —" : id === "driver" ? "— Select Driver —" : "Select type";
         document.getElementById(id + "-trigger").classList.remove("has-val", "open");
         document.getElementById(id + "-chev").classList.remove("open");
         document.getElementById(id + "-menu").classList.remove("open");
         document.getElementById(id + "-menu").querySelectorAll(".selected").forEach(el => el.classList.remove("selected"));
         document.getElementById(id + "-menu").querySelectorAll(".drop-check").forEach(el => el.remove());
       });
+      document.getElementById("truck-text").textContent = "— Select Truck —";
+      document.getElementById("driver-text").textContent = "— Select Driver —";
+      const loadTypeInput = document.getElementById("loadtype-input");
+      if (loadTypeInput) loadTypeInput.value = "";
+      renderLoadTypeMenu(LOAD_TYPES);
       ["origin", "dest", "freight", "advance", "client", "lr", "notes", "distance"].forEach(id => {
         const el = document.getElementById(id); if (el) { el.value = ""; el.classList.remove("has-val", "err"); }
       });
       ["sd", "ed"].forEach(id => { state[id] = ""; updateDateTrigger(id); });
+      // reset time
+      const timeTrig = document.getElementById('time-trigger');
+      const timeTextEl = document.getElementById('time-text');
+      if (timeTextEl) { timeTextEl.textContent = 'Select time'; timeTextEl.classList.remove('has-val'); }
+      if (timeTrig) { timeTrig.classList.remove('active'); const clr = timeTrig.querySelector('.date-clear'); if(clr) clr.remove(); document.getElementById('time-chev').style.display=''; }
+      timeHr = 12; timeAmPm = 'AM';
       document.querySelectorAll(".err-tip").forEach(e => e.style.display = "none");
       const btn = document.getElementById("submit-btn");
       btn.classList.remove("loading"); btn.innerHTML = "✔ Submit Trip Log"; btn.disabled = false;
+      renderEstimatedExpenses();
 
     }
+    /* ── TIME PICKER ── */
+    let timeAmPm = 'AM';
+    let timeHr = null;
+
+    function buildTimeGrid() {
+      const grid = document.getElementById('time-grid');
+      grid.innerHTML = '';
+      for (let h = 1; h <= 12; h++) {
+        const cls = h === timeHr ? 'time-box selected' : 'time-box';
+        grid.innerHTML += `<div class="${cls}" onclick="selectHour(${h})">${h}:00</div>`;
+      }
+    }
+
+    function selectHour(h) {
+      timeHr = h;
+      buildTimeGrid();
+    }
+
+    function setAmPm(val) {
+      timeAmPm = val;
+      document.getElementById('btn-am').classList.toggle('active', val === 'AM');
+      document.getElementById('btn-pm').classList.toggle('active', val === 'PM');
+    }
+
+    function toggleTime() {
+      buildTimeGrid();
+      document.getElementById('cal-backdrop').classList.add('open');
+      document.getElementById('time-sheet').classList.add('open');
+      document.getElementById('time-trigger').classList.add('open');
+    }
+
+    function closeTimeSheet() {
+      document.getElementById('time-sheet').classList.remove('open');
+      document.getElementById('cal-backdrop').classList.remove('open');
+      document.getElementById('time-trigger').classList.remove('open');
+    }
+
+    function confirmTime() {
+      if (!timeHr) { closeTimeSheet(); return; }
+      const display = timeHr + ':00 ' + timeAmPm;
+      const text = document.getElementById('time-text');
+      text.textContent = display;
+      text.classList.add('has-val');
+      const trig = document.getElementById('time-trigger');
+      trig.classList.add('active');
+      const chev = document.getElementById('time-chev');
+      const existing = trig.querySelector('.date-clear');
+      if (!existing) {
+        chev.style.display = 'none';
+        const clr = document.createElement('span');
+        clr.className = 'date-clear'; clr.textContent = '×';
+        clr.onclick = e => {
+          e.stopPropagation();
+          text.textContent = 'Select time'; text.classList.remove('has-val');
+          trig.classList.remove('active'); clr.remove(); chev.style.display = '';
+          timeHr = null;
+        };
+        trig.appendChild(clr);
+      }
+      closeTimeSheet();
+    }
+
+    // Google Maps Custom AutoFill & Distance Integration
+    let autocompleteService, placesService;
+    let distanceMatrixService;
+    let currentAddrTarget = null; // 'origin' or 'dest'
+
+    function initMapAPI() {
+      if (!window.google) return;
+      distanceMatrixService = new google.maps.DistanceMatrixService();
+      autocompleteService = new google.maps.places.AutocompleteService();
+      
+      const dummyDiv = document.createElement('div');
+      placesService = new google.maps.places.PlacesService(dummyDiv);
+
+      const searchInput = document.getElementById('addr-search-input');
+      searchInput.addEventListener('input', function() {
+          const val = this.value;
+          if (!val) {
+              document.getElementById('addr-results').innerHTML = '';
+              return;
+          }
+          autocompleteService.getPlacePredictions({ input: val }, displayAddrSuggestions);
+      });
+    }
+
+    function openAddrSheet(target) {
+        currentAddrTarget = target;
+        document.getElementById('addr-sheet-title').textContent = target === 'origin' ? 'Add Pickup Address' : 'Add Delivery Address';
+        document.getElementById('addr-search-input').value = '';
+        document.getElementById('addr-results').innerHTML = '';
+        document.getElementById('cal-backdrop').classList.add('open');
+        document.getElementById('addr-sheet').classList.add('open');
+        setTimeout(() => document.getElementById('addr-search-input').focus(), 300);
+    }
+
+    function closeAddrSheet() {
+        document.getElementById('cal-backdrop').classList.remove('open');
+        document.getElementById('addr-sheet').classList.remove('open');
+    }
+
+    function displayAddrSuggestions(predictions, status) {
+        const resultsContainer = document.getElementById('addr-results');
+        resultsContainer.innerHTML = '';
+        if (status != google.maps.places.PlacesServiceStatus.OK || !predictions) {
+            return;
+        }
+
+        predictions.forEach(p => {
+            const item = document.createElement('div');
+            item.className = 'addr-item';
+
+            const mainText = p.structured_formatting.main_text;
+            let formattedTitle = mainText;
+            
+            // Format highlights
+            if (p.structured_formatting.main_text_matched_substrings && p.structured_formatting.main_text_matched_substrings.length > 0) {
+                const match = p.structured_formatting.main_text_matched_substrings[0];
+                formattedTitle = mainText.substring(0, match.offset) + 
+                                 '<strong>' + mainText.substring(match.offset, match.offset + match.length) + '</strong>' +
+                                 mainText.substring(match.offset + match.length);
+            }
+
+            item.innerHTML = `
+                <div class="addr-icon-wrap">📍</div>
+                <div class="addr-item-content">
+                    <div class="addr-item-title">${formattedTitle}</div>
+                    <div class="addr-item-sub">${p.structured_formatting.secondary_text || ''}</div>
+                </div>
+            `;
+            item.onclick = () => selectAddress(p.description);
+            resultsContainer.appendChild(item);
+        });
+    }
+
+    function selectAddress(description) {
+        const targetInput = document.getElementById(currentAddrTarget);
+        targetInput.value = description;
+        if (description) { 
+            targetInput.classList.add("has-val"); 
+            targetInput.classList.remove("err"); 
+        } else {
+            targetInput.classList.remove("has-val");
+        }
+        
+        closeAddrSheet();
+        updateRoute();
+        calculateDistance();
+    }
+
+    function calculateDistance() {
+      const originPlace = document.getElementById('origin').value;
+      const destPlace = document.getElementById('dest').value;
+
+      if (originPlace && destPlace) {
+        distanceMatrixService.getDistanceMatrix({
+          origins: [originPlace],
+          destinations: [destPlace],
+          travelMode: 'DRIVING',
+        }, function(response, status) {
+          if (status === 'OK') {
+            const results = response.rows[0].elements;
+            if (results && results.length > 0 && results[0].status === 'OK') {
+              const distanceValue = results[0].distance.value; // in meters (distance)
+              const distKm = Math.round(distanceValue / 1000);
+              const distanceInput = document.getElementById('distance');
+              if (distanceInput) {
+                distanceInput.value = Number(distKm || 0).toLocaleString("en-IN");
+                triggerEstimatedExpenseUpdate();
+              }
+            }
+          }
+        });
+      }
+    }
+  </script>
+
+  <!-- Replace YOUR_API_KEY_HERE with your actual Google Maps API Key -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDFSb1XXKOdSgUdZvqsVQwIu42a_wr09pw&libraries=places&callback=initMapAPI" defer></script>
+  <script>
+    (function syncVisibleFooter() {
+      const footer = document.getElementById('form-footer');
+      if (!footer) return;
+
+      const root = document.documentElement;
+
+      function updateFooterMetrics() {
+        root.style.setProperty('--app-footer-height', footer.offsetHeight + 'px');
+      }
+
+      updateFooterMetrics();
+      window.addEventListener('resize', updateFooterMetrics);
+      window.addEventListener('orientationchange', updateFooterMetrics);
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', updateFooterMetrics);
+        window.visualViewport.addEventListener('scroll', updateFooterMetrics);
+      }
+      if (typeof ResizeObserver !== 'undefined') {
+        new ResizeObserver(updateFooterMetrics).observe(footer);
+      }
+    })();
   </script>
 </body>
 

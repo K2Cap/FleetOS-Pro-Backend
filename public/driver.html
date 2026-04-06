@@ -453,7 +453,8 @@ body{background:var(--bg);font-family:var(--ff);color:var(--ink);min-height:100d
     </div>
   </div>
 
-  <!-- HIDDEN FILE INPUT FOR SCANNING -->
+  <!-- HIDDEN FILE INPUTS FOR SCANNING -->
+  <input type="file" id="receipt-camera" accept="image/*" capture="environment" style="display:none" onchange="handleFile(event)">
   <input type="file" id="receipt-upload" accept="image/*" style="display:none" onchange="handleFile(event)">
 
   <!-- ══ SCREEN: PROFILE ══ -->
@@ -648,13 +649,14 @@ body{background:var(--bg);font-family:var(--ff);color:var(--ink);min-height:100d
         <div class="scan-opts">
           <button class="scan-opt-btn primary" onclick="event.stopPropagation();openCamera()">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="12" height="9" rx="1.5" stroke="white" stroke-width="1.3"/><circle cx="7" cy="7.5" r="2.2" stroke="white" stroke-width="1.3"/><path d="M5 3V2a1 1 0 011-1h2a1 1 0 011 1v1" stroke="white" stroke-width="1.3" stroke-linecap="round"/></svg>
-            Scan Now
+            Use Camera
           </button>
-          <button class="scan-opt-btn" onclick="event.stopPropagation();openAddSheet()">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="#3d3a34" stroke-width="1.6" stroke-linecap="round"/></svg>
-            Add Manually
+          <button class="scan-opt-btn" onclick="event.stopPropagation();openDevicePicker()">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10.5V11a1 1 0 001 1h8a1 1 0 001-1v-.5M4.5 6.5L7 9m0 0 2.5-2.5M7 9V2" stroke="#3d3a34" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Upload from Device
           </button>
         </div>
+        <div class="scan-zone-sub" style="margin-top:10px">Use the phone camera directly or upload a receipt image from your gallery</div>
       </div>
 
       <!-- Summary -->
@@ -1802,17 +1804,38 @@ function openCamera(tripId) {
     const fallbackTrip = getDefaultExpenseTrip();
     if (fallbackTrip) setSelectedExpenseTrip(fallbackTrip.id);
   }
-  document.getElementById('cam-overlay').classList.add('active');
+  const input = document.getElementById('receipt-camera');
+  if (input) {
+    input.value = '';
+    input.click();
+  }
 }
 function openCameraForSelectedTrip() {
   closeAddSheet();
   setTimeout(() => openCamera(SELECTED_EXPENSE_TRIP?.id || CURRENT_ACTIVE_TRIP?.id || null), 120);
 }
 function closeCamera() {
-  document.getElementById('cam-overlay').classList.remove('active');
+  const overlay = document.getElementById('cam-overlay');
+  if (overlay) overlay.classList.remove('active');
 }
 function captureReceipt() {
-  document.getElementById('receipt-upload').click();
+  const input = document.getElementById('receipt-camera');
+  if (input) {
+    input.value = '';
+    input.click();
+  }
+}
+function openDevicePicker(tripId) {
+  if (tripId) setSelectedExpenseTrip(tripId);
+  if (!SELECTED_EXPENSE_TRIP) {
+    const fallbackTrip = getDefaultExpenseTrip();
+    if (fallbackTrip) setSelectedExpenseTrip(fallbackTrip.id);
+  }
+  const input = document.getElementById('receipt-upload');
+  if (input) {
+    input.value = '';
+    input.click();
+  }
 }
 
 function normalizeReceiptAmountToPaise(value) {
@@ -1857,26 +1880,33 @@ function normalizeGravityOCRResult(result) {
 }
 
 function normalizeGeminiReceiptResult(data) {
-  const rawTotalAmount = data.total_amount ?? data["Total Amount"];
-  const amountPaise = rawTotalAmount !== undefined && rawTotalAmount !== null && rawTotalAmount !== ''
-    ? Math.round(Number(String(rawTotalAmount).replace(/[^0-9.-]/g, '')))
-    : normalizeReceiptAmountToPaise(data.total ?? data.amount ?? data["Amount"]);
+  const rawTotalAmount = data.total_amount ?? data["Total Amount"] ?? data["Amount"] ?? data.amount;
+  const amountPaise = normalizeReceiptAmountToPaise(rawTotalAmount);
   return {
-    vendor: data.vendor || data.merchant || data.seller || data["Vendor"] || data["Merchant"] || 'Unknown Vendor',
+    vendor: data.vendor || data.station_name || data["Station Name"] || data.merchant || data.seller || data["Vendor"] || data["Merchant"] || 'Unknown Vendor',
+    station_name: data.station_name || data["Station Name"] || data.vendor || '',
     date: data.date || data.bill_date || data.invoice_date || data["Date"] || data["Bill Date"] || '',
+    time: data.time || data["Time"] || '',
     total_amount: amountPaise,
-    category: data.category || data.type || data["Category"] || data["Expense Type"] || 'Other',
-    vehicle_id: data.vehicle_id || data.truck_id || data["Vehicle ID"] || data["Truck ID"] || '',
-    fuel_volume: data.fuel_volume || data.quantity || data["Fuel Volume"] || '',
-    place: data.place || data.location || data.city || data["Place"] || data["Location"] || '',
-    source: 'gemini-fallback'
+    category: data.category || data.type || data["Category"] || data["Expense Type"] || (String(data.product || data["Product"] || '').toLowerCase().includes('diesel') ? 'Fuel' : 'Other'),
+    vehicle_id: data.vehicle_id || data.vehicle_number || data["Vehicle Number"] || data.truck_id || data["Vehicle ID"] || data["Truck ID"] || '',
+    fuel_volume: data.fuel_volume || data["Volume (Liters)"] || data["Volume"] || data.quantity || data["Fuel Volume"] || '',
+    product: data.product || data["Product"] || '',
+    rate_per_liter: data.rate_per_liter || data["Rate per Liter"] || '',
+    transaction_id: data.transaction_id || data["Transaction ID"] || '',
+    payment_mode: data.payment_mode || data["Payment Mode"] || '',
+    contact_number: data.contact_number || data["Contact Number"] || '',
+    bay_nozzle: data.bay_nozzle || data["Bay / Nozzle"] || '',
+    place: data.place || data.location || data["Location"] || data.city || data["Place"] || '',
+    source: 'gemini-receipt'
   };
 }
 
 async function analyzeReceiptWithFallback(base64, mimeType) {
-  // 1. Primary Scanner (Optimized for standard receipts)
+  // 1. Primary Gemini receipt scan
   try {
-    const response = await fetch('/api/analyze', {
+    const baseUrl = window.FLEETOS_API_BASE || '';
+    const response = await fetch(`${baseUrl}/api/analyze`, {
       method: 'POST',
       mode: 'cors',
       headers: getDriverAuthHeaders({
@@ -1892,35 +1922,13 @@ async function analyzeReceiptWithFallback(base64, mimeType) {
 
     const primaryData = await response.json().catch(() => null);
     if (response.ok && primaryData && !primaryData.error) {
-      return primaryData;
+      return normalizeGeminiReceiptResult(primaryData);
     }
   } catch (e) { console.warn("Primary scanner offline", e); }
 
-  // 2. GravityOCR Fallback (Optimized for Handwriting & Pump Slips)
-  try {
-    const formData = new FormData();
-    const byteCharacters = atob(base64);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], {type: mimeType || 'image/jpeg'});
-    formData.append('images', blob, 'receipt.jpg');
-
-    const ocrResponse = await fetch('http://localhost:5001/api/ocr', {
-      method: 'POST',
-      body: formData
-    });
-
-    if (ocrResponse.ok) {
-      const ocrResult = await ocrResponse.json();
-      return normalizeGravityOCRResult(ocrResult);
-    }
-  } catch (e) { console.warn("GravityOCR fallback offline", e); }
-
-  // 3. Legacy Gemini Fallback
-  const geminiResponse = await fetch('/api/ocr-gemini', {
+  // 2. Gemini fallback path
+  const baseUrl = window.FLEETOS_API_BASE || '';
+  const geminiResponse = await fetch(`${baseUrl}/api/ocr-gemini`, {
     method: 'POST',
     headers: getDriverAuthHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({
@@ -1969,12 +1977,20 @@ async function handleFile(event) {
         const displayAmount = data.total_amount ? formatPaiseToRupees(data.total_amount, { maximumFractionDigits: 2, minimumFractionDigits: 2 }) : 'N/A';
 
         const fields = [
-          { key: 'Vendor', val: data.vendor },
+          { key: 'Station Name', val: data.station_name || data.vendor },
+          { key: 'Location', val: data.place },
+          { key: 'Contact Number', val: data.contact_number },
           { key: 'Date', val: data.date },
-          { key: 'Amount', val: displayAmount },
-          { key: 'Category', val: data.category || 'General' },
-          { key: 'Truck ID', val: data.vehicle_id || 'N/A' },
-          { key: 'Fuel Volume', val: data.fuel_volume ? data.fuel_volume + ' L' : 'N/A' }
+          { key: 'Time', val: data.time },
+          { key: 'Transaction ID', val: data.transaction_id },
+          { key: 'Vehicle Number', val: data.vehicle_id },
+          { key: 'Product', val: data.product },
+          { key: 'Rate per Liter', val: data.rate_per_liter },
+          { key: 'Volume (Liters)', val: data.fuel_volume },
+          { key: 'Total Amount', val: displayAmount },
+          { key: 'Payment Mode', val: data.payment_mode },
+          { key: 'Bay / Nozzle', val: data.bay_nozzle },
+          { key: 'Expense Type', val: data.category || 'General' }
         ];
 
         fields.forEach(f => {

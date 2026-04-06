@@ -1,14 +1,74 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+  (function(){
+    const BUILD = 'v8.0.0';
+    const params = new URLSearchParams(window.location.search);
+    if(params.get('v') !== BUILD){
+      console.log('NUCLEAR SYNC ACTIVATED: Redirecting to ' + BUILD);
+      params.set('v', BUILD);
+      window.location.search = params.toString();
+    }
+  })();
+</script>
+
 <meta charset="UTF-8">
+<script>
+    // ☢️ THE TERMINATOR - CACHE PURGE
+    if('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+            for(let reg of regs) { reg.unregister(); }
+        });
+    }
+    if('caches' in window) {
+        caches.keys().then(function(names) {
+            for (let name of names) caches.delete(name);
+        });
+    }
+</script>
+    <!-- THE NUKER v4.1.0 - AUTO-PURGE ENGINE -->
+    <script>
+        (function() {
+            const VERSION = "4.4.0-NUCLEAR-SYNC";
+            const lastVersion = localStorage.getItem('FLEETOS_BUILD');
+            
+            if (lastVersion !== VERSION) {
+                console.log("🚀 NEW VERSION DETECTED ("+VERSION+"). NUKING CACHES...");
+                
+                // 1. Kill Service Workers
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(regs => {
+                        for(let reg of regs) { reg.unregister(); console.log("SW UNREGISTERED"); }
+                    });
+                }
+                
+                // 2. Wipe Cache Storage
+                if ('caches' in window) {
+                    caches.keys().then(names => {
+                        for(let name of names) { caches.delete(name); console.log("CACHE DELETED:", name); }
+                    });
+                }
+                
+                // 3. Mark as updated and Force Hard Reload
+                localStorage.setItem('FLEETOS_BUILD', VERSION);
+                console.log("✅ PURGE COMPLETE. RELOADING FRESH...");
+                
+                // Only reload if we aren't already in a refresh loop
+                if (!window.location.search.includes('purged=true')) {
+                    const sep = window.location.href.includes('?') ? '&' : '?';
+                    window.location.replace(window.location.href + sep + 'purged=true&v=' + Date.now());
+                }
+            }
+        })();
+    </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, proxy-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Gravity Intelligence</title>
     <link rel="manifest" href="manifest.json">
-    <script src="config.js"></script>
+    <script src="config.js?v=2.5.1"></script>
     <meta name="theme-color" content="#1a3028">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -85,6 +145,7 @@
   .status-bar .time { font-size: 15px; font-weight: 700; }
   .status-icons { display: flex; gap: 5px; align-items: center; }
   .status-icons svg { width: 16px; height: 16px; fill: var(--text-dark); }
+  .notch, .status-bar { display: none !important; }
 
   /* ── Screen system ── */
   .screens { flex: 1; position: relative; overflow: hidden; }
@@ -497,6 +558,10 @@
       <div class="switch-row" style="margin-top:20px">
         Don't have an account? <a onclick="goToRegister()">Register here</a>
       </div>
+      
+      <div style="text-align:center; margin-top:20px; font-size:10px; color:var(--text-light); opacity:0.6;">
+        Build: CLOUD-PRO-v8.0.0 (NUCLEAR-SYNC) | <a onclick="location.reload(true)" style="text-decoration:underline; cursor:pointer">Force Update</a>
+      </div>
     </div>
 
   </div><!-- /screens -->
@@ -519,6 +584,49 @@
   }
 
 let currentRole = 'transporter';
+const SESSION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const SESSION_EXPIRY_KEY = 'fleetSessionExpiresAt';
+
+function decodeJwtPayload(token) {
+  if (!token || typeof token !== 'string' || token.split('.').length < 2) return null;
+  try {
+    const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = payload + '='.repeat((4 - (payload.length % 4 || 4)) % 4);
+    return JSON.parse(atob(padded));
+  } catch (error) {
+    return null;
+  }
+}
+
+function getTokenExpiryMs(token) {
+  const payload = decodeJwtPayload(token);
+  if (payload && Number.isFinite(payload.exp)) return payload.exp * 1000;
+  return Date.now() + SESSION_WINDOW_MS;
+}
+
+function clearTransporterSession() {
+  ['fleetToken', 'fleetUser', 'gravityToken', 'gravityUser', 'token', SESSION_EXPIRY_KEY].forEach((key) => localStorage.removeItem(key));
+}
+
+function getValidTransporterSession() {
+  const token = localStorage.getItem('fleetToken') || localStorage.getItem('gravityToken') || localStorage.getItem('token');
+  if (!token) return null;
+  const storedExpiry = Number(localStorage.getItem(SESSION_EXPIRY_KEY) || 0);
+  const expiryMs = storedExpiry > 0 ? storedExpiry : getTokenExpiryMs(token);
+  if (!expiryMs || expiryMs <= Date.now()) {
+    clearTransporterSession();
+    return null;
+  }
+  if (!storedExpiry) localStorage.setItem(SESSION_EXPIRY_KEY, String(expiryMs));
+  return { token, expiryMs };
+}
+
+function persistTransporterSession(token, user) {
+  localStorage.setItem('fleetToken', token);
+  localStorage.setItem('token', token);
+  localStorage.setItem('fleetUser', JSON.stringify(user || {}));
+  localStorage.setItem(SESSION_EXPIRY_KEY, String(getTokenExpiryMs(token)));
+}
 
 async function clearLegacyMobileCaches() {
   if ('serviceWorker' in navigator) {
@@ -568,6 +676,155 @@ async function clearLegacyMobileCaches() {
     }
   }
 
+  const ROUTES = {
+  home: '/transporter_dashboard_FINAL.html?v=4.4.0',
+  fleet: '/Fleet_List_ULTRA.html?v=4.4.0',
+  drivers: '/Driver_List_ULTRA.html?v=4.4.0',
+  trips: '/transporter_dashboard_FINAL.html?page=trips',
+  logTrip: '/transporter_dashboard_FINAL.html?page=log-trip',
+  addTruck: '/transporter_dashboard_FINAL.html?page=add-truck',
+  liveTracking: '/transporter_dashboard_FINAL.html?page=tracking',
+  ledger: '/transporter_dashboard_FINAL.html?page=ledger',
+  insights: '/transporter_dashboard_FINAL.html?page=insights',
+  alerts: '/transporter_dashboard_FINAL.html?page=alerts',
+  reports: '/transporter_dashboard_FINAL.html?page=reports'
+};
+
+(function redirectToDashboardIfSessionActive() {
+  const session = getValidTransporterSession();
+  if (!session) return;
+  const here = window.location.pathname.toLowerCase();
+  if (here.endsWith('/index.html') || here === '/' || here === '') {
+    window.location.replace(ROUTES.home);
+  }
+})();
+
+  let welcomeOverlayEl = null;
+
+  function ensureWelcomeOverlayStyles() {
+    if (document.getElementById('welcomeOverlayStyles')) return;
+    const style = document.createElement('style');
+    style.id = 'welcomeOverlayStyles';
+    style.textContent = `
+      .welcome-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgba(18, 28, 24, 0.42);
+        backdrop-filter: blur(10px);
+        opacity: 0;
+        transition: opacity .24s ease;
+      }
+      .welcome-overlay.open { opacity: 1; }
+      .welcome-card {
+        width: min(92vw, 420px);
+        border-radius: 28px;
+        padding: 28px 24px 22px;
+        background:
+          radial-gradient(circle at top, rgba(255,255,255,0.92), rgba(240, 250, 246, 0.96) 36%, rgba(224, 244, 236, 0.98) 100%);
+        border: 1px solid rgba(255,255,255,0.75);
+        box-shadow: 0 24px 60px rgba(19, 48, 34, 0.24), inset 0 1px 0 rgba(255,255,255,0.9);
+        color: #173929;
+        transform: translateY(20px) scale(0.96);
+        transition: transform .28s ease;
+        position: relative;
+        overflow: hidden;
+      }
+      .welcome-overlay.open .welcome-card { transform: translateY(0) scale(1); }
+      .welcome-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at 18% 18%, rgba(255,255,255,0.8), transparent 28%),
+          radial-gradient(circle at 82% 0%, rgba(133, 213, 187, 0.35), transparent 32%),
+          linear-gradient(135deg, rgba(255,255,255,0.24), transparent 60%);
+        pointer-events: none;
+      }
+      .welcome-badge {
+        width: 60px;
+        height: 60px;
+        border-radius: 18px;
+        display: grid;
+        place-items: center;
+        margin-bottom: 18px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(202, 238, 225, 0.95));
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 14px 30px rgba(40, 115, 85, 0.18);
+        font-size: 28px;
+      }
+      .welcome-title {
+        font-size: 30px;
+        line-height: 1.05;
+        font-weight: 800;
+        margin: 0 0 10px;
+        letter-spacing: -0.04em;
+      }
+      .welcome-text {
+        margin: 0;
+        color: rgba(23, 57, 41, 0.82);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+      .welcome-action {
+        margin-top: 22px;
+        width: 100%;
+        border: none;
+        border-radius: 16px;
+        padding: 14px 18px;
+        font-size: 14px;
+        font-weight: 800;
+        color: #fff;
+        background: linear-gradient(135deg, #29553e, #4e8b6d);
+        box-shadow: 0 16px 28px rgba(36, 91, 65, 0.22);
+        cursor: pointer;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function closeWelcomeOverlay(resolve) {
+    if (!welcomeOverlayEl) return;
+    const overlay = welcomeOverlayEl;
+    welcomeOverlayEl = null;
+    overlay.classList.remove('open');
+    setTimeout(() => overlay.remove(), 220);
+    if (typeof resolve === 'function') resolve();
+  }
+
+  function showWelcomeOverlay(fullName) {
+    ensureWelcomeOverlayStyles();
+    if (welcomeOverlayEl) welcomeOverlayEl.remove();
+
+    return new Promise((resolve) => {
+      const firstName = String(fullName || '').trim().split(/\s+/)[0] || 'there';
+      const overlay = document.createElement('div');
+      overlay.className = 'welcome-overlay';
+      overlay.innerHTML = `
+        <div class="welcome-card" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+          <div class="welcome-badge">❄️</div>
+          <h3 class="welcome-title" id="welcomeTitle">Welcome to the family</h3>
+          <p class="welcome-text">Your FleetOS account is ready, ${firstName}. Everything is set up and your dashboard is opening now.</p>
+          <button class="welcome-action" type="button">Enter Dashboard</button>
+        </div>
+      `;
+
+      const close = () => closeWelcomeOverlay(resolve);
+      overlay.querySelector('.welcome-action').addEventListener('click', close);
+      overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) close();
+      });
+
+      welcomeOverlayEl = overlay;
+      document.body.appendChild(overlay);
+      requestAnimationFrame(() => overlay.classList.add('open'));
+      setTimeout(close, 1800);
+    });
+  }
+
   async function handleRegister(btn) {
     const fullName = document.getElementById('regFullName').value;
   const companyName = document.getElementById('regCompany').value;
@@ -591,6 +848,7 @@ async function clearLegacyMobileCaches() {
 
         const res = await fetch(apiBase + '/api/auth/signup', {
             method: 'POST',
+            mode: 'cors',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ fullName, companyName, mobile, email, password, role: currentRole })
         }).catch(e => {
@@ -601,15 +859,12 @@ async function clearLegacyMobileCaches() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Registration failed');
 
-        localStorage.setItem('fleetToken', data.token);
-        localStorage.setItem('fleetUser', JSON.stringify(data.user));
-        
-        // Show family welcome pop-up
-        alert("🎉 Welcome to the Family! Your account has been created.");
+        persistTransporterSession(data.token, data.user);
 
         btn.innerHTML = '✓ Account Created!';
         btn.style.background = 'linear-gradient(135deg,#2d5240,#4d8a6a)';
-        setTimeout(() => window.location.href = 'transporter_dashboard_APP.html', 1000);
+        await showWelcomeOverlay(fullName);
+        window.location.href = ROUTES.home;
     } catch (err) {
         alert("🚨 EXCEPTION: " + err.message);
         console.error(err);
@@ -632,24 +887,21 @@ async function clearLegacyMobileCaches() {
         const apiBase = 'https://fleetos-pro-backend-production.up.railway.app';
         const res = await fetch(apiBase + '/api/auth/login', {
             method: 'POST',
+            mode: 'cors',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ identifier, password })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Login failed');
 
-        localStorage.setItem('fleetToken', data.token);
-        localStorage.setItem('fleetUser', JSON.stringify(data.user));
-
-        // Show love pop-up
-        alert("❤️ I Love You! Redirecting now...");
+        persistTransporterSession(data.token, data.user);
 
         btn.innerHTML = '✓ Welcome back!';
         btn.style.background = 'linear-gradient(135deg,#2d5240,#4d8a6a)';
         
         // Redirect to simulator hub
         setTimeout(() => {
-            window.location.href = 'transporter_dashboard_APP.html';
+            window.location.href = '/transporter_dashboard_FINAL.html?v=4.4.0';
         }, 1000);
     } catch (err) {
         alert(err.message);
@@ -660,14 +912,41 @@ async function clearLegacyMobileCaches() {
 
   (function tick() {
     const now = new Date();
-    document.querySelector('.time').textContent =
-      String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    const timeEl = document.querySelector('.time');
+    if (timeEl) {
+      timeEl.textContent =
+        String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    }
     setTimeout(tick, 30000);
   })();
 
   window.addEventListener('load', () => {
     clearLegacyMobileCaches().catch(() => {});
   });
+</script>
+
+<script>
+  (function(){
+    const BUILD = 'v8.0.0';
+    if(localStorage.getItem('fleetos_v') !== BUILD){
+      localStorage.setItem('fleetos_v', BUILD);
+      console.log('Syncing Build ' + BUILD + '...');
+      location.reload(true);
+    }
+  })();
+</script>
+
+<script>
+  (function(){
+    const BUILD = 'v8.0.0';
+    if(localStorage.getItem('fleetos_v') !== BUILD){
+      localStorage.setItem('fleetos_v', BUILD);
+      console.log('Forcing Global Sync ' + BUILD + '...');
+      // APPEND CACHE BUSTER TO URL
+      const sep = location.href.includes('?') ? '&' : '?';
+      location.href = location.pathname + sep + 'v=' + BUILD;
+    }
+  })();
 </script>
 </body>
 </html>

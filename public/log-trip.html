@@ -68,6 +68,7 @@
       width: 390px;
       max-width: 100%;
       min-height: 844px;
+      min-height: 100svh;
       max-height: calc(100dvh - 36px);
       background: var(--bg);
       overflow: hidden;
@@ -117,6 +118,10 @@
       display: flex;
       gap: 5px;
       align-items: center;
+    }
+    .sbar,
+    .live-chip {
+      display: none !important;
     }
 
     /* top nav */
@@ -258,8 +263,9 @@
     /* scrollable body */
     .form-body {
       flex: 1;
+      min-height: 0;
       overflow-y: auto;
-      padding: 14px 14px 0;
+      padding: 14px 14px calc(148px + env(safe-area-inset-bottom, 0px));
       -webkit-overflow-scrolling: touch;
     }
 
@@ -670,6 +676,80 @@
 
     .drop-item:last-child {
       border-bottom: none;
+    }
+
+    .drop-group-label {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding: 9px 15px 7px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--g);
+      background: linear-gradient(180deg, #eef8f1 0%, #f7fbf8 100%);
+      border-bottom: 1px solid rgba(18, 92, 54, .10);
+    }
+
+    .drop-item.sub-item {
+      padding-left: 28px;
+      font-weight: 600;
+      color: var(--ink);
+      background: #fcfdfb;
+    }
+
+    .drop-item.sub-item::before {
+      content: "•";
+      color: rgba(18, 92, 54, .55);
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .loadtype-combo {
+      cursor: text;
+      padding-right: 10px;
+      gap: 8px;
+    }
+
+    .loadtype-search {
+      flex: 1;
+      min-width: 0;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      font-family: var(--ff);
+    }
+
+    .loadtype-search::placeholder {
+      color: var(--mu2);
+      font-weight: 400;
+    }
+
+    .loadtype-clear {
+      border: none;
+      background: transparent;
+      color: var(--mu2);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 0 2px;
+      display: none;
+    }
+
+    .drop-trigger.has-val .loadtype-clear {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .drop-item-empty {
+      cursor: default;
+      color: var(--mu);
+      background: #fcfdfb;
+      font-weight: 500;
     }
 
     .drop-check {
@@ -1384,7 +1464,7 @@
     /* P&L bar */
 
     /* app footer */
-    .app-footer{background:var(--wh);padding:0 10px 10px;flex-shrink:0;position:relative;z-index:20;box-shadow:none;border-top:none;}
+    .app-footer{background:var(--wh);padding:0 10px calc(10px + env(safe-area-inset-bottom, 0px));flex-shrink:0;position:relative;z-index:20;box-shadow:none;border-top:none;}
     .app-footer-inner{display:flex;align-items:flex-end;justify-content:space-between;gap:4px;background:var(--wh);padding:6px 4px 8px;box-shadow:none;border-top:none;}
     .app-tab{flex:1;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--mu2);font-family:var(--ff);padding:6px 4px;}
     .app-tab-icon{font-size:16px;line-height:1;color:inherit;}
@@ -1716,7 +1796,7 @@
 
     <!-- TOP NAV -->
     <div class="topnav">
-      <a href="dashboard.html?page=trips" class="back-btn">←</a>
+      <button type="button" class="back-btn" onclick="goBack('dashboard.html?page=trips')">←</button>
       <div class="brand">
         <div class="brand-icon">🚛</div>
         <div class="brand-name">FleetOS</div>
@@ -1823,8 +1903,11 @@
               <div>
                 <label class="lbl">Load Type</label>
                 <div class="drop-wrap" id="drop-loadtype">
-                  <div class="drop-trigger" onclick="toggleDrop('loadtype')" id="loadtype-trigger">
-                    <span class="drop-text" id="loadtype-text">Select type</span>
+                  <div class="drop-trigger loadtype-combo" id="loadtype-trigger" onclick="focusLoadTypeSearch()">
+                    <input type="text" id="loadtype-input" class="loadtype-search" placeholder="Search material type"
+                      autocomplete="off" autocapitalize="words" spellcheck="false"
+                      onfocus="openLoadTypeMenu()" oninput="handleLoadTypeInput()" onkeydown="handleLoadTypeKeydown(event)">
+                    <button type="button" class="loadtype-clear" id="loadtype-clear" onclick="clearLoadTypeSelection(event)">✕</button>
                     <span class="drop-chevron" id="loadtype-chev">▼</span>
                   </div>
                   <div class="drop-menu" id="loadtype-menu"></div>
@@ -1941,7 +2024,7 @@
 
     <div class="app-footer">
       <div class="app-footer-inner">
-        <button class="app-tab" type="button" onclick="window.location.href='dashboard.html?page=dashboard'">
+        <button class="app-tab" type="button" onclick="window.location.href='/transporter_dashboard_FINAL.html?v=4.6.0'">
           <span class="app-tab-icon">⊞</span>
           <span class="app-tab-label">Home</span>
         </button>
@@ -2013,27 +2096,144 @@
   <script src="fleetos-datepicker.js"></script>
   <script>
     function getFleetAuthHeaders(extra = {}) {
-      const token = localStorage.getItem('fleetToken');
+      const token =
+        localStorage.getItem('fleetToken') ||
+        localStorage.getItem('gravityToken') ||
+        localStorage.getItem('token') ||
+        sessionStorage.getItem('fleetToken') ||
+        sessionStorage.getItem('gravityToken') ||
+        sessionStorage.getItem('token');
       return token ? { ...extra, Authorization: `Bearer ${token}` } : extra;
     }
 
     let TRUCKS = [];
     let DRIVERS = [];
     const LOAD_TYPES = [
-      "Packaged Food", "Biscuits & Snacks", "Beverages", "Mineral Water", "FMCG Mixed",
-      "Steel Coils", "TMT Bars", "Steel Pipes", "Structural Steel", "Scrap Metal",
-      "Industrial Chemicals", "Paints & Varnishes", "Lubricants", "Fertilisers", "Pesticides",
-      "Electronics", "Mobile Phones", "Home Appliances", "Electrical Cables", "Batteries",
-      "Raw Cotton", "Cotton Yarn", "Fabric / Cloth", "Readymade Garments", "Footwear",
-      "Cement", "Fly Ash", "Sand", "Tiles", "Marbles / Natural Stones", "Granite Slabs", "Quartz Stone", "Ceramic Tiles", "Marble & Granite",
-      "Food Grains", "Rice", "Wheat", "Pulses / Dal", "Edible Oil",
-      "Machinery", "Industrial Tools", "Generators", "Pumps & Motors", "Machine Parts",
-      "Auto Parts", "Tyres & Tubes", "Tractors", "Agricultural Equipment", "Cars",
-      "Pharma", "Medical Devices", "Hospital Equipment", "Vaccines (Cold Chain)", "Bulk Drugs",
-      "Furniture", "Timber / Wood", "Plywood", "Glass", "Sanitary Ware", "Bath Fittings", "PVC Pipes", "Aluminium Profiles",
-      "Perishables", "Fruits", "Vegetables", "Frozen Food", "Dairy Products",
-      "Petrol", "Diesel", "Bitumen / Asphalt", "Coal", "LPG Cylinders",
-      "Courier Packages", "Retail Goods", "Books & Publications", "Paper Products", "Stationery"
+      "FMCG — Mixed Consumer Goods",
+      "FMCG — Packaged Food",
+      "FMCG — Biscuits & Snacks",
+      "FMCG — Beverages",
+      "FMCG — Mineral Water",
+      "FMCG — Soap & Detergent",
+      "FMCG — Personal Care",
+      "FMCG — Household Cleaning",
+      "Food & Agriculture — Food Grains",
+      "Food & Agriculture — Rice",
+      "Food & Agriculture — Wheat",
+      "Food & Agriculture — Maize",
+      "Food & Agriculture — Pulses / Dal",
+      "Food & Agriculture — Sugar",
+      "Food & Agriculture — Salt",
+      "Food & Agriculture — Flour / Atta",
+      "Food & Agriculture — Edible Oil",
+      "Food & Agriculture — Spices",
+      "Food & Agriculture — Animal Feed",
+      "Food & Agriculture — Cattle Feed",
+      "Food & Agriculture — Poultry Feed",
+      "Perishables — Fruits",
+      "Perishables — Vegetables",
+      "Perishables — Dairy Products",
+      "Perishables — Frozen Food",
+      "Perishables — Meat & Poultry",
+      "Perishables — Seafood",
+      "Construction — Cement",
+      "Construction — Clinker",
+      "Construction — Fly Ash",
+      "Construction — Sand",
+      "Construction — Aggregate / Gitti",
+      "Construction — Bricks / Blocks",
+      "Construction — Ready Mix Materials",
+      "Construction — Tiles",
+      "Construction — Ceramic Tiles",
+      "Construction — Sanitary Ware",
+      "Construction — Bath Fittings",
+      "Construction — Glass",
+      "Construction — Plywood",
+      "Construction — Timber / Wood",
+      "Construction — Marble",
+      "Construction — Granite",
+      "Construction — Quartz Stone",
+      "Construction — Aluminium Profiles",
+      "Construction — PVC Pipes",
+      "Metals — Steel Coils",
+      "Metals — TMT Bars",
+      "Metals — Structural Steel",
+      "Metals — Steel Pipes",
+      "Metals — Stainless Steel",
+      "Metals — Iron Rods",
+      "Metals — Copper",
+      "Metals — Aluminium",
+      "Metals — Scrap Metal",
+      "Chemicals — Industrial Chemicals",
+      "Chemicals — Solvents",
+      "Chemicals — Acids",
+      "Chemicals — Caustic Soda",
+      "Chemicals — Paints & Varnishes",
+      "Chemicals — Resins",
+      "Chemicals — Adhesives",
+      "Chemicals — Lubricants",
+      "Chemicals — Fertilisers",
+      "Chemicals — Pesticides",
+      "Petroleum & Energy — Petrol",
+      "Petroleum & Energy — Diesel",
+      "Petroleum & Energy — Furnace Oil",
+      "Petroleum & Energy — Bitumen / Asphalt",
+      "Petroleum & Energy — LPG Cylinders",
+      "Petroleum & Energy — CNG Equipment",
+      "Petroleum & Energy — Coal",
+      "Petroleum & Energy — Charcoal",
+      "Petroleum & Energy — Batteries",
+      "Electronics — Consumer Electronics",
+      "Electronics — Mobile Phones",
+      "Electronics — IT Hardware",
+      "Electronics — Home Appliances",
+      "Electronics — Electrical Cables",
+      "Electronics — Transformers",
+      "Electronics — Solar Panels",
+      "Electronics — Inverters",
+      "Textiles — Raw Cotton",
+      "Textiles — Cotton Yarn",
+      "Textiles — Fabric / Cloth",
+      "Textiles — Readymade Garments",
+      "Textiles — Hosiery",
+      "Textiles — Footwear",
+      "Machinery — Industrial Machinery",
+      "Machinery — Industrial Tools",
+      "Machinery — Generators",
+      "Machinery — Pumps & Motors",
+      "Machinery — Compressors",
+      "Machinery — Machine Parts",
+      "Machinery — Electrical Panels",
+      "Automotive — Auto Parts",
+      "Automotive — Tyres & Tubes",
+      "Automotive — Trucks / Commercial Vehicles",
+      "Automotive — Cars",
+      "Automotive — Tractors",
+      "Automotive — Two-Wheelers",
+      "Automotive — Agricultural Equipment",
+      "Automotive — Spare Parts",
+      "Pharma & Medical — Pharmaceuticals",
+      "Pharma & Medical — Bulk Drugs",
+      "Pharma & Medical — Vaccines (Cold Chain)",
+      "Pharma & Medical — Medical Devices",
+      "Pharma & Medical — Hospital Equipment",
+      "Paper & Packaging — Paper Reams",
+      "Paper & Packaging — Kraft Paper",
+      "Paper & Packaging — Corrugated Boxes",
+      "Paper & Packaging — Packaging Material",
+      "Paper & Packaging — Stationery",
+      "Retail & E-commerce — Courier Packages",
+      "Retail & E-commerce — Retail Goods",
+      "Retail & E-commerce — E-commerce Parcels",
+      "Retail & E-commerce — Books & Publications",
+      "Household & Lifestyle — Furniture",
+      "Household & Lifestyle — Mattresses",
+      "Household & Lifestyle — Home Decor",
+      "Miscellaneous — Plastic Granules",
+      "Miscellaneous — Rubber Goods",
+      "Miscellaneous — Jute Products",
+      "Miscellaneous — Scrap Paper",
+      "Miscellaneous — Mixed Load"
     ];
 
     /* ── Reg No formatter (AA 00 AA 0000) ── */
@@ -2057,6 +2257,14 @@
 
     /* ── State ── */
     const state = { truck: "", driver: "", origin: "", dest: "", loadtype: "" };
+
+    function goBack(fallbackUrl) {
+      if (window.history.length > 1) {
+        window.history.back();
+        return;
+      }
+      window.location.href = fallbackUrl || 'dashboard.html?page=trips';
+    }
     const EXPENSE_TYPES = ["Bhatta (Per Day)", "Brokerage/Commission", "Hamali/Mathadi", "Dharam Kanta", "Permits"];
 
     function addExpenseRow() {
@@ -2087,28 +2295,125 @@
       input.focus();
     }
 
+    function getAvailabilityStatus(value) {
+        return String(value || '').trim().toLowerCase();
+    }
+
+    function isUnavailableTruck(truck, busyTruckSet) {
+        const reg = String(truck?.reg_no || '').trim();
+        if (!reg) return true;
+        const accountStatus = getAvailabilityStatus(truck?.account_status);
+        const operationalStatus = getAvailabilityStatus(truck?.status);
+        if (accountStatus && accountStatus !== 'active') return true;
+        if (['maintenance', 'service', 'holiday', 'inactive', 'breakdown', 'sold'].includes(operationalStatus)) return true;
+        return busyTruckSet.has(reg);
+    }
+
+    function isUnavailableDriver(driver, busyDriverSet) {
+        const name = String(driver?.full_name || '').trim();
+        if (!name) return true;
+        const accountStatus = getAvailabilityStatus(driver?.account_status);
+        const operationalStatus = getAvailabilityStatus(driver?.status);
+        if (accountStatus && accountStatus !== 'active') return true;
+        if (['maintenance', 'service', 'holiday', 'inactive', 'leave', 'on leave', 'off duty'].includes(operationalStatus)) return true;
+        return busyDriverSet.has(name);
+    }
+
+    function asList(payload) {
+      if (Array.isArray(payload)) return payload;
+      if (Array.isArray(payload?.rows)) return payload.rows;
+      if (Array.isArray(payload?.data)) return payload.data;
+      if (Array.isArray(payload?.items)) return payload.items;
+      return [];
+    }
+
     async function fetchData() {
         try {
-            const [trucksR, driversR] = await Promise.all([
+            const [trucksRes, driversRes, tripsRes] = await Promise.allSettled([
                 fetch((window.FLEETOS_API_BASE || "") + '/api/fleet', { headers: getFleetAuthHeaders() }).then(r => r.json()),
-                fetch((window.FLEETOS_API_BASE || "") + '/api/drivers', { headers: getFleetAuthHeaders() }).then(r => r.json())
+                fetch((window.FLEETOS_API_BASE || "") + '/api/drivers', { headers: getFleetAuthHeaders() }).then(r => r.json()),
+                fetch((window.FLEETOS_API_BASE || "") + '/api/fleet/trips', { headers: getFleetAuthHeaders() }).then(r => r.json())
             ]);
-            TRUCKS = trucksR.map(t => t.reg_no);
-            DRIVERS = driversR.map(d => d.full_name);
-            
-            buildDropMenu("truck", TRUCKS);
-            buildDropMenu("driver", DRIVERS);
+
+            const trucksR = trucksRes.status === "fulfilled" ? trucksRes.value : [];
+            const driversR = driversRes.status === "fulfilled" ? driversRes.value : [];
+            const tripsR = tripsRes.status === "fulfilled" ? tripsRes.value : [];
+
+            if (trucksRes.status !== "fulfilled") console.error("Failed to load trucks:", trucksRes.reason);
+            if (driversRes.status !== "fulfilled") console.error("Failed to load drivers:", driversRes.reason);
+            if (tripsRes.status !== "fulfilled") console.warn("Failed to load trips for availability filtering:", tripsRes.reason);
+
+            const truckRows = asList(trucksR);
+            const driverRows = asList(driversR);
+            const rawTrucks = truckRows
+                .map((truck) => truck?.reg_no)
+                .filter(Boolean);
+            const rawDrivers = driverRows
+                .map((driver) => driver?.full_name || driver?.name || driver?.driver_name)
+                .filter(Boolean);
+
+            TRUCKS = rawTrucks;
+            DRIVERS = rawDrivers;
+
+            if (!TRUCKS.length && rawTrucks.length) TRUCKS = rawTrucks;
+            if (!DRIVERS.length && rawDrivers.length) DRIVERS = rawDrivers;
+
+            if (!TRUCKS.length) {
+                try {
+                    const registerPayload = await fetch((window.FLEETOS_API_BASE || "") + '/api/fleet/document-register', { headers: getFleetAuthHeaders() }).then(r => r.json());
+                    const registerRows = asList(registerPayload);
+                    TRUCKS = registerRows
+                        .map((row) => row?.reg_no)
+                        .filter(Boolean);
+                } catch (err) {
+                    console.warn("Failed to load truck register fallback:", err);
+                }
+            }
+
+            if (!DRIVERS.length) {
+                try {
+                    const registerPayload = await fetch((window.FLEETOS_API_BASE || "") + '/api/drivers/document-register', { headers: getFleetAuthHeaders() }).then(r => r.json());
+                    const registerRows = asList(registerPayload);
+                    DRIVERS = registerRows
+                        .map((row) => row?.full_name)
+                        .filter(Boolean);
+                } catch (err) {
+                    console.warn("Failed to load driver register fallback:", err);
+                }
+            }
+
+            TRUCKS = Array.from(new Set(TRUCKS.filter(Boolean)));
+            DRIVERS = Array.from(new Set(DRIVERS.filter(Boolean)));
         } catch (err) {
             console.error("Failed to load dropdown data:", err);
-            buildDropMenu("truck", []);
-            buildDropMenu("driver", []);
+            TRUCKS = [];
+            DRIVERS = [];
         }
+
+        buildDropMenu("truck", TRUCKS);
+        buildDropMenu("driver", DRIVERS);
         buildDropMenu("loadtype", LOAD_TYPES);
     }
 
     /* ── Init dropdowns ── */
     function buildDropMenu(id, options) {
       const menu = document.getElementById(id + "-menu");
+      menu.innerHTML = "";
+      if (!Array.isArray(options) || !options.length) {
+        if (id === "truck" || id === "driver") {
+          const empty = document.createElement("div");
+          empty.className = "drop-item";
+          empty.style.opacity = "0.65";
+          empty.style.cursor = "default";
+          empty.textContent = id === "truck" ? "No available trucks right now" : "No available drivers right now";
+          menu.appendChild(empty);
+        }
+        return;
+      }
+      if (id === "loadtype") {
+        renderLoadTypeMenu(options);
+        return;
+      }
       options.forEach(o => {
         const d = document.createElement("div");
         d.className = "drop-item"; 
@@ -2120,6 +2425,12 @@
     fetchData();
 
     function toggleDrop(id) {
+      if (id === "loadtype") {
+        const menu = document.getElementById("loadtype-menu");
+        if (menu.classList.contains("open")) closeLoadTypeMenu();
+        else openLoadTypeMenu();
+        return;
+      }
       const menu = document.getElementById(id + "-menu");
       const chev = document.getElementById(id + "-chev");
       const trigger = document.getElementById(id + "-trigger");
@@ -2134,11 +2445,16 @@
 
     function selectDrop(id, val) {
       state[id] = val;
-      const text = document.getElementById(id + "-text");
       const menu = document.getElementById(id + "-menu");
       const chev = document.getElementById(id + "-chev");
       const trigger = document.getElementById(id + "-trigger");
-      text.textContent = (id === "truck") ? formatRegNo(val) : val;
+      const text = document.getElementById(id + "-text");
+      if (text) text.textContent = (id === "truck") ? formatRegNo(val) : val;
+      if (id === "loadtype") {
+        const input = document.getElementById("loadtype-input");
+        if (input) input.value = val;
+        renderLoadTypeMenu(getLoadTypeSuggestions(val));
+      }
       trigger.classList.add("has-val");
       trigger.classList.remove("open");
       chev.classList.remove("open");
@@ -2150,6 +2466,137 @@
       });
       clearErr(id);
 
+    }
+
+    function normalizeLoadTypeSearch(value) {
+      return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    }
+
+    function getLoadTypeSuggestions(query) {
+      const normalizedQuery = normalizeLoadTypeSearch(query);
+      if (!normalizedQuery) return LOAD_TYPES.slice(0, 80);
+      const tokens = normalizedQuery.split(' ').filter(Boolean);
+      return LOAD_TYPES.map((option) => {
+        const [groupRaw, subRaw] = String(option).split("—");
+        const sub = (subRaw || option).trim();
+        const full = normalizeLoadTypeSearch(option);
+        const subNorm = normalizeLoadTypeSearch(sub);
+        let score = 0;
+        if (subNorm === normalizedQuery || full === normalizedQuery) score = 1000;
+        else if (subNorm.startsWith(normalizedQuery)) score = 850;
+        else if (full.startsWith(normalizedQuery)) score = 760;
+        else if (subNorm.includes(normalizedQuery)) score = 640;
+        else if (full.includes(normalizedQuery)) score = 560;
+        else if (tokens.length && tokens.every((token) => full.includes(token))) score = 430 - Math.max(0, full.length - normalizedQuery.length);
+        return { option, score };
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score || a.option.localeCompare(b.option))
+      .slice(0, 50)
+      .map((entry) => entry.option);
+    }
+
+    function renderLoadTypeMenu(options = LOAD_TYPES) {
+      const menu = document.getElementById("loadtype-menu");
+      if (!menu) return;
+      menu.innerHTML = "";
+      if (!options.length) {
+        const empty = document.createElement("div");
+        empty.className = "drop-item drop-item-empty";
+        empty.textContent = "No close match found";
+        menu.appendChild(empty);
+        return;
+      }
+      let currentGroup = "";
+      options.forEach((option) => {
+        const [groupRaw, subRaw] = String(option).split("—");
+        const group = (groupRaw || '').trim();
+        const sub = (subRaw || option).trim();
+        if (group && group !== currentGroup) {
+          currentGroup = group;
+          const label = document.createElement("div");
+          label.className = "drop-group-label";
+          label.textContent = group;
+          menu.appendChild(label);
+        }
+        const item = document.createElement("div");
+        item.className = "drop-item sub-item";
+        item.textContent = sub;
+        if (state.loadtype === option) {
+          item.classList.add("selected");
+          const check = document.createElement("span");
+          check.className = "drop-check";
+          check.textContent = "✓";
+          item.prepend(check);
+        }
+        item.onclick = () => selectDrop("loadtype", option);
+        menu.appendChild(item);
+      });
+    }
+
+    function focusLoadTypeSearch() {
+      const input = document.getElementById("loadtype-input");
+      if (input) input.focus();
+    }
+
+    function openLoadTypeMenu() {
+      renderLoadTypeMenu(getLoadTypeSuggestions(document.getElementById("loadtype-input")?.value || ""));
+      const menu = document.getElementById("loadtype-menu");
+      const chev = document.getElementById("loadtype-chev");
+      const trigger = document.getElementById("loadtype-trigger");
+      document.querySelectorAll(".drop-menu").forEach(m => { if (m.id !== "loadtype-menu") m.classList.remove("open"); });
+      document.querySelectorAll(".drop-chevron").forEach(c => { if (c.id !== "loadtype-chev") c.classList.remove("open"); });
+      document.querySelectorAll(".drop-trigger").forEach(t => { if (t.id !== "loadtype-trigger") t.classList.remove("open"); });
+      menu.classList.add("open");
+      chev.classList.add("open");
+      trigger.classList.add("open");
+    }
+
+    function closeLoadTypeMenu() {
+      const menu = document.getElementById("loadtype-menu");
+      const chev = document.getElementById("loadtype-chev");
+      const trigger = document.getElementById("loadtype-trigger");
+      menu?.classList.remove("open");
+      chev?.classList.remove("open");
+      trigger?.classList.remove("open");
+    }
+
+    function handleLoadTypeInput() {
+      const input = document.getElementById("loadtype-input");
+      if (!input) return;
+      const query = input.value.trim();
+      if (!query) state.loadtype = "";
+      renderLoadTypeMenu(getLoadTypeSuggestions(query));
+      openLoadTypeMenu();
+      const trigger = document.getElementById("loadtype-trigger");
+      if (trigger) trigger.classList.toggle("has-val", !!state.loadtype || !!query);
+    }
+
+    function handleLoadTypeKeydown(event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        const firstMatch = getLoadTypeSuggestions(event.target.value)[0];
+        if (firstMatch) selectDrop("loadtype", firstMatch);
+      } else if (event.key === "Escape") {
+        closeLoadTypeMenu();
+        event.target.blur();
+      }
+    }
+
+    function clearLoadTypeSelection(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      state.loadtype = "";
+      const input = document.getElementById("loadtype-input");
+      const menu = document.getElementById("loadtype-menu");
+      const trigger = document.getElementById("loadtype-trigger");
+      if (input) input.value = "";
+      trigger?.classList.remove("has-val");
+      menu?.querySelectorAll(".selected").forEach(el => el.classList.remove("selected"));
+      menu?.querySelectorAll(".drop-check").forEach(el => el.remove());
+      renderLoadTypeMenu(LOAD_TYPES);
+      clearErr("loadtype");
+      focusLoadTypeSearch();
     }
 
     /* ── Route inputs ── */
@@ -2428,13 +2875,17 @@
       document.getElementById("expenses-container").innerHTML = ""; // Clear dynamic expenses
       state.truck = ""; state.driver = ""; state.loadtype = "";
       ["truck", "driver", "loadtype"].forEach(id => {
-        document.getElementById(id + "-text").textContent = id === "truck" ? "— Select Truck —" : id === "driver" ? "— Select Driver —" : "Select type";
         document.getElementById(id + "-trigger").classList.remove("has-val", "open");
         document.getElementById(id + "-chev").classList.remove("open");
         document.getElementById(id + "-menu").classList.remove("open");
         document.getElementById(id + "-menu").querySelectorAll(".selected").forEach(el => el.classList.remove("selected"));
         document.getElementById(id + "-menu").querySelectorAll(".drop-check").forEach(el => el.remove());
       });
+      document.getElementById("truck-text").textContent = "— Select Truck —";
+      document.getElementById("driver-text").textContent = "— Select Driver —";
+      const loadTypeInput = document.getElementById("loadtype-input");
+      if (loadTypeInput) loadTypeInput.value = "";
+      renderLoadTypeMenu(LOAD_TYPES);
       ["tripOrigin", "tripDestination", "freight", "advance", "client", "lr", "notes", "tripDistance"].forEach(id => {
         const el = document.getElementById(id); if (el) { el.value = ""; el.classList.remove("has-val", "err"); }
       });

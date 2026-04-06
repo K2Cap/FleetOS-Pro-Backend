@@ -209,14 +209,14 @@ body{font-family:var(--ff);color:var(--ink);}
       <div class="doc-card" id="dc-puc">
         <div class="doc-card-icon">🌿</div>
         <div class="doc-card-name">PUC Certificate</div>
-        <div class="doc-card-meta" id="dm-puc">Single page supported</div>
+        <div class="doc-card-meta" id="dm-puc">Supports multiple pages</div>
         <div class="doc-card-stat" id="ds-puc">Not scanned yet</div>
         <button class="upload-btn" id="ub-puc" onclick="scanDoc('puc')">Upload</button>
       </div>
       <div class="doc-card" id="dc-permit">
         <div class="doc-card-icon">🗺️</div>
         <div class="doc-card-name">Route Permit</div>
-        <div class="doc-card-meta" id="dm-permit">Single page supported</div>
+        <div class="doc-card-meta" id="dm-permit">Supports multiple pages</div>
         <div class="doc-card-stat" id="ds-permit">Not scanned yet</div>
         <button class="upload-btn" id="ub-permit" onclick="scanDoc('permit')">Upload</button>
       </div>
@@ -248,24 +248,16 @@ body{font-family:var(--ff);color:var(--ink);}
         <div><label class="lbl">Model</label><div class="finput"><input type="text" placeholder="e.g. Prima 4928" id="model"></div></div>
       </div>
       <div class="r2">
-        <div><label class="lbl">Date of Regn.</label><input class="fdate" type="date" id="reg-date"></div>
-        <div><label class="lbl">Regn. Validity</label><input class="fdate" type="date" id="reg-validity"></div>
-      </div>
-      <div class="r2">
         <div><label class="lbl">Purchase Date</label><input class="fdate" type="date" id="purchase-date"></div>
         <div><label class="lbl">Purchase Price (₹)</label><div class="finput"><span class="pfx">₹</span><input type="text" inputmode="numeric" placeholder="0" id="purchase-price" oninput="formatIndianIntegerInput(this)"></div></div>
       </div>
       <div class="r2">
-        <div><label class="lbl">Axle Configuration</label><select class="fsel" id="axle"><option value="">Select…</option><option>2-Axle (4×2)</option><option>3-Axle (6×2)</option><option>4-Axle (8×2)</option><option>Multi-Axle</option></select></div>
+        <div><label class="lbl">Axle Configuration</label><select class="fsel" id="axle"><option value="">Select…</option><option>2 Axle</option><option>3 Axle</option><option>4 Axle</option><option>5 Axle</option><option>6 Axle or More</option></select></div>
         <div><label class="lbl">Body Type</label><div class="finput"><input type="text" placeholder="e.g. 34FT 3 AXLE SIDE WALL TRAILER" id="body-type"></div></div>
       </div>
       <div class="r2">
         <div><label class="lbl">Load Capacity (Kgs)</label><div class="finput"><input type="text" inputmode="numeric" placeholder="e.g. 54,000" id="capacity" oninput="formatIndianIntegerInput(this)"></div></div>
         <div><label class="lbl">No. of Tyres</label><div class="finput"><input type="text" inputmode="numeric" placeholder="e.g. 10" id="tyres" oninput="formatIndianIntegerInput(this)"></div></div>
-      </div>
-      <div class="r2">
-        <div><label class="lbl">Fuel Type</label><select class="fsel" id="fuel"><option value="">Select…</option><option>Diesel</option><option>CNG</option><option>Electric</option><option>LNG</option></select></div>
-        <div></div>
       </div>
       <div style="height:16px"></div>
     </div>
@@ -316,7 +308,6 @@ body{font-family:var(--ff);color:var(--ink);}
       <div class="s-card">
         <div class="s-row"><span class="s-lbl">Make / Model</span><span class="s-val stack" id="s-make">—</span></div>
         <div class="s-row"><span class="s-lbl">Status</span><span class="s-val dash" id="s-status">—</span></div>
-        <div class="s-row"><span class="s-lbl">Fuel Type</span><span class="s-val" id="s-fuel">—</span></div>
         <div class="s-row"><span class="s-lbl">Load Capacity</span><span class="s-val dash" id="s-cap">—</span></div>
         <div class="s-row"><span class="s-lbl">Documents</span><span class="s-val ok" id="s-docs">✓ 0 / 6 scanned</span></div>
       </div>
@@ -380,7 +371,7 @@ const dkeys=Object.keys(docs);
 const cnt=()=>dkeys.filter(k=>docs[k]).length;
 const truckOcrDocTypes={rc:'registration certificate',ins:'insurance certificate',fit:'fitness certificate',puc:'puc certificate',permit:'route permit',tax:'purchase invoice'};
 let activeTruckDocKey=null;
-let activeTruckUploadMode='single';
+let activeTruckUploadMode='multi-pages';
 let activeTruckUploadLabel='';
 let activeTruckUploadSource='file';
 let pendingRcFollowup=false;
@@ -405,18 +396,6 @@ const truckDocUploadOptions={
   rc:[
     {label:'Front Side',description:'Upload the front page of the RC copy',mode:'rc-front',multiple:false},
     {label:'Back Side',description:'Upload the back page of the RC copy',mode:'rc-back',multiple:false}
-  ],
-  ins:[
-    {label:'Add Multiple Pages',description:'Select all insurance pages in one go',mode:'multi-pages',multiple:true},
-    {label:'Add Single Page',description:'Upload one insurance page now',mode:'single',multiple:false}
-  ],
-  fit:[
-    {label:'Add Multiple Pages',description:'Select all fitness certificate pages together',mode:'multi-pages',multiple:true},
-    {label:'Add Single Page',description:'Upload one fitness page now',mode:'single',multiple:false}
-  ],
-  tax:[
-    {label:'Add Multiple Pages',description:'Select all purchase invoice pages in one go',mode:'multi-pages',multiple:true},
-    {label:'Add Single Page',description:'Upload one purchase invoice page now',mode:'single',multiple:false}
   ]
 };
 
@@ -622,7 +601,7 @@ function cancelTruckCameraCapture(){
   document.getElementById('truck-camera-backdrop').classList.remove('active');
   document.getElementById('truck-camera-sheet').classList.remove('active');
   activeTruckDocKey=null;
-  activeTruckUploadMode='single';
+  activeTruckUploadMode='multi-pages';
   activeTruckUploadLabel='';
   activeTruckUploadSource='file';
   pendingTruckMultiPageDocKey=null;
@@ -644,11 +623,9 @@ async function finishTruckCameraCapture(){
 function openTruckSourceSheet(docKey){
   const optionsHost=document.getElementById('truck-sheet-options');
   const docTitle=docKey==='rc'?'RC Copy':docKey==='ins'?'Insurance Certificate':docKey==='fit'?'Fitness Certificate':docKey==='puc'?'PUC Certificate':docKey==='permit'?'Route Permit':'Purchase Invoice';
-  const cameraDescription=activeTruckUploadMode==='multi-pages'
-    ? 'Capture pages one by one using your camera'
-    : 'Open camera and click a photo now';
+  const cameraDescription='Capture one or more pages using your camera';
   document.getElementById('truck-sheet-title').textContent=`Add ${docTitle}`;
-  document.getElementById('truck-sheet-sub').textContent='Choose where you want to add this document from.';
+  document.getElementById('truck-sheet-sub').textContent='Choose camera or files. You can add one page and press Finish, or keep adding pages before uploading.';
   optionsHost.innerHTML=`
     <button type="button" class="sheet-option primary" onclick="chooseTruckInputSource('camera')">
       <div><strong>Use Camera</strong><span>${cameraDescription}</span></div>
@@ -665,13 +642,21 @@ function openTruckSourceSheet(docKey){
 
 function chooseTruckInputSource(source){
   activeTruckUploadSource=source;
-  if(source==='camera' && activeTruckUploadMode==='multi-pages'){
+  if(activeTruckDocKey==='rc'){
+    openTruckInputPicker({
+      useCamera:source==='camera',
+      multiple:false
+    });
+    setTimeout(()=>closeTruckUploadSheet(),120);
+    return;
+  }
+  if(source==='camera'){
     openTruckMultiPageCameraCapture(activeTruckDocKey);
     return;
   }
   openTruckInputPicker({
-    useCamera:source==='camera',
-    multiple:source==='file' && activeTruckUploadMode==='multi-pages'
+    useCamera:false,
+    multiple:activeTruckDocKey!=='rc'
   });
   setTimeout(()=>closeTruckUploadSheet(),120);
 }
@@ -732,7 +717,7 @@ async function finalizeTruckMultiPageCapture(docKey){
     });
   }
   activeTruckDocKey=null;
-  activeTruckUploadMode='single';
+  activeTruckUploadMode='multi-pages';
   activeTruckUploadLabel='';
   activeTruckUploadSource='file';
   pendingTruckMultiPageDocKey=null;
@@ -1095,15 +1080,12 @@ function buildTruckSubmitFormData(){
   appendTruckFormData(formData,'engine',getTruckFormValue('eng-no'));
   appendTruckFormData(formData,'make',getTruckFormValue('make'));
   appendTruckFormData(formData,'model',getTruckFormValue('model'));
-  appendTruckFormData(formData,'registrationDate',getTruckFormValue('reg-date'));
-  appendTruckFormData(formData,'registrationValidity',getTruckFormValue('reg-validity'));
   appendTruckFormData(formData,'bodyType',getTruckFormValue('body-type'));
   appendTruckFormData(formData,'purchaseDate',getTruckFormValue('purchase-date'));
   appendTruckFormData(formData,'price',getTruckNumericValue('purchase-price'));
   appendTruckFormData(formData,'axle',getTruckFormValue('axle'));
   appendTruckFormData(formData,'tyres',getTruckNumericValue('tyres'));
   appendTruckFormData(formData,'gvw',getTruckNumericValue('capacity'));
-  appendTruckFormData(formData,'fuel',getTruckFormValue('fuel'));
   appendTruckFormData(formData,'status',getTruckFormValue('status'));
   appendTruckFormData(formData,'insurer',getTruckFormValue('ins-prov'));
   appendTruckFormData(formData,'policyNo',getTruckFormValue('ins-pol'));
@@ -1160,8 +1142,11 @@ function normalizeDigits(value){
 }
 
 function normalizeRegNo(value){
-  return String(value||'').replace(/[^a-z0-9]/gi,' ').replace(/\s+/g,' ').trim().toUpperCase();
-}
+    const compact=String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'').trim();
+    const match=compact.match(/^([A-Z]{2})(\d{1,2})([A-Z]{1,3})(\d{1,4})$/);
+    if(!match) return String(value||'').replace(/[^a-z0-9]/gi,' ').replace(/\s+/g,' ').trim().toUpperCase();
+    return `${match[1]} ${match[2].padStart(2,'0')} ${match[3]} ${match[4].padStart(4,'0')}`;
+  }
 
 function normalizeAlphaWords(value){
   return String(value||'').replace(/[^a-z ]/gi,' ').replace(/\s+/g,' ').trim();
@@ -1200,7 +1185,34 @@ function sanitizeModel(value){
   const raw=String(value||'').trim().replace(/\s+/g,' ');
   if(!raw) return '';
   if(/\bmodel\b/i.test(raw) && !/\d/.test(raw)) return '';
+  if(/\b\d+\s*ft\b/i.test(raw) && /\baxle\b/i.test(raw)) return '';
   if(raw.length < 2) return '';
+  return raw;
+}
+
+function extractBodyLength(value){
+  const raw=String(value||'').trim().replace(/\s+/g,' ');
+  if(!raw) return '';
+  const lengthMatch=raw.match(/(\d{1,2})\s*FT\b/i);
+  if(!lengthMatch) return '';
+  return `${lengthMatch[1]} Ft`;
+}
+
+function extractAxleLabel(value){
+  const raw=String(value||'').trim().replace(/\s+/g,' ');
+  if(!raw) return '';
+  const match=raw.match(/\b([2-9])\s*AXLE\b/i);
+  if(!match) return '';
+  const count=Number(match[1]);
+  if(count >= 6) return '6 Axle or More';
+  return `${count} Axle`;
+}
+
+function normalizeBodyType(value){
+  const lengthOnly=extractBodyLength(value);
+  if(lengthOnly) return lengthOnly;
+  const raw=String(value||'').trim().replace(/\s+/g,' ');
+  if(!raw) return '';
   return raw;
 }
 
@@ -1259,6 +1271,43 @@ function normalizeFuelType(value){
   return value;
 }
 
+function normalizeAxleConfiguration(value){
+  const text=String(value||'').trim().toLowerCase();
+  if(!text) return '';
+  if(/\b2\b|\b2\s*axle\b/.test(text)) return '2 Axle';
+  if(/\b3\b|\b3\s*axle\b/.test(text)) return '3 Axle';
+  if(/\b4\b|\b4\s*axle\b/.test(text)) return '4 Axle';
+  if(/\b5\b|\b5\s*axle\b/.test(text)) return '5 Axle';
+  if(/\b6\b|\b6\s*axle\b|\b7\s*axle\b|\b8\s*axle\b|multi\s*axle/.test(text)) return '6 Axle or More';
+  return '';
+}
+
+function inferTyresFromAxle(value){
+  const text=String(value||'').trim().toLowerCase();
+  if(!text) return '';
+  let axleCount=null;
+  if(/\b2\b|\b2\s*axle\b/.test(text)) axleCount=2;
+  else if(/\b3\b|\b3\s*axle\b/.test(text)) axleCount=3;
+  else if(/\b4\b|\b4\s*axle\b/.test(text)) axleCount=4;
+  else if(/\b5\b|\b5\s*axle\b/.test(text)) axleCount=5;
+  else if(/\b6\b|\b6\s*axle\b|\b7\s*axle\b|\b8\s*axle\b|multi\s*axle/.test(text)) axleCount=6;
+  if(!axleCount) return '';
+  return String((4 * axleCount) - 2);
+}
+
+function syncTyresFromAxle(){
+  const axleEl=document.getElementById('axle');
+  const tyresEl=document.getElementById('tyres');
+  if(!axleEl || !tyresEl) return;
+  const tyresValue=inferTyresFromAxle(axleEl.value);
+  if(!tyresValue) return;
+  tyresEl.value=tyresValue;
+  const wrap=tyresEl.closest('.finput') || tyresEl;
+  wrap.style.transition='background .3s';
+  wrap.style.background='rgba(34,121,84,.12)';
+  setTimeout(()=>{wrap.style.background='';},1000);
+}
+
 function setFieldValue(id,value,transform){
   const el=document.getElementById(id);
   if(!el || value===null || value===undefined) return false;
@@ -1278,32 +1327,41 @@ function applyTruckOcrData(data, options={}){
   const payload=data||{};
   const sourceType=String(options.sourceType || payload.documentType || '').toLowerCase();
   const allowRegOverride=sourceType==='rc' || sourceType==='registration certificate' || sourceType==='indian union vehicle registration certificate';
-  const allowPurchaseFields=sourceType==='purchase_invoice' || sourceType==='purchase invoice';
+  const allowRcVehicleFields=allowRegOverride;
+  const allowPurchaseFields=sourceType==='purchase_invoice' || sourceType==='purchase invoice' || sourceType.includes('invoice');
   if(allowRegOverride || !document.getElementById('reg-no')?.value.trim()){
     setFieldValue('reg-no',chooseFirstValue(payload,['regNo','Reg No','Registration Number','Registration No','Vehicle Number','Vehicle No']),normalizeRegNo);
   }
   setFieldValue('vin',chooseFirstValue(payload,['chassisNo','Chassis Number','Chassis No','VIN','VIN / Chassis No']),sanitizeChassisNo);
   setFieldValue('eng-no',chooseFirstValue(payload,['engineNo','Engine No','Engine Number','Motor No','Motor Number']),sanitizeEngineNo);
   setFieldValue('make',chooseFirstValue(payload,['make','Make','Maker',"Maker's Name",'Manufacturer','Brand','Vehicle Make']),sanitizeMake);
-  setFieldValue('model',chooseFirstValue(payload,['model','Model',"Maker's Model Name",'Variant','Vehicle Model','Maker Model Name']),sanitizeModel);
-  setFieldValue('reg-date',chooseFirstValue(payload,['registrationDate','Registration Date','Date of Registration','Date of Regn']),normalizeDateInput);
-  setFieldValue('reg-validity',chooseFirstValue(payload,['registrationValidity','Regn. Validity','Regn Validity','Registration Validity','Registration Valid Upto']),normalizeDateInput);
-  setFieldValue('body-type',chooseFirstValue(payload,['bodyType','Body Type','Type of Body']),sanitizeModel);
+  setFieldValue('model',chooseFirstValue(payload,['Model',"Maker's Model Name",'Vehicle Model','Variant','Maker Model Name','model']),sanitizeModel);
+  const descriptorValue=chooseFirstValue(payload,['Body Type','Type of Body','bodyType','body_type','Model','model','Vehicle Model']);
+  const bodyTypeValue=chooseFirstValue(payload,['Body Type','Type of Body','bodyType','body_type']) || descriptorValue;
+  if(allowRcVehicleFields || !document.getElementById('body-type')?.value.trim()){
+    setFieldValue('body-type',bodyTypeValue,normalizeBodyType);
+  }
+  const axleValue=chooseFirstValue(payload,['axleConfig','Axle Configuration','Axle Config','Axle']) || extractAxleLabel(descriptorValue) || bodyTypeValue;
+  if(allowRcVehicleFields || !document.getElementById('axle')?.value.trim()){
+    setFieldValue('axle',axleValue,normalizeAxleConfiguration);
+    syncTyresFromAxle();
+  }
   if(allowPurchaseFields || !document.getElementById('purchase-date')?.value.trim()){
     setFieldValue('purchase-date',chooseFirstValue(payload,['purchaseDate','Purchase Date','Invoice Date','Sale Date']),normalizeDateInput);
   }
   if(allowPurchaseFields || !document.getElementById('purchase-price')?.value.trim()){
     setFieldValue('purchase-price',chooseFirstValue(payload,['purchasePrice','Purchase Price','Invoice Value','Ex Showroom Price','Sale Amount','Invoice Amount']),formatIndianIntegerString);
   }
-  setFieldValue('capacity',chooseFirstValue(payload,['capacity','Gross Combination Weight','GCW','GVW']),formatIndianIntegerString);
-  setFieldValue('fuel',chooseFirstValue(payload,['fuelType','Fuel Type','Fuel']),normalizeFuelType);
-  const insuranceProviderValue=chooseFirstValue(payload,['insuranceProvider','Insurance Provider','Insurer','Insurance Company','Company Name']);
+  if(allowRcVehicleFields || !document.getElementById('capacity')?.value.trim()){
+    setFieldValue('capacity',chooseFirstValue(payload,['Gross Combination Weight','GCW','GVW','capacity']),formatIndianIntegerString);
+  }
+  const insuranceProviderValue=chooseFirstValue(payload,['insuranceProvider','Insurance Provider','Insurer','Insurance Company','Company Name','Company']);
   const policyNumberValue=chooseFirstValue(payload,['policyNo','Policy No','Policy Number','Policy No.']);
-  const insuranceExpiryValue=chooseFirstValue(payload,['insuranceExpiry','Insurance Expiry','Expiry Date','Policy Expiry']);
+  const insuranceExpiryValue=chooseFirstValue(payload,['insuranceExpiry','Insurance Expiry','Expiry Date','Policy Expiry','Expiry']);
   setFieldValue('ins-prov',insuranceProviderValue,sanitizePersonOrgName);
   setFieldValue('ins-pol',policyNumberValue,sanitizePolicyNo);
   setFieldValue('ins-exp',insuranceExpiryValue,normalizeDateInput);
-  setFieldValue('ins-cov',chooseFirstValue(payload,['coverageType','Coverage Type','Insurance Type']),normalizeCoverageType);
+  setFieldValue('ins-cov',chooseFirstValue(payload,['coverageType','Coverage Type','Insurance Type','Type of Cover']),normalizeCoverageType);
   setFieldValue('fit-no',chooseFirstValue(payload,['fitnessCertNo','Fitness Cert No.','Fitness Cert No','Fitness Certificate No']),sanitizeDocNumber);
   setFieldValue('fit-exp',chooseFirstValue(payload,['fitnessExpiry','Fitness Expiry','Certificate expiry','Certificate will expire on']),normalizeDateInput);
   setFieldValue('puc-no',chooseFirstValue(payload,['pucCertNo','PUC Cert No','PUC Certificate No','Certificate SL. No.','PUC Code']),sanitizeDocNumber);
@@ -1334,13 +1392,12 @@ function applyTruckBackendData(truck){
   setFieldValue('eng-no',truck.engine_no || truck.engineNo,sanitizeEngineNo);
   setFieldValue('make',truck.make,sanitizeMake);
   setFieldValue('model',truck.model,sanitizeModel);
-  setFieldValue('reg-date',truck.registration_date || truck.registrationDate,normalizeDateInput);
-  setFieldValue('reg-validity',truck.registration_validity || truck.registrationValidity,normalizeDateInput);
-  setFieldValue('body-type',truck.body_type || truck.bodyType,sanitizeModel);
+  setFieldValue('body-type',truck.body_type || truck.bodyType,normalizeBodyType);
   setFieldValue('purchase-date',truck.purchase_date || truck.purchaseDate,normalizeDateInput);
   setFieldValue('purchase-price',truck.purchase_price || truck.purchasePrice,formatIndianIntegerString);
   setFieldValue('capacity',truck.gvw || truck.payload || truck.load_capacity || truck.loadCapacity,formatIndianIntegerString);
-  setFieldValue('fuel',truck.fuel_type || truck.fuelType,normalizeFuelType);
+  setFieldValue('axle',truck.axle_config || truck.axleConfig || truck.body_type || truck.bodyType,normalizeAxleConfiguration);
+  syncTyresFromAxle();
   setFieldValue('status',truck.status);
   setFieldValue('ins-prov',truck.insurance_provider || truck.insurer,sanitizePersonOrgName);
   setFieldValue('ins-pol',truck.policy_no || truck.policyNo,sanitizePolicyNo);
@@ -1565,7 +1622,7 @@ async function runTruckOcr(k,file,options={}){
 
 function scanDoc(k){
   activeTruckDocKey=k;
-  if(k==='rc' || k==='ins' || k==='fit' || k==='tax'){
+  if(k==='rc'){
     pendingRcFollowup=false;
     if(k==='rc' && !(truckDocUploads.rc.frontFile && truckDocUploads.rc.backFile)){
       openRcUploadSheetForMissingSide();
@@ -1573,7 +1630,7 @@ function scanDoc(k){
     }
     if(openTruckUploadSheet(k)) return;
   }
-  activeTruckUploadMode='single';
+  activeTruckUploadMode='multi-pages';
   activeTruckUploadLabel='';
   activeTruckUploadSource='file';
   openTruckSourceSheet(k);
@@ -1654,7 +1711,7 @@ async function handleTruckInputChange(event){
   }finally{
     if(!(uploadMode==='multi-pages' && uploadSource==='camera')){
       activeTruckDocKey=null;
-      activeTruckUploadMode='single';
+      activeTruckUploadMode='multi-pages';
       activeTruckUploadLabel='';
       activeTruckUploadSource='file';
       pendingTruckMultiPageDocKey=null;
@@ -1664,6 +1721,7 @@ async function handleTruckInputChange(event){
 
 document.getElementById('ocr-camera-input').addEventListener('change', handleTruckInputChange);
 document.getElementById('ocr-file-input').addEventListener('change', handleTruckInputChange);
+document.getElementById('axle')?.addEventListener('change', syncTyresFromAxle);
 window.addEventListener('beforeunload', stopTruckCameraCapture);
 
 async function goNext(){
@@ -1760,7 +1818,6 @@ async function submitTruck(){
     document.getElementById('s-reg').textContent=reg;
     document.getElementById('s-make').innerHTML=md ? `${mk}<br>${md}` : mk;
     document.getElementById('s-status').textContent=document.getElementById('status').value||'—';
-    document.getElementById('s-fuel').textContent=document.getElementById('fuel').value||'—';
     const cap=document.getElementById('capacity').value;
     document.getElementById('s-cap').textContent=cap?cap+' Kgs':'—';
     document.getElementById('s-docs').innerHTML='✓ '+cnt()+' / 6 scanned';

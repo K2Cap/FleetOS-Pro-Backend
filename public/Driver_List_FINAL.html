@@ -420,6 +420,38 @@ async function loadDriverRows() {
     if (!response.ok) throw new Error('Could not load drivers right now.');
     const rows = await response.json().catch(() => []);
     driverRows = Array.isArray(rows) ? rows : [];
+    if (!driverRows.length) {
+      try {
+        const regRes = await authFetch('/api/drivers/document-register');
+        if (regRes.ok) {
+          const regPayload = await regRes.json().catch(() => ({}));
+          const regRows = Array.isArray(regPayload?.rows) ? regPayload.rows : [];
+          driverRows = regRows.map((row) => {
+            const dlDoc = row.dl_document || {};
+            const aadharDoc = row.aadhar_document || {};
+            const panDoc = row.pan_document || {};
+            const extractField = (snapshot, fieldName) => {
+              const fields = Array.isArray(snapshot?.fields) ? snapshot.fields : [];
+              const hit = fields.find((f) => String(f?.field || '').trim().toLowerCase() === String(fieldName).trim().toLowerCase());
+              return hit?.value || null;
+            };
+            return {
+              id: row.driver_id,
+              full_name: row.full_name || extractField(dlDoc, 'Full Name') || extractField(aadharDoc, 'Full Name') || extractField(panDoc, 'Full Name') || 'Unnamed Driver',
+              status: 'Active',
+              dl_no: extractField(dlDoc, 'DL Number') || extractField(dlDoc, 'License Number') || '',
+              dl_expiry: extractField(dlDoc, 'DL Expiry') || '',
+              license_type: extractField(dlDoc, 'License Type') || '',
+              aadhar: extractField(aadharDoc, 'Aadhaar Number') || extractField(aadharDoc, 'Aadhaar') || '',
+              pan: extractField(panDoc, 'PAN') || '',
+              assigned_truck: '',
+              phone: '',
+              source: 'document-register'
+            };
+          });
+        }
+      } catch (_) {}
+    }
     updateStats(driverRows);
     renderDriverCards();
   } catch (error) {

@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "project-e2db3a59-a395-4fd5-a23"
-  }
+  },
+  "targets": {
+    "project-e2db3a59-a395-4fd5-a23": {
+      "hosting": {
+        "driverapp": [
+          "fleetos-driver-portal-2026"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }
