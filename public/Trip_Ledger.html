@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>FleetOS - Trip Ledger</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --g:#1a5c3a;--g2:#236b47;--s:#e8671a;--go:#c9930a;--cr:#c0392b;
+  --bg:#f5f2ec;--wh:#fff;--ink:#1a1814;--mu:#7a7570;--bd:#ddd9d0;
+  --fd:'Fraunces',serif;--ff:'DM Sans',sans-serif;--r:18px;--sh:0 8px 24px rgba(26,24,20,.08);
+}
+body{font-family:var(--ff);background:var(--bg);color:var(--ink);}
+.page{min-height:100vh;padding-bottom:32px}
+.header{background:var(--g);color:#fff;padding:18px 16px 20px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.back{border:none;background:rgba(255,255,255,.12);color:#fff;border-radius:12px;padding:10px 12px;font-weight:700;cursor:pointer}
+.title{font-family:var(--fd);font-size:28px;font-weight:900;line-height:1}
+.subtitle{font-size:12px;opacity:.78;margin-top:4px}
+.trip-card{margin:14px 16px 0;background:var(--wh);border:1px solid var(--bd);border-radius:20px;padding:16px;box-shadow:var(--sh)}
+.trip-reg{font-family:var(--fd);font-size:24px;font-weight:900}
+.trip-route{margin-top:6px;font-size:16px;font-weight:700}
+.trip-meta{margin-top:10px;font-size:13px;color:var(--mu);display:flex;gap:14px;flex-wrap:wrap}
+.section{padding:16px}
+.summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.tile{background:var(--wh);border:1px solid var(--bd);border-radius:18px;padding:14px}
+.k{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mu);font-weight:700}
+.v{margin-top:8px;font-size:22px;font-weight:900;color:var(--g)}
+.list{display:grid;gap:12px}
+.expense-card{background:var(--wh);border:1px solid var(--bd);border-left:6px solid var(--go);border-radius:18px;padding:14px;cursor:pointer;box-shadow:var(--sh)}
+.expense-card.approved{border-left-color:var(--g)}
+.expense-card.rejected{border-left-color:var(--cr)}
+.expense-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.expense-amt{font-size:24px;font-weight:900;color:var(--ink)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:800}
+.chip.pending{background:#fff6e0;color:#9b6700}
+.chip.approved{background:#e8f5ee;color:var(--g)}
+.chip.rejected{background:#fdecea;color:var(--cr)}
+.expense-sub{margin-top:8px;font-size:13px;color:var(--mu);display:grid;gap:4px}
+.empty{background:var(--wh);border:1px solid var(--bd);border-radius:18px;padding:20px;text-align:center;color:var(--mu)}
+.sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.38);opacity:0;pointer-events:none;transition:.2s}
+.sheet-backdrop.active{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;background:var(--wh);border-radius:28px 28px 0 0;min-height:58vh;max-height:86vh;transform:translateY(100%);transition:.22s ease;display:flex;flex-direction:column}
+.sheet.active{transform:translateY(0)}
+.grab{width:52px;height:5px;background:#d9d3c7;border-radius:999px;margin:10px auto 8px}
+.sheet-inner{padding:0 16px 18px;overflow:auto}
+.detail-grid{display:grid;gap:10px;margin-top:14px}
+.row{background:#faf8f2;border:1px solid #e9e3d7;border-radius:14px;padding:12px}
+.row .k{font-size:10px}
+.row .val{margin-top:6px;font-weight:700}
+.preview-wrap{margin-top:14px;background:#faf8f2;border:1px solid #e9e3d7;border-radius:16px;padding:12px}
+.preview-wrap img{max-width:100%;border-radius:12px;display:block}
+.preview-wrap iframe{width:100%;height:360px;border:none;border-radius:12px;background:#fff}
+.actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px}
+.btn{height:48px;border-radius:14px;border:none;font-weight:800;font-family:var(--ff);cursor:pointer}
+.btn.outline{background:#fff;border:1px solid var(--bd);color:var(--ink)}
+.btn.approve{background:var(--g);color:#fff}
+.btn.reject{background:var(--cr);color:#fff}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="top">
+      <button class="back" onclick="history.back()">← Back</button>
+      <div style="flex:1;min-width:0">
+        <div class="title">Trip Ledger</div>
+        <div class="subtitle">Trip-wise variable expenses and receipts</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="trip-card">
+    <div class="trip-reg" id="trip-reg">—</div>
+    <div class="trip-route" id="trip-route">—</div>
+    <div class="trip-meta">
+      <div id="trip-driver">Driver: —</div>
+      <div id="trip-status">Status: —</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="summary">
+      <div class="tile">
+        <div class="k">Variable Cost Total</div>
+        <div class="v" id="var-total">₹ 0</div>
+      </div>
+      <div class="tile">
+        <div class="k">Receipts</div>
+        <div class="v" id="receipt-count">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="list" id="ledger-list">
+      <div class="empty">Loading trip expenses...</div>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-backdrop" id="detail-backdrop" onclick="closeExpenseDetail()"></div>
+<div class="sheet" id="detail-sheet">
+  <div class="grab"></div>
+  <div class="sheet-inner">
+    <div class="trip-reg" id="detail-amount">₹ 0</div>
+    <div class="trip-route" id="detail-type">Expense</div>
+    <div class="detail-grid" id="detail-grid"></div>
+    <div class="preview-wrap" id="detail-preview" style="display:none"></div>
+    <div class="actions">
+      <button class="btn outline" id="detail-download">Download Receipt</button>
+      <button class="btn approve" id="detail-approve">Approve</button>
+      <button class="btn reject" id="detail-reject">Reject</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const tripId = params.get('tripId') || '';
+const apiBase = window.FLEETOS_API_BASE || 'https://fleetos-pro-backend-production.up.railway.app';
+let snapshot = null;
+let currentExpense = null;
+
+function getToken() {
+  return localStorage.getItem('fleetToken')
+    || localStorage.getItem('transporterToken')
+    || localStorage.getItem('gravityToken')
+    || localStorage.getItem('token')
+    || '';
+}
+
+function getAuthHeaders(extra = {}) {
+  const token = getToken();
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...extra
+  };
+}
+
+function formatMoney(value) {
+  const num = Number(value || 0);
+  return `₹ ${num.toLocaleString('en-IN')}`;
+}
+
+function chipClass(status) {
+  const s = String(status || 'In Process').toLowerCase();
+  if (s === 'approved') return 'approved';
+  if (s === 'rejected') return 'rejected';
+  return 'pending';
+}
+
+function renderSnapshot(data) {
+  snapshot = data || {};
+  const trip = snapshot.trip || {};
+  const expenses = Array.isArray(snapshot.expenses) ? snapshot.expenses : [];
+  document.getElementById('trip-reg').textContent = trip.reg_no || trip.truck_number || trip.truck_text || '—';
+  document.getElementById('trip-route').textContent = `${trip.origin || '—'} → ${trip.destination || '—'}`;
+  document.getElementById('trip-driver').textContent = `Driver: ${trip.driver_name || trip.driver_text || '—'}`;
+  document.getElementById('trip-status').textContent = `Status: ${trip.status || '—'}`;
+  document.getElementById('var-total').textContent = formatMoney((snapshot.financials || {}).variableTotal || 0);
+  document.getElementById('receipt-count').textContent = String(expenses.filter((e) => !!e.bill_image_data || !!e.receipt_document).length);
+
+  const list = document.getElementById('ledger-list');
+  if (!expenses.length) {
+    list.innerHTML = '<div class="empty">No variable expenses recorded for this trip yet.</div>';
+    return;
+  }
+  list.innerHTML = expenses.map((expense) => {
+    const status = expense.status || 'In Process';
+    return `
+      <div class="expense-card ${chipClass(status)}" data-expense-id="${expense.id}">
+        <div class="expense-top">
+          <div>
+            <div class="expense-amt">${formatMoney(expense.total_rupees || 0)}</div>
+            <div style="margin-top:4px;font-weight:800">${expense.expense_type || 'Expense'}</div>
+          </div>
+          <div class="chip ${chipClass(status)}">${status}</div>
+        </div>
+        <div class="expense-sub">
+          <div>${trip.reg_no || trip.truck_number || trip.truck_text || '—'}</div>
+          <div>${trip.origin || '—'} → ${trip.destination || '—'}</div>
+          <div>${expense.date || expense.created_at || '—'}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  list.querySelectorAll('.expense-card').forEach((card) => {
+    card.addEventListener('click', () => openExpenseDetail(card.dataset.expenseId));
+  });
+}
+
+async function fetchTripLedger() {
+  const res = await fetch(`${apiBase}/api/fleet/trips/${encodeURIComponent(tripId)}/detail`, {
+    headers: getAuthHeaders(),
+    cache: 'no-store'
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || 'Could not load this trip ledger right now.');
+  renderSnapshot(data);
+}
+
+async function openExpenseDetail(expenseId) {
+  currentExpense = (snapshot?.expenses || []).find((item) => String(item.id) === String(expenseId)) || null;
+  if (!currentExpense) return;
+  document.getElementById('detail-amount').textContent = formatMoney(currentExpense.total_rupees || 0);
+  document.getElementById('detail-type').textContent = currentExpense.expense_type || 'Expense';
+  const grid = document.getElementById('detail-grid');
+  const trip = snapshot?.trip || {};
+  const rows = [
+    ['Truck Number', trip.reg_no || trip.truck_number || trip.truck_text || '—'],
+    ['From → To', `${trip.origin || '—'} → ${trip.destination || '—'}`],
+    ['Expense Date', currentExpense.date || currentExpense.created_at || '—'],
+    ['Status', currentExpense.status || 'In Process'],
+    ['Merchant / Place', currentExpense.place || currentExpense.vendor || currentExpense.merchant || '—'],
+    ['Notes', currentExpense.notes || '—']
+  ];
+  grid.innerHTML = rows.map(([key, value]) => `<div class="row"><div class="k">${key}</div><div class="val">${value}</div></div>`).join('');
+
+  const preview = document.getElementById('detail-preview');
+  preview.style.display = 'none';
+  preview.innerHTML = '';
+  const billData = currentExpense.bill_image_data || currentExpense.download_path || null;
+  if (billData) {
+    if (billData.startsWith('data:')) {
+      // Base64 data URL — render directly
+      preview.style.display = '';
+      if (billData.startsWith('data:application/pdf')) {
+        preview.innerHTML = `<iframe src="${billData}"></iframe>`;
+      } else {
+        preview.innerHTML = `<img src="${billData}" alt="Expense receipt">`;
+      }
+    } else {
+      // Server file path — fetch and render
+      try {
+        const receiptRes = await fetch(`${apiBase}${billData}`, { headers: getAuthHeaders() });
+        if (receiptRes.ok) {
+          const blob = await receiptRes.blob();
+          const url = URL.createObjectURL(blob);
+          const mime = blob.type || '';
+          if (mime.startsWith('image/')) {
+            preview.style.display = '';
+            preview.innerHTML = `<img src="${url}" alt="Expense receipt">`;
+          } else if (mime === 'application/pdf') {
+            preview.style.display = '';
+            preview.innerHTML = `<iframe src="${url}"></iframe>`;
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
+  document.getElementById('detail-download').onclick = downloadCurrentReceipt;
+  document.getElementById('detail-approve').onclick = () => updateExpenseStatus('Approved');
+  document.getElementById('detail-reject').onclick = () => updateExpenseStatus('Rejected');
+  document.getElementById('detail-backdrop').classList.add('active');
+  document.getElementById('detail-sheet').classList.add('active');
+}
+
+function closeExpenseDetail() {
+  document.getElementById('detail-backdrop').classList.remove('active');
+  document.getElementById('detail-sheet').classList.remove('active');
+}
+
+async function downloadCurrentReceipt() {
+  const billData = currentExpense?.bill_image_data || currentExpense?.download_path || null;
+  if (!billData) {
+    alert('No receipt image is attached to this expense.');
+    return;
+  }
+
+  if (billData.startsWith('data:')) {
+    // Base64 data URL — convert to blob and trigger download
+    const [header, base64] = billData.split(',');
+    const mime = (header.match(/:(.*?);/) || [])[1] || 'image/jpeg';
+    const ext = mime === 'application/pdf' ? 'pdf' : mime.startsWith('image/png') ? 'png' : 'jpg';
+    const bytes = atob(base64);
+    const arr = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+    const blob = new Blob([arr], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `expense_${currentExpense.id}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    return;
+  }
+
+  // Server file path — fetch then download
+  const res = await fetch(`${apiBase}${billData}`, { headers: getAuthHeaders() });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    alert(data?.error || 'Could not download receipt right now.');
+    return;
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `expense_${currentExpense.id}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function updateExpenseStatus(status) {
+  if (!currentExpense?.id) return;
+  const res = await fetch(`${apiBase}/api/expenses/${encodeURIComponent(currentExpense.id)}/status`, {
+    method: 'PUT',
+    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ status })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    alert(data?.error || `Could not mark expense as ${status}.`);
+    return;
+  }
+  closeExpenseDetail();
+  await fetchTripLedger();
+}
+
+fetchTripLedger().catch((err) => {
+  document.getElementById('ledger-list').innerHTML = `<div class="empty">${err?.message || 'Could not load this trip ledger right now.'}</div>`;
+});
+</script>
+</body>
+</html>

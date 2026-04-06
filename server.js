@@ -1257,6 +1257,47 @@ app.get('/api/fleet/trips/:id/expenses', async (req, res) => {
     }
 });
 
+// --- TRIP LEDGER DETAIL ENDPOINT ---
+app.get('/api/fleet/trips/:id/detail', async (req, res) => {
+    try {
+        const tripResult = await pool.query('SELECT * FROM trips WHERE id = $1', [req.params.id]);
+        if (!tripResult.rows.length) return res.status(404).json({ error: 'Trip not found' });
+        const trip = tripResult.rows[0];
+
+        // Enrich with truck reg_no if available
+        let regNo = trip.truck_text || null;
+        try {
+            const truckResult = await pool.query(
+                'SELECT reg_no FROM trucks WHERE reg_no ILIKE $1 LIMIT 1',
+                [trip.truck_text || '']
+            );
+            if (truckResult.rows.length) regNo = truckResult.rows[0].reg_no;
+        } catch (_) {}
+
+        const expensesResult = await pool.query(
+            `SELECT * FROM expenses WHERE trip_id = $1 ORDER BY created_at ASC`,
+            [req.params.id]
+        );
+        const expenses = expensesResult.rows.map(serializeExpenseRow);
+        const variableTotal = expenses.reduce((sum, e) => sum + (e.total_rupees || 0), 0);
+
+        res.json({
+            trip: {
+                ...trip,
+                reg_no: regNo,
+                truck_number: regNo,
+                driver_name: trip.driver_text,
+                origin: trip.origin,
+                destination: trip.destination
+            },
+            expenses,
+            financials: { variableTotal }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // --- EXPENSES API ---
 app.post('/api/expenses', async (req, res) => {
     const { type, amount, tripId, notes, date } = req.body;
