@@ -3729,6 +3729,121 @@ app.get('/api/driver-data', async (req, res) => {
     }
 });
 
+app.get('/api/driver-app/bootstrap', authenticateToken, async (req, res) => {
+    try {
+        if (req.user?.role !== 'driver') {
+            return res.status(403).json({ error: 'Driver access required' });
+        }
+
+        const driverId = String(req.user.id || '');
+        const driverRes = await pool.query(
+            `SELECT
+                d.*,
+                r.full_name AS reg_full_name,
+                r.dl_document,
+                r.aadhar_document,
+                r.pan_document,
+                r.photo_document,
+                u.phone AS transporter_phone
+             FROM drivers d
+             LEFT JOIN driver_document_registers r
+               ON r.driver_id = d.id
+             LEFT JOIN users u
+               ON u.id = COALESCE(d.owner_user_id, d.transporter_id, r.owner_user_id)
+             WHERE d.id::text = $1
+             LIMIT 1`,
+            [driverId]
+        );
+        const row = driverRes.rows[0];
+        if (!row) return res.status(404).json({ error: 'Driver not found' });
+
+        const fullName = cleanString(row.full_name) || cleanString(row.reg_full_name);
+        const normalizedDriverName = fullName.toLowerCase();
+
+        const tripsRes = await pool.query(
+            `SELECT *
+             FROM trips
+             WHERE (
+                driver_id::text = $1
+                OR driver_text = $2
+                OR lower(regexp_replace(coalesce(driver_text, ''), '[^a-z0-9]+', '', 'g')) = $3
+             )
+             ORDER BY COALESCE(start_date_raw, start_date, created_at::text) DESC`,
+            [driverId, fullName, normalizedDriverName]
+        );
+
+        const expensesRes = await pool.query(
+            `SELECT *
+             FROM expenses
+             WHERE driver_id::text = $1
+             ORDER BY COALESCE(date, created_at::text) DESC
+             LIMIT 20`,
+            [driverId]
+        );
+
+        const mappedTrips = tripsRes.rows.map((t) => buildTripPayloadForDriverApp({
+            ...t,
+            truck: t.truck_text,
+            route: t.origin,
+            dest: t.destination,
+            driver: t.driver_text,
+            startDate: t.start_date,
+            totalExpenses: 0,
+            distanceKm: parseFloat(t.distance_km || 0),
+            km: parseFloat(t.distance_km || 0),
+            earned: Math.round((parseFloat(t.freight) || 0) / 100),
+            truckPurchasePrice: 0,
+            truckTyresCount: 0
+        }, {
+            locationShareUrl: buildTripLocationShareUrl(req, t.id)
+        }));
+
+        const activeTrip = mappedTrips.find(t => ['Active', 'En Route'].includes(t.status)) || null;
+        const upcomingTrip = [...mappedTrips]
+            .filter((t) => ['Upcoming', 'Approved', 'Scheduled'].includes(String(t.status || '')))
+            .sort((a, b) => (resolveTripStartDate(a)?.getTime() || 0) - (resolveTripStartDate(b)?.getTime() || 0))[0] || null;
+        const expenseEligibleTrips = [...mappedTrips]
+            .filter((t) => isTripEligibleForExpenseSubmission(t))
+            .sort((a, b) => {
+                const aStatus = String(a.status || '').toLowerCase();
+                const bStatus = String(b.status || '').toLowerCase();
+                const aPriority = ['active', 'en route'].includes(aStatus) ? 0 : (aStatus === 'approved' ? 1 : 2);
+                const bPriority = ['active', 'en route'].includes(bStatus) ? 0 : (bStatus === 'approved' ? 1 : 2);
+                if (aPriority !== bPriority) return aPriority - bPriority;
+                return (resolveTripEndDate(b)?.getTime() || resolveTripStartDate(b)?.getTime() || 0) - (resolveTripEndDate(a)?.getTime() || resolveTripStartDate(a)?.getTime() || 0);
+            });
+
+        res.json({
+            driver: sanitizeDriverRow({
+                ...row,
+                full_name: fullName || row.full_name,
+                dl_document: row.dl_document,
+                aadhar_document: row.aadhar_document,
+                pan_document: row.pan_document,
+                photo_document: row.photo_document
+            }),
+            transporter_phone: normalizePhone(row.transporter_phone),
+            stats: {
+                tripsCount: mappedTrips.length,
+                totalKM: mappedTrips
+                    .filter((trip) => String(trip.status || '').toLowerCase() === 'completed')
+                    .reduce((sum, trip) => sum + (parseFloat(trip.km) || 0), 0)
+            },
+            expenses: expensesRes.rows.map((expense) => {
+                const serialized = serializeExpenseRow(expense);
+                return { ...serialized, amount: serialized.total_paise };
+            }),
+            trips: mappedTrips,
+            expenseEligibleTrips,
+            activeTrip,
+            upcomingTrip
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.post('/api/save-expense', authenticateToken, async (req, res) => {
     const {
         merchant,
