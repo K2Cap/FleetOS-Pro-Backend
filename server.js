@@ -2871,13 +2871,18 @@ app.post('/api/driver/location', authenticateToken, async (req, res) => {
         const driver = driverRes.rows[0];
         if (!driver) return res.status(404).json({ error: 'Driver not found' });
 
+        const normalizedDriverName = cleanString(driver.full_name).toLowerCase();
         const tripsRes = await pool.query(
             `SELECT *
              FROM trips
-             WHERE driver_text = $1
+             WHERE (
+                driver_id::text = $1
+                OR driver_text = $2
+                OR lower(regexp_replace(coalesce(driver_text, ''), '[^a-z0-9]+', '', 'g')) = $3
+             )
                AND status IN ('Upcoming', 'Approved', 'Active', 'En Route', 'Scheduled')
              ORDER BY start_date_raw ASC NULLS LAST, created_at DESC`,
-            [driver.full_name]
+            [String(driver.id), driver.full_name, normalizedDriverName]
         );
         const trackingTrip = tripsRes.rows.find((trip) => isTripWithinLocationTrackingWindow(trip)) || null;
         const locationUnavailable = locationEnabled === false || lat === null || lat === undefined || lng === null || lng === undefined;
@@ -3513,23 +3518,52 @@ app.get('/api/driver-data', async (req, res) => {
             return;
         }
 
+        const driverLookupKeys = Array.from(new Set([
+            cleanString(authUser.id),
+            cleanString(userId)
+        ].filter(Boolean)));
         const driverRes = await pool.query(`
             SELECT d.*, u.phone AS transporter_phone
             FROM drivers d
             LEFT JOIN users u
               ON u.id = COALESCE(d.owner_user_id, d.transporter_id)
-            WHERE d.id::text = $1
+            WHERE d.id::text = ANY($1::text[])
+               OR d.phone = ANY($1::text[])
+            ORDER BY
+              CASE WHEN d.id::text = $2 THEN 0 ELSE 1 END,
+              CASE WHEN d.id::text = $3 THEN 0 ELSE 1 END
             LIMIT 1
-        `, [String(authUser.id)]);
+        `, [driverLookupKeys, String(authUser.id || ''), cleanString(userId || '')]);
         const driver = driverRes.rows[0] || null;
         if (!driver) {
             return res.status(404).json({ error: 'Driver not found' });
         }
         const driverName = driver ? driver.full_name : '';
+        const normalizedDriverName = cleanString(driverName).toLowerCase();
+
+        const tripDriverWhere = `
+            (
+              driver_id::text = $1
+              OR driver_text = $2
+              OR driver_text = $3
+              OR lower(regexp_replace(coalesce(driver_text, ''), '[^a-z0-9]+', '', 'g')) = $4
+            )
+        `;
 
         const lastExpensesRes = await pool.query('SELECT * FROM expenses WHERE driver_id::text = $1 ORDER BY COALESCE(date, created_at::text) DESC LIMIT 20', [userId]);
-        const lastTripsRes = await pool.query('SELECT * FROM trips WHERE driver_text = $1 OR driver_text = $2 ORDER BY start_date_raw DESC LIMIT 20', [driverName, userId]);
-        const allDriverTripsRes = await pool.query('SELECT * FROM trips WHERE driver_text = $1 OR driver_text = $2 ORDER BY start_date_raw DESC', [driverName, userId]);
+        const lastTripsRes = await pool.query(
+            `SELECT * FROM trips
+             WHERE ${tripDriverWhere}
+             ORDER BY COALESCE(start_date_raw, start_date, created_at::text) DESC
+             LIMIT 20`,
+            [String(driver.id), driverName, userId, normalizedDriverName]
+        );
+        const allDriverTripsRes = await pool.query(
+            `SELECT * FROM trips
+             WHERE ${tripDriverWhere}
+             ORDER BY COALESCE(start_date_raw, start_date, created_at::text) DESC`,
+            [String(driver.id), driverName, userId, normalizedDriverName]
+        );
         const allDriverExpensesRes = await pool.query('SELECT * FROM expenses WHERE driver_id::text = $1 ORDER BY COALESCE(date, created_at::text) DESC', [userId]);
         const serializedDriverExpenses = allDriverExpensesRes.rows.map((expense) => serializeExpenseRow(expense));
 
@@ -3906,16 +3940,36 @@ app.post('/api/driver-data', authenticateToken, async (req, res) => {
             return res.status(404).json({ error: 'Driver not found' });
         }
 
-        const activeRes = await pool.query("SELECT id FROM trips WHERE driver_text = $1 AND status IN ('Active', 'En Route') LIMIT 1", [driver.full_name]);
+        const normalizedDriverName = cleanString(driver.full_name).toLowerCase();
+        const activeRes = await pool.query(
+            `SELECT id
+             FROM trips
+             WHERE (
+                driver_id::text = $1
+                OR driver_text = $2
+                OR lower(regexp_replace(coalesce(driver_text, ''), '[^a-z0-9]+', '', 'g')) = $3
+             )
+               AND status IN ('Active', 'En Route')
+             LIMIT 1`,
+            [String(driver.id), driver.full_name, normalizedDriverName]
+        );
         if (action === 'START_TRIP' && activeRes.rows.length > 0) {
             return res.status(409).json({ error: `Finish active trip ${activeRes.rows[0].id} before starting a new one` });
         }
 
-        const params = [driver.full_name];
-        let sql = "SELECT * FROM trips WHERE driver_text = $1 AND status IN ('Upcoming', 'Approved', 'Scheduled')";
+        const params = [String(driver.id), driver.full_name, normalizedDriverName];
+        let sql = `
+            SELECT * FROM trips
+            WHERE (
+                driver_id::text = $1
+                OR driver_text = $2
+                OR lower(regexp_replace(coalesce(driver_text, ''), '[^a-z0-9]+', '', 'g')) = $3
+            )
+              AND status IN ('Upcoming', 'Approved', 'Scheduled')
+        `;
         if (tripId) {
             params.push(tripId);
-            sql += ' AND id = $2';
+            sql += ' AND id = $4';
         }
         sql += ' ORDER BY start_date_raw ASC NULLS LAST LIMIT 1';
 
