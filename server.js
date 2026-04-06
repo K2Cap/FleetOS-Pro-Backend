@@ -3554,7 +3554,7 @@ app.get('/api/driver-data', async (req, res) => {
                     r.photo_document,
                     NULL::JSONB AS medical_document,
                     NULL::TEXT AS medical_expiry,
-                    u.phone AS transporter_phone,
+                    u.mobile AS transporter_phone,
                     COALESCE(d.updated_at, d.created_at, r.updated_at) AS sort_updated_at
                 FROM drivers d
                 LEFT JOIN driver_document_registers r
@@ -3593,7 +3593,7 @@ app.get('/api/driver-data', async (req, res) => {
                     r.photo_document,
                     NULL::JSONB AS medical_document,
                     NULL::TEXT AS medical_expiry,
-                    u.phone AS transporter_phone,
+                    u.mobile AS transporter_phone,
                     r.updated_at AS sort_updated_at
                 FROM driver_document_registers r
                 LEFT JOIN drivers d
@@ -3744,7 +3744,7 @@ app.get('/api/driver-app/bootstrap', authenticateToken, async (req, res) => {
                 r.aadhar_document,
                 r.pan_document,
                 r.photo_document,
-                u.phone AS transporter_phone
+                u.mobile AS transporter_phone
              FROM drivers d
              LEFT JOIN driver_document_registers r
                ON r.driver_id = d.id
@@ -3859,7 +3859,7 @@ app.get('/api/driver-app/by-phone', async (req, res) => {
                 r.aadhar_document,
                 r.pan_document,
                 r.photo_document,
-                u.phone AS transporter_phone
+                u.mobile AS transporter_phone
              FROM drivers d
              LEFT JOIN driver_document_registers r
                ON r.driver_id = d.id
