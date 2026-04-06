@@ -367,12 +367,16 @@ function getExpenseTotalPaise(expense) {
     return 0;
 }
 
-function serializeExpenseRow(row) {
-    const metadata = row?.metadata && typeof row.metadata === 'string'
+function serializeExpenseRow(row, { includeReceiptData = true } = {}) {
+    const parsedMetadata = row?.metadata && typeof row.metadata === 'string'
         ? (() => {
             try { return JSON.parse(row.metadata); } catch (err) { return {}; }
         })()
         : (row?.metadata || {});
+    const metadata = { ...parsedMetadata };
+    if (!includeReceiptData) {
+        delete metadata.receiptImageDataUrl;
+    }
     const totalPaise = getExpenseTotalPaise(row);
     const canonicalCategory = classifyExpenseCategory(
         row?.type,
@@ -387,9 +391,13 @@ function serializeExpenseRow(row) {
         metadata?.description,
         metadata?.expense_item
     );
+    const safeRow = { ...(row || {}) };
+    if (!includeReceiptData) {
+        delete safeRow.bill_image_data;
+    }
 
     return {
-        ...row,
+        ...safeRow,
         metadata,
         expense_type: canonicalCategory,
         category: canonicalCategory,
@@ -397,7 +405,7 @@ function serializeExpenseRow(row) {
         route_from: row?.route_from || metadata?.route_from || null,
         route_to: row?.route_to || metadata?.route_to || null,
         place: row?.place || metadata?.place || null,
-        bill_image_data: row?.bill_image_data || metadata?.receiptImageDataUrl || null,
+        bill_image_data: includeReceiptData ? (row?.bill_image_data || metadata?.receiptImageDataUrl || null) : null,
         total_paise: totalPaise,
         total_rupees: Number((totalPaise / 100).toFixed(2)),
         amount_display: formatIndianNumber(row?.amount, { prefix: '₹ ' }),
@@ -3643,7 +3651,7 @@ app.get('/api/driver-data', async (req, res) => {
             [String(driver.id), driverName, userId, normalizedDriverName]
         );
         const allDriverExpensesRes = await pool.query('SELECT * FROM expenses WHERE driver_id::text = $1 ORDER BY COALESCE(date, created_at::text) DESC', [userId]);
-        const serializedDriverExpenses = allDriverExpensesRes.rows.map((expense) => serializeExpenseRow(expense));
+        const serializedDriverExpenses = allDriverExpensesRes.rows.map((expense) => serializeExpenseRow(expense, { includeReceiptData: false }));
 
         const tripsCount = allDriverTripsRes.rows.length;
         const totalRevenue = allDriverTripsRes.rows.reduce((sum, trip) => sum + (parseFloat(trip.freight) || 0), 0);
@@ -3711,7 +3719,7 @@ app.get('/api/driver-data', async (req, res) => {
                 fleetUtilization
             },
             expenses: lastExpensesRes.rows.map((expense) => {
-                const serialized = serializeExpenseRow(expense);
+                const serialized = serializeExpenseRow(expense, { includeReceiptData: false });
                 return {
                     ...serialized,
                     amount: serialized.total_paise
@@ -3830,7 +3838,7 @@ app.get('/api/driver-app/bootstrap', authenticateToken, async (req, res) => {
                     .reduce((sum, trip) => sum + (parseFloat(trip.km) || 0), 0)
             },
             expenses: expensesRes.rows.map((expense) => {
-                const serialized = serializeExpenseRow(expense);
+                const serialized = serializeExpenseRow(expense, { includeReceiptData: false });
                 return { ...serialized, amount: serialized.total_paise };
             }),
             trips: mappedTrips,
@@ -3939,7 +3947,7 @@ app.get('/api/driver-app/by-phone', async (req, res) => {
                     .reduce((sum, trip) => sum + (parseFloat(trip.km) || 0), 0)
             },
             expenses: expensesRes.rows.map((expense) => {
-                const serialized = serializeExpenseRow(expense);
+                const serialized = serializeExpenseRow(expense, { includeReceiptData: false });
                 return { ...serialized, amount: serialized.total_paise };
             }),
             trips: mappedTrips,
