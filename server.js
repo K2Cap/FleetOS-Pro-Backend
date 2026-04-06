@@ -3520,18 +3520,96 @@ app.get('/api/driver-data', async (req, res) => {
 
         const driverLookupKeys = Array.from(new Set([
             cleanString(authUser.id),
-            cleanString(userId)
+            cleanString(userId),
+            cleanString(req.query.phone)
         ].filter(Boolean)));
         const driverRes = await pool.query(`
-            SELECT d.*, u.phone AS transporter_phone
-            FROM drivers d
-            LEFT JOIN users u
-              ON u.id = COALESCE(d.owner_user_id, d.transporter_id)
-            WHERE d.id::text = ANY($1::text[])
-               OR d.phone = ANY($1::text[])
+            WITH roster_rows AS (
+                SELECT
+                    d.id,
+                    COALESCE(d.owner_user_id, r.owner_user_id) AS owner_user_id,
+                    d.transporter_id,
+                    d.owner_user_name,
+                    COALESCE(NULLIF(TRIM(d.full_name), ''), NULLIF(TRIM(r.full_name), ''), 'Unnamed Driver') AS full_name,
+                    NULLIF(TRIM(d.dob), '') AS dob,
+                    NULLIF(TRIM(d.blood_group), '') AS blood_group,
+                    NULLIF(TRIM(d.phone), '') AS phone,
+                    NULLIF(TRIM(d.emergency_phone), '') AS emergency_phone,
+                    COALESCE(NULLIF(TRIM(d.status), ''), 'Active') AS status,
+                    d.assigned_truck,
+                    NULLIF(TRIM(d.city), '') AS city,
+                    NULLIF(TRIM(d.pin), '') AS pin,
+                    NULLIF(TRIM(d.dl_no), '') AS dl_no,
+                    NULLIF(TRIM(d.dl_expiry), '') AS dl_expiry,
+                    NULLIF(TRIM(d.license_type), '') AS license_type,
+                    NULLIF(TRIM(d.vehicle_category), '') AS vehicle_category,
+                    NULLIF(TRIM(d.aadhar), '') AS aadhar,
+                    NULLIF(TRIM(d.pan), '') AS pan,
+                    COALESCE(NULLIF(TRIM(d.account_status), ''), 'Active') AS account_status,
+                    d.driver_otp,
+                    d.temp_password,
+                    r.dl_document,
+                    r.aadhar_document,
+                    r.pan_document,
+                    r.photo_document,
+                    NULL::JSONB AS medical_document,
+                    NULL::TEXT AS medical_expiry,
+                    u.phone AS transporter_phone,
+                    COALESCE(d.updated_at, d.created_at, r.updated_at) AS sort_updated_at
+                FROM drivers d
+                LEFT JOIN driver_document_registers r
+                  ON r.driver_id = d.id
+                LEFT JOIN users u
+                  ON u.id = COALESCE(d.owner_user_id, d.transporter_id, r.owner_user_id)
+
+                UNION ALL
+
+                SELECT
+                    r.driver_id AS id,
+                    r.owner_user_id,
+                    NULL::INTEGER AS transporter_id,
+                    NULL::TEXT AS owner_user_name,
+                    COALESCE(NULLIF(TRIM(r.full_name), ''), 'Unnamed Driver') AS full_name,
+                    NULL::TEXT AS dob,
+                    NULL::TEXT AS blood_group,
+                    NULL::TEXT AS phone,
+                    NULL::TEXT AS emergency_phone,
+                    'Active'::TEXT AS status,
+                    NULL::TEXT AS assigned_truck,
+                    NULL::TEXT AS city,
+                    NULL::TEXT AS pin,
+                    NULL::TEXT AS dl_no,
+                    NULL::TEXT AS dl_expiry,
+                    NULL::TEXT AS license_type,
+                    NULL::TEXT AS vehicle_category,
+                    NULL::TEXT AS aadhar,
+                    NULL::TEXT AS pan,
+                    'Active'::TEXT AS account_status,
+                    NULL::TEXT AS driver_otp,
+                    NULL::TEXT AS temp_password,
+                    r.dl_document,
+                    r.aadhar_document,
+                    r.pan_document,
+                    r.photo_document,
+                    NULL::JSONB AS medical_document,
+                    NULL::TEXT AS medical_expiry,
+                    u.phone AS transporter_phone,
+                    r.updated_at AS sort_updated_at
+                FROM driver_document_registers r
+                LEFT JOIN drivers d
+                  ON d.id = r.driver_id
+                LEFT JOIN users u
+                  ON u.id = r.owner_user_id
+                WHERE d.id IS NULL
+            )
+            SELECT *
+            FROM roster_rows
+            WHERE id::text = ANY($1::text[])
+               OR phone = ANY($1::text[])
             ORDER BY
-              CASE WHEN d.id::text = $2 THEN 0 ELSE 1 END,
-              CASE WHEN d.id::text = $3 THEN 0 ELSE 1 END
+              CASE WHEN id::text = $2 THEN 0 ELSE 1 END,
+              CASE WHEN id::text = $3 THEN 0 ELSE 1 END,
+              sort_updated_at DESC NULLS LAST
             LIMIT 1
         `, [driverLookupKeys, String(authUser.id || ''), cleanString(userId || '')]);
         const driver = driverRes.rows[0] || null;
