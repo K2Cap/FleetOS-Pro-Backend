@@ -992,6 +992,8 @@ async function enrichDriverAppRow(row) {
 
 async function buildDriverAppPayload(req, { driverId = '', phone = '' } = {}) {
     let row = null;
+    let driverIdRow = null;
+    let phoneMatchedRow = null;
     const cleanedDriverId = cleanString(driverId);
     const normalizedPhoneValue = normalizePhone(phone);
 
@@ -1014,10 +1016,11 @@ async function buildDriverAppPayload(req, { driverId = '', phone = '' } = {}) {
              LIMIT 1`,
             [cleanedDriverId]
         );
-        row = driverRes.rows[0] || null;
+        driverIdRow = driverRes.rows[0] || null;
+        row = driverIdRow;
     }
 
-    if (!row && normalizedPhoneValue) {
+    if (normalizedPhoneValue) {
         const driverRes = await pool.query(
             `SELECT
                 d.*,
@@ -1038,7 +1041,17 @@ async function buildDriverAppPayload(req, { driverId = '', phone = '' } = {}) {
              LIMIT 1`,
             [normalizedPhoneValue]
         );
-        row = driverRes.rows[0] || null;
+        phoneMatchedRow = driverRes.rows[0] || null;
+        const currentPhone = normalizePhone(driverIdRow?.phone || '');
+        const shouldPreferPhoneRow = !driverIdRow
+            || currentPhone !== normalizedPhoneValue
+            || (!cleanString(driverIdRow?.dl_document) && !!cleanString(phoneMatchedRow?.dl_document))
+            || (!cleanString(driverIdRow?.pan_document) && !!cleanString(phoneMatchedRow?.pan_document))
+            || (!cleanString(driverIdRow?.aadhar_document) && !!cleanString(phoneMatchedRow?.aadhar_document))
+            || (!cleanString(driverIdRow?.full_name) && !!cleanString(phoneMatchedRow?.full_name));
+        if (phoneMatchedRow && shouldPreferPhoneRow) {
+            row = phoneMatchedRow;
+        }
     }
 
     row = await enrichDriverAppRow(row);
