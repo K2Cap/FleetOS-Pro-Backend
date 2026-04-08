@@ -3399,11 +3399,14 @@ app.delete('/api/drivers/:id', (req, res) => {
             const linkedTrip = await pool.query(
                 `SELECT id, status, origin, destination
                  FROM trips
-                 WHERE driver_text = $1
+                 WHERE (
+                    lower(coalesce(driver_text, '')) = lower($1)
+                    OR regexp_replace(lower(coalesce(driver_text, '')), '[^a-z0-9]+', '', 'g') = $2
+                 )
                    AND status IN ('Upcoming', 'Active', 'En Route')
                  ORDER BY start_date_raw ASC NULLS LAST
                  LIMIT 1`,
-                [driver.full_name]
+                [driver.full_name, normalizeIdentifierString(driver.full_name)]
             );
 
             if (linkedTrip.rows.length > 0) {
@@ -4438,7 +4441,10 @@ app.post('/api/save-expense', authenticateToken, async (req, res) => {
             const eligibleTripRes = await pool.query(
                 `SELECT *
                  FROM trips
-                 WHERE driver_text = $1
+                 WHERE (
+                    lower(coalesce(driver_text, '')) = lower($1)
+                    OR regexp_replace(lower(coalesce(driver_text, '')), '[^a-z0-9]+', '', 'g') = $2
+                 )
                    AND status IN ('Active', 'En Route', 'Approved', 'Completed')
                  ORDER BY
                    CASE
@@ -4447,7 +4453,7 @@ app.post('/api/save-expense', authenticateToken, async (req, res) => {
                      ELSE 2
                    END ASC,
                    COALESCE(end_date_raw, end_date, start_date_raw, start_date, created_at::text) DESC`,
-                [driver.full_name]
+                [driver.full_name, normalizeIdentifierString(driver.full_name)]
             );
             const eligibleTrips = eligibleTripRes.rows.filter((row) => isTripEligibleForExpenseSubmission(row));
             if (expenseDate) {
