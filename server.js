@@ -2220,7 +2220,14 @@ app.post('/api/auth/login', async (req, res) => {
 // --- PROTECTED ROUTES ---
 // Apply auth middleware to all sensitive API groups
 // Exclude trip-related endpoints from mandatory auth for the driver app's reactive modals
-app.use(['/api/drivers', '/api/dashboard', '/api/export'], authenticateTransporter);
+app.use('/api/drivers', (req, res, next) => {
+    const requestPath = String(req.path || req.originalUrl || '').split('?')[0];
+    if (/^\/documents\/[^/]+\/download-pdf$/i.test(requestPath)) {
+        return authenticateToken(req, res, next);
+    }
+    return authenticateTransporter(req, res, next);
+});
+app.use(['/api/dashboard', '/api/export'], authenticateTransporter);
 app.use('/api/fleet', authenticateTransporter);
 app.use('/api/expenses', authenticateTransporter);
 
@@ -2228,6 +2235,7 @@ registerDocumentWorkflow({
     app,
     pool,
     upload,
+    authenticateToken,
     authenticateTransporter,
     UPLOADS_DIR,
     parseDocumentWithGemini,

@@ -132,6 +132,49 @@ function parseDateToText(value) {
   return parsed.toISOString().split('T')[0];
 }
 
+function normalizeCompareToken(value) {
+  return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+}
+
+function createWorkflowError(message, code = 'SCAN_FAILED', status = 500, details = null) {
+  const err = new Error(message);
+  err.code = code;
+  err.status = status;
+  if (details) err.details = details;
+  return err;
+}
+
+function normalizeNameTokens(value) {
+  return String(value || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean);
+}
+
+function nameTokensLikelyMatch(a, b) {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  return a[0] === b[0] && (a.length === 1 || b.length === 1 || a.startsWith(b) || b.startsWith(a));
+}
+
+function namesLikelyBelongToSameDriver(left, right) {
+  const a = normalizeNameTokens(left);
+  const b = normalizeNameTokens(right);
+  if (!a.length || !b.length) return true;
+  if (a.join(' ') === b.join(' ')) return true;
+  if (!nameTokensLikelyMatch(a[0], b[0])) return false;
+  if (!nameTokensLikelyMatch(a[a.length - 1], b[b.length - 1])) return false;
+  const middleA = a.slice(1, -1);
+  const middleB = b.slice(1, -1);
+  if (!middleA.length || !middleB.length) return true;
+  const longer = middleA.length >= middleB.length ? middleA : middleB;
+  const shorter = middleA.length >= middleB.length ? middleB : middleA;
+  return shorter.every((token) => longer.some((candidate) => nameTokensLikelyMatch(token, candidate)));
+}
+
 function normalizeTruckPayload(payload) {
   const flat = flattenOcrPayload(payload || {});
   const normalized = normalizeTruckOcrPayload(flat);
@@ -214,6 +257,7 @@ function mergeTruckPayloads(documentType, payloads) {
   const normalized = payloads.map(normalizeTruckPayload);
   return {
     regNo: documentType === 'rc' ? firstNonEmpty(...normalized.map((p) => p.regNo)) : null,
+    observedRegNo: firstNonEmpty(...normalized.map((p) => p.regNo)),
     ownerName: firstNonEmpty(...normalized.map((p) => p.ownerName)),
     chassisNo: firstNonEmpty(...normalized.map((p) => p.chassisNo)),
     engineNo: firstNonEmpty(...normalized.map((p) => p.engineNo)),
@@ -782,6 +826,13 @@ async function runStoredFileOcr(absolutePath, mimeType, documentType, deps) {
 
 function classifyOcrError(err) {
   const message = String(err?.message || '');
+  if (err?.code && err?.status) {
+    return {
+      message,
+      code: err.code,
+      status: err.status,
+    };
+  }
   const quota = /quota exceeded|too many requests|\b429\b/i.test(message);
   return {
     message,
@@ -904,12 +955,99 @@ async function upsertTruckFromDocument(client, mergedPayload, documentType, merg
 
   const columns = Object.keys(patch);
   const values = columns.map((key) => patch[key] ?? null);
+  columns.push('account_status');
+  values.push('Draft');
   const placeholders = values.map((_, index) => `$${index + 1}`).join(', ');
   const result = await client.query(
     `INSERT INTO trucks (${columns.join(', ')}) VALUES (${placeholders}) RETURNING id`,
     values
   );
   return result.rows[0].id;
+}
+
+async function findTruckRcIdentity(client, { truckId = null, ownerUserId = null, regNo = null, chassisNo = null, engineNo = null }) {
+  const hintedTruckId = toNumberOrNull(truckId);
+  if (hintedTruckId) {
+    const byId = await client.query(
+      `SELECT id, reg_no, chassis_no, engine_no
+         FROM trucks
+        WHERE id = $1
+        LIMIT 1`,
+      [hintedTruckId]
+    );
+    if (byId.rows[0]) return byId.rows[0];
+  }
+
+  const normalizedReg = normalizeCompareToken(regNo);
+  if (normalizedReg) {
+    const byReg = await client.query(
+      `SELECT id, reg_no, chassis_no, engine_no
+         FROM trucks
+        WHERE UPPER(REGEXP_REPLACE(COALESCE(reg_no, ''), '[^A-Z0-9]', '', 'g')) = $1
+          AND ($2::int IS NULL OR owner_user_id = $2 OR owner_user_id IS NULL)
+        ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC
+        LIMIT 1`,
+      [normalizedReg, ownerUserId || null]
+    );
+    if (byReg.rows[0]) return byReg.rows[0];
+  }
+
+  const normalizedChassis = normalizeCompareToken(chassisNo);
+  if (normalizedChassis) {
+    const byChassis = await client.query(
+      `SELECT id, reg_no, chassis_no, engine_no
+         FROM trucks
+        WHERE UPPER(REGEXP_REPLACE(COALESCE(chassis_no, ''), '[^A-Z0-9]', '', 'g')) = $1
+          AND ($2::int IS NULL OR owner_user_id = $2 OR owner_user_id IS NULL)
+        ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC
+        LIMIT 1`,
+      [normalizedChassis, ownerUserId || null]
+    );
+    if (byChassis.rows[0]) return byChassis.rows[0];
+  }
+
+  const normalizedEngine = normalizeCompareToken(engineNo);
+  if (normalizedEngine) {
+    const byEngine = await client.query(
+      `SELECT id, reg_no, chassis_no, engine_no
+         FROM trucks
+        WHERE UPPER(REGEXP_REPLACE(COALESCE(engine_no, ''), '[^A-Z0-9]', '', 'g')) = $1
+          AND ($2::int IS NULL OR owner_user_id = $2 OR owner_user_id IS NULL)
+        ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC
+        LIMIT 1`,
+      [normalizedEngine, ownerUserId || null]
+    );
+    if (byEngine.rows[0]) return byEngine.rows[0];
+  }
+
+  return null;
+}
+
+function assertTruckDocumentMatchesRc(rcIdentity, mergedPayload, documentType) {
+  if (!rcIdentity || documentType === 'rc') return;
+
+  const rcReg = normalizeCompareToken(rcIdentity.reg_no);
+  const rcChassis = normalizeCompareToken(rcIdentity.chassis_no);
+  const observedReg = normalizeCompareToken(mergedPayload.observedRegNo || mergedPayload.regNo);
+  const observedChassis = normalizeCompareToken(mergedPayload.chassisNo);
+
+  const regMismatch = rcReg && observedReg && rcReg !== observedReg;
+  const chassisMismatch = rcChassis && observedChassis && rcChassis !== observedChassis;
+
+  if (regMismatch || chassisMismatch) {
+    throw createWorkflowError(
+      'This document does not match the RC copy. Please upload the correct document.',
+      'RC_MISMATCH',
+      409,
+      {
+        documentType,
+        rcReg: rcIdentity.reg_no || null,
+        rcChassis: rcIdentity.chassis_no || null,
+        observedReg: mergedPayload.observedRegNo || mergedPayload.regNo || null,
+        observedChassis: mergedPayload.chassisNo || null,
+      }
+    );
+  }
 }
 
 
@@ -1017,6 +1155,7 @@ async function upsertDriverFromDocument(client, mergedPayload, documentType, mer
     ...patch,
     phone: driverPhone,
     status: 'Active',
+    account_status: 'Draft',
     driver_otp: driverOtp,
     temp_password: driverOtp,
   };
@@ -1030,10 +1169,70 @@ async function upsertDriverFromDocument(client, mergedPayload, documentType, mer
   return result.rows[0].id;
 }
 
+async function findDriverIdentity(client, { driverId = null, ownerUserId = null, dlNo = null, aadhar = null, pan = null, phone = null, fullName = null }) {
+  const hintedDriverId = toNumberOrNull(driverId);
+  if (hintedDriverId) {
+    const byId = await client.query(
+      `SELECT id, full_name, dob, phone, dl_no, aadhar, pan
+         FROM drivers
+        WHERE id = $1
+        LIMIT 1`,
+      [hintedDriverId]
+    );
+    if (byId.rows[0]) return byId.rows[0];
+  }
+
+  const normalizedPhone = normalizePhone(phone || '');
+  const existing = await client.query(
+    `SELECT id, full_name, dob, phone, dl_no, aadhar, pan
+       FROM drivers
+      WHERE (
+            ($1::text IS NOT NULL AND dl_no = $1)
+         OR ($2::text IS NOT NULL AND aadhar = $2)
+         OR ($3::text IS NOT NULL AND pan = $3)
+         OR ($4::text != '' AND phone = $4)
+         OR ($5::text IS NOT NULL AND full_name = $5)
+      )
+        AND ($6::int IS NULL OR owner_user_id = $6 OR owner_user_id IS NULL)
+      ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC
+      LIMIT 1`,
+    [cleanString(dlNo), cleanString(aadhar), cleanString(pan), normalizedPhone, cleanString(fullName), ownerUserId || null]
+  );
+  return existing.rows[0] || null;
+}
+
+function assertDriverDocumentMatchesIdentity(driverIdentity, mergedPayload, documentType) {
+  if (!driverIdentity) return;
+  if (!['dl', 'aadhar', 'pan'].includes(String(documentType || '').toLowerCase())) return;
+
+  const knownName = cleanString(driverIdentity.full_name);
+  const observedName = cleanString(mergedPayload.fullName);
+  if (knownName && observedName && !namesLikelyBelongToSameDriver(knownName, observedName)) {
+    throw createWorkflowError(
+      'This document does not appear to belong to the same driver. Please upload the correct document.',
+      'DRIVER_IDENTITY_MISMATCH',
+      409,
+      { knownName, observedName, documentType }
+    );
+  }
+
+  const knownDob = cleanString(driverIdentity.dob);
+  const observedDob = cleanString(mergedPayload.dob);
+  if (knownDob && observedDob && knownDob !== observedDob) {
+    throw createWorkflowError(
+      'This document does not appear to belong to the same driver. Please upload the correct document.',
+      'DRIVER_IDENTITY_MISMATCH',
+      409,
+      { knownDob, observedDob, documentType }
+    );
+  }
+}
+
 function registerDocumentWorkflow({
   app,
   pool,
   upload,
+  authenticateToken,
   authenticateTransporter,
   UPLOADS_DIR,
   parseDocumentWithGemini,
@@ -1470,6 +1669,14 @@ function resolveUploadAbsolutePath(uploadsDir, tokenOrPath) {
 
       const mergedPayload = mergeTruckPayloads(document.document_type, ocrResults.map((item) => item.payload));
       const mergedStoredPath = document.storage_key ? `/uploads/${document.storage_key}` : null;
+      const rcIdentity = await findTruckRcIdentity(client, {
+        truckId: req.body.truckId || document.entity_id,
+        ownerUserId: document.owner_user_id,
+        regNo: req.body.regNo || mergedPayload.observedRegNo || mergedPayload.regNo,
+        chassisNo: mergedPayload.chassisNo,
+        engineNo: mergedPayload.engineNo,
+      });
+      assertTruckDocumentMatchesRc(rcIdentity, mergedPayload, document.document_type);
       const truckId = await upsertTruckFromDocument(
         client,
         mergedPayload,
@@ -1612,6 +1819,16 @@ function resolveUploadAbsolutePath(uploadsDir, tokenOrPath) {
 
       const mergedPayload = mergeDriverPayloads(document.document_type, ocrResults.map((item) => item.payload));
       const mergedStoredPath = document.storage_key ? `/uploads/${document.storage_key}` : null;
+      const driverIdentity = await findDriverIdentity(client, {
+        driverId: req.body.driverId || document.entity_id,
+        ownerUserId: document.owner_user_id,
+        dlNo: mergedPayload.dlNo,
+        aadhar: mergedPayload.aadhar,
+        pan: mergedPayload.pan,
+        phone: mergedPayload.phone,
+        fullName: req.body.fullName || mergedPayload.fullName,
+      });
+      assertDriverDocumentMatchesIdentity(driverIdentity, mergedPayload, document.document_type);
       const driverId = await upsertDriverFromDocument(
         client,
         mergedPayload,
@@ -1915,20 +2132,32 @@ function resolveUploadAbsolutePath(uploadsDir, tokenOrPath) {
     res.json({ driver, documents });
   });
 
-  app.get('/api/drivers/documents/:documentId/download-pdf', authenticateTransporter, async (req, res) => {
+  app.get('/api/drivers/documents/:documentId/download-pdf', authenticateToken, async (req, res) => {
     const documentId = toNumberOrNull(req.params.documentId);
     if (!documentId) return res.status(400).json({ error: 'Valid documentId is required' });
 
-    const docRes = await pool.query(
-      `SELECT d.*
-       FROM documents d
-       LEFT JOIN drivers dr ON d.entity_type = 'driver' AND d.entity_id = dr.id
-       WHERE d.id = $1
-         AND d.entity_type = 'driver'
-         AND (d.owner_user_id = $2 OR d.owner_user_id IS NULL OR dr.owner_user_id = $2 OR dr.owner_user_id IS NULL)
-       LIMIT 1`,
-      [documentId, req.user?.id || null]
-    );
+    const isDriverUser = req.user?.role === 'driver';
+    const docRes = isDriverUser
+      ? await pool.query(
+        `SELECT d.*
+         FROM documents d
+         LEFT JOIN drivers dr ON d.entity_type = 'driver' AND d.entity_id = dr.id
+         WHERE d.id = $1
+           AND d.entity_type = 'driver'
+           AND (dr.id = $2 OR d.entity_id = $2)
+         LIMIT 1`,
+        [documentId, req.user?.id || null]
+      )
+      : await pool.query(
+        `SELECT d.*
+         FROM documents d
+         LEFT JOIN drivers dr ON d.entity_type = 'driver' AND d.entity_id = dr.id
+         WHERE d.id = $1
+           AND d.entity_type = 'driver'
+           AND (d.owner_user_id = $2 OR d.owner_user_id IS NULL OR dr.owner_user_id = $2 OR dr.owner_user_id IS NULL)
+         LIMIT 1`,
+        [documentId, req.user?.id || null]
+      );
     const document = docRes.rows[0];
     if (!document) return res.status(404).json({ error: 'Driver document not found' });
 
