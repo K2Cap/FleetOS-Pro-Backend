@@ -924,6 +924,66 @@ function sanitizeDriverRow(row, { includeTransporterOtp = false } = {}) {
     return sanitized;
 }
 
+async function enrichDriverAppRow(row) {
+    if (!row) return null;
+
+    const driverId = cleanString(row.id || row.driver_id || '');
+    const primaryName = cleanString(row.full_name || '');
+    const registerName = cleanString(row.reg_full_name || '');
+
+    let registerRow = null;
+    try {
+        const registerRes = await pool.query(
+            `SELECT *
+             FROM driver_document_registers
+             WHERE ($1 <> '' AND driver_id::text = $1)
+                OR ($2 <> '' AND lower(coalesce(full_name, '')) = lower($2))
+                OR ($3 <> '' AND lower(coalesce(full_name, '')) = lower($3))
+             ORDER BY updated_at DESC NULLS LAST, driver_id DESC
+             LIMIT 1`,
+            [driverId, primaryName, registerName]
+        );
+        registerRow = registerRes.rows[0] || null;
+    } catch (err) {
+        console.error('Driver app register enrichment lookup failed:', err.message);
+    }
+
+    const ownerUserId = row.owner_user_id || row.transporter_id || registerRow?.owner_user_id || null;
+    let transporterPhone = cleanString(row.transporter_phone || '');
+    if (!transporterPhone && ownerUserId) {
+        try {
+            const userRes = await pool.query(
+                `SELECT mobile FROM users WHERE id = $1 LIMIT 1`,
+                [ownerUserId]
+            );
+            transporterPhone = cleanString(userRes.rows[0]?.mobile || '');
+        } catch (err) {
+            console.error('Driver app transporter phone lookup failed:', err.message);
+        }
+    }
+
+    return {
+        ...row,
+        owner_user_id: row.owner_user_id || registerRow?.owner_user_id || null,
+        reg_full_name: cleanString(row.reg_full_name) || cleanString(registerRow?.full_name) || null,
+        full_name: cleanString(row.full_name) || cleanString(registerRow?.full_name) || row.full_name,
+        dob: row.dob || registerRow?.dob || registerRow?.date_of_birth || null,
+        blood_group: row.blood_group || registerRow?.blood_group || registerRow?.bloodGroup || null,
+        city: row.city || registerRow?.city || registerRow?.home_city || null,
+        pin: row.pin || registerRow?.pin || registerRow?.pin_code || null,
+        dl_no: row.dl_no || registerRow?.dl_no || registerRow?.dl_number || null,
+        dl_expiry: row.dl_expiry || registerRow?.dl_expiry || registerRow?.licence_expiry || null,
+        license_type: row.license_type || registerRow?.license_type || registerRow?.vehicle_category || null,
+        pan: row.pan || registerRow?.pan || registerRow?.pan_number || null,
+        aadhar: row.aadhar || registerRow?.aadhar || registerRow?.aadhaar || registerRow?.aadhaar_number || null,
+        dl_document: row.dl_document || registerRow?.dl_document || null,
+        aadhar_document: row.aadhar_document || registerRow?.aadhar_document || null,
+        pan_document: row.pan_document || registerRow?.pan_document || null,
+        photo_document: row.photo_document || registerRow?.photo_document || null,
+        transporter_phone: transporterPhone || null
+    };
+}
+
 function getPublicBaseUrl(req) {
     if (PUBLIC_BASE_URL) return PUBLIC_BASE_URL;
     return `${req.protocol}://${req.get('host')}`.replace(/\/+$/, '');
@@ -3957,6 +4017,7 @@ app.get('/api/driver-app/bootstrap', authenticateToken, async (req, res) => {
             [driverId]
         );
         row = driverRes.rows[0] || null;
+        row = await enrichDriverAppRow(row);
         if (!row) {
             const sqliteDriver = await new Promise((resolve, reject) => {
                 db.get(
@@ -4003,6 +4064,7 @@ app.get('/api/driver-app/bootstrap', authenticateToken, async (req, res) => {
                 };
             }
         }
+        row = await enrichDriverAppRow(row);
         if (!row) return res.status(404).json({ error: 'Driver not found' });
 
         const fullName = cleanString(row.full_name) || cleanString(row.reg_full_name);
@@ -4121,6 +4183,7 @@ app.get('/api/driver-app/by-phone', async (req, res) => {
             [phone]
         );
         row = driverRes.rows[0] || null;
+        row = await enrichDriverAppRow(row);
 
         if (!row) {
             const sqliteDriver = await new Promise((resolve, reject) => {
@@ -4170,6 +4233,7 @@ app.get('/api/driver-app/by-phone', async (req, res) => {
             }
         }
 
+        row = await enrichDriverAppRow(row);
         if (!row) return res.status(404).json({ error: 'Driver not found' });
 
         const fullName = cleanString(row.full_name) || cleanString(row.reg_full_name);
@@ -4644,4 +4708,6 @@ process.on('SIGTERM', () => {
         process.exit(0);
     }
 });
+
+
 
