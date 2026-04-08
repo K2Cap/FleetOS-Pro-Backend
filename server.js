@@ -3937,6 +3937,7 @@ app.get('/api/driver-app/bootstrap', authenticateToken, async (req, res) => {
         }
 
         const driverId = String(req.user.id || '');
+        let row = null;
         const driverRes = await pool.query(
             `SELECT
                 d.*,
@@ -3955,11 +3956,57 @@ app.get('/api/driver-app/bootstrap', authenticateToken, async (req, res) => {
              LIMIT 1`,
             [driverId]
         );
-        const row = driverRes.rows[0];
+        row = driverRes.rows[0] || null;
+        if (!row) {
+            const sqliteDriver = await new Promise((resolve, reject) => {
+                db.get(
+                    `SELECT *
+                     FROM drivers
+                     WHERE id = ?
+                        OR CAST(id AS TEXT) = ?
+                     LIMIT 1`,
+                    [req.user.id, driverId],
+                    (err, sqliteRow) => err ? reject(err) : resolve(sqliteRow || null)
+                );
+            });
+
+            if (sqliteDriver) {
+                const registerRes = await pool.query(
+                    `SELECT *
+                     FROM driver_document_registers
+                     WHERE driver_id::text = $1
+                        OR lower(coalesce(full_name, '')) = lower($2)
+                     ORDER BY updated_at DESC NULLS LAST, driver_id DESC
+                     LIMIT 1`,
+                    [String(sqliteDriver.id || ''), cleanString(sqliteDriver.full_name || '')]
+                );
+                const registerRow = registerRes.rows[0] || {};
+
+                let transporterPhone = null;
+                const ownerUserId = sqliteDriver.owner_user_id || sqliteDriver.transporter_id || registerRow.owner_user_id || null;
+                if (ownerUserId) {
+                    const userRes = await pool.query(
+                        `SELECT mobile FROM users WHERE id = $1 LIMIT 1`,
+                        [ownerUserId]
+                    );
+                    transporterPhone = userRes.rows[0]?.mobile || null;
+                }
+
+                row = {
+                    ...sqliteDriver,
+                    reg_full_name: registerRow.full_name || null,
+                    dl_document: registerRow.dl_document || null,
+                    aadhar_document: registerRow.aadhar_document || null,
+                    pan_document: registerRow.pan_document || null,
+                    photo_document: registerRow.photo_document || null,
+                    transporter_phone: transporterPhone
+                };
+            }
+        }
         if (!row) return res.status(404).json({ error: 'Driver not found' });
 
         const fullName = cleanString(row.full_name) || cleanString(row.reg_full_name);
-        const normalizedDriverName = fullName.toLowerCase();
+        const normalizedDriverName = normalizeIdentifierString(fullName);
 
         const tripsRes = await pool.query(
             `SELECT *
@@ -4126,7 +4173,7 @@ app.get('/api/driver-app/by-phone', async (req, res) => {
         if (!row) return res.status(404).json({ error: 'Driver not found' });
 
         const fullName = cleanString(row.full_name) || cleanString(row.reg_full_name);
-        const normalizedDriverName = fullName ? fullName.toLowerCase() : '';
+        const normalizedDriverName = normalizeIdentifierString(fullName);
         const driverId = String(row.id || '');
 
         const tripsRes = await pool.query(
