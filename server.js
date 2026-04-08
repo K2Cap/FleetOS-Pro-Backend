@@ -757,6 +757,77 @@ function buildTripPayloadForDriverApp(trip, extra = {}) {
     };
 }
 
+const DRIVER_LOCATION_ALERT_WINDOW_MS = 15 * 60 * 1000;
+
+function normalizeIdentifierString(value) {
+    return cleanString(value).toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function parseTimestampValue(value) {
+    if (!value) return null;
+    const date = value instanceof Date ? value : new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatLastKnownLocation(driver, trip) {
+    const place = cleanString(driver?.last_location_place);
+    if (place) return place;
+    if (driver?.last_lat !== null && driver?.last_lat !== undefined && driver?.last_lng !== null && driver?.last_lng !== undefined) {
+        return `${Number(driver.last_lat).toFixed(5)}, ${Number(driver.last_lng).toFixed(5)}`;
+    }
+    return cleanString(trip?.origin) || cleanString(trip?.destination) || 'Unknown';
+}
+
+function findTrackingTripForDriver(driver, trips) {
+    const driverId = String(driver?.id || '');
+    const fullName = cleanString(driver?.full_name);
+    const normalizedName = normalizeIdentifierString(fullName);
+    const candidateTrips = (Array.isArray(trips) ? trips : []).filter((trip) => {
+        if (!trip) return false;
+        const tripDriverId = cleanString(trip.driver_id);
+        const tripDriverText = cleanString(trip.driver_text);
+        const tripDriverNormalized = normalizeIdentifierString(trip.driver_text);
+        return (
+            (driverId && tripDriverId === driverId) ||
+            (fullName && tripDriverText === fullName) ||
+            (normalizedName && tripDriverNormalized === normalizedName)
+        );
+    });
+    const trackingTrip = candidateTrips.find((trip) => isTripWithinLocationTrackingWindow(trip));
+    return trackingTrip || candidateTrips[0] || null;
+}
+
+function buildTrackingAlertForDriver(req, driver, trips) {
+    const trackingTrip = findTrackingTripForDriver(driver, trips);
+    if (!trackingTrip || !isTripWithinLocationTrackingWindow(trackingTrip)) return null;
+
+    const nowMs = Date.now();
+    const lastPingAt = parseTimestampValue(driver?.last_ping);
+    const lastFixAt = parseTimestampValue(driver?.last_location_fix_at || driver?.last_ping);
+    const outageStartedAt = parseTimestampValue(driver?.last_location_outage_at);
+    const locationEnabled = Number(driver?.location_enabled ?? 1) === 1;
+
+    const staleSinceFix = lastFixAt ? (nowMs - lastFixAt.getTime()) >= DRIVER_LOCATION_ALERT_WINDOW_MS : false;
+    const staleSinceOutage = outageStartedAt ? (nowMs - outageStartedAt.getTime()) >= DRIVER_LOCATION_ALERT_WINDOW_MS : false;
+    const missingTooLong = staleSinceOutage || (!locationEnabled && staleSinceFix) || (!lastFixAt && lastPingAt && (nowMs - lastPingAt.getTime()) >= DRIVER_LOCATION_ALERT_WINDOW_MS);
+    if (!missingTooLong) return null;
+
+    return {
+        type: 'driver-location',
+        key: `driver-location-${driver.id}-${trackingTrip.id}`,
+        driverId: driver.id,
+        driverName: cleanString(driver.full_name) || 'Driver',
+        truckNumber: cleanString(trackingTrip.truck_text || driver.assigned_truck) || 'Unassigned truck',
+        tripId: trackingTrip.id,
+        tripStatus: cleanString(trackingTrip.status) || 'Active',
+        lastKnownLocation: formatLastKnownLocation(driver, trackingTrip),
+        lastSeenAt: (lastFixAt || lastPingAt || outageStartedAt || null)?.toISOString?.() || null,
+        locationEnabled,
+        message: 'Driver location has been unavailable for more than 15 minutes.',
+        shareUrl: buildTripLocationShareUrl(req, trackingTrip.id)
+    };
+}
+
 function createRecentMonthBuckets(monthCount = 8) {
     const now = new Date();
     const buckets = [];
@@ -1406,6 +1477,9 @@ async function initializeDatabase() {
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS last_ping TEXT`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS location_enabled INTEGER DEFAULT 1`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS location_alert TEXT`,
+            `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS last_location_fix_at TIMESTAMP`,
+            `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS last_location_outage_at TIMESTAMP`,
+            `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS last_location_place TEXT`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS is_onboarded INTEGER DEFAULT 0`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS transporter_id INTEGER`,
             `ALTER TABLE drivers ADD COLUMN IF NOT EXISTS owner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`,
@@ -2253,7 +2327,7 @@ function buildFleetTruckPayload(req, existing = {}) {
         axle_config: cleanString(d.axle) || cleanString(existing.axle_config),
         tyres_count: toNumberOrNull(d.tyres) ?? toNumberOrNull(existing.tyres_count) ?? 0,
         status: cleanString(d.status) || cleanString(existing.status) || 'Active',
-        account_status: cleanString(existing.account_status) || 'Active',
+        account_status: 'Active',
         driver_assigned: cleanString(d.driver) || cleanString(existing.driver_assigned),
         odometer: toNumberOrNull(d.odometer) ?? toNumberOrNull(existing.odometer) ?? 0,
         purchase_date: cleanString(d.purchaseDate) || cleanString(existing.purchase_date),
@@ -2279,7 +2353,7 @@ function buildFleetTruckPayload(req, existing = {}) {
         doc_puc_path: getFleetUploadPath(files, 'file_puc', existing.doc_puc_path || null),
         doc_permit_path: getFleetUploadPath(files, 'file_permit', existing.doc_permit_path || null),
         doc_roadtax_path: getFleetUploadPath(files, 'file_roadtax', existing.doc_roadtax_path || null),
-        deleted_at: existing.deleted_at ?? null,
+        deleted_at: null,
     };
 }
 
@@ -2868,7 +2942,7 @@ app.post('/api/driver-auth/forgot-pin', (req, res) => {
 
 // Update Location & Track Alerts
 app.post('/api/driver/location', authenticateToken, async (req, res) => {
-    const { driverId, lat, lng, locationEnabled } = req.body;
+    const { driverId, lat, lng, locationEnabled, pings } = req.body;
     if (!driverId) return res.status(400).json({ error: 'Driver ID required' });
     if (req.user?.role !== 'driver' || String(req.user.id) !== String(driverId)) {
         return res.status(403).json({ error: 'You can only update your own driver location' });
@@ -2892,51 +2966,108 @@ app.post('/api/driver/location', authenticateToken, async (req, res) => {
              ORDER BY start_date_raw ASC NULLS LAST, created_at DESC`,
             [String(driver.id), driver.full_name, normalizedDriverName]
         );
-        const trackingTrip = tripsRes.rows.find((trip) => isTripWithinLocationTrackingWindow(trip)) || null;
-        const locationUnavailable = locationEnabled === false || lat === null || lat === undefined || lng === null || lng === undefined;
-        const locationAlert = trackingTrip && locationUnavailable
-            ? `Location unavailable for trip ${trackingTrip.id}`
-            : null;
-        const lastPing = new Date().toISOString();
+        const trackingTrip = findTrackingTripForDriver(driver, tripsRes.rows);
+        const normalizedPings = Array.isArray(pings) && pings.length
+            ? pings
+            : [{
+                lat,
+                lng,
+                locationEnabled,
+                recordedAt: req.body.recordedAt,
+                outageStartedAt: req.body.outageStartedAt,
+                place: req.body.place || req.body.location,
+                source: req.body.source || 'driver-app'
+            }];
+
+        let lastLat = toNumberOrNull(driver.last_lat);
+        let lastLng = toNumberOrNull(driver.last_lng);
+        let lastLocationPlace = cleanString(driver.last_location_place) || null;
+        let lastPingAt = parseTimestampValue(driver.last_ping) || null;
+        let lastFixAt = parseTimestampValue(driver.last_location_fix_at || driver.last_ping) || null;
+        let outageStartedAt = parseTimestampValue(driver.last_location_outage_at) || null;
+        let locationEnabledValue = Number(driver.location_enabled ?? 1) === 1;
+
+        for (const rawPing of normalizedPings) {
+            const recordedAt = parseTimestampValue(rawPing?.recordedAt) || new Date();
+            const pingLat = toNumberOrNull(rawPing?.lat);
+            const pingLng = toNumberOrNull(rawPing?.lng);
+            const pingPlace = cleanString(rawPing?.place || rawPing?.location) || null;
+            const pingEnabled = rawPing?.locationEnabled !== false && pingLat !== null && pingLng !== null;
+
+            lastPingAt = recordedAt;
+            locationEnabledValue = pingEnabled;
+
+            if (pingEnabled) {
+                lastLat = pingLat;
+                lastLng = pingLng;
+                if (pingPlace) lastLocationPlace = pingPlace;
+                lastFixAt = recordedAt;
+                outageStartedAt = null;
+
+                if (trackingTrip) {
+                    await pool.query(
+                        `INSERT INTO trip_locations (trip_id, owner_user_id, driver_id, lat, lng, place, source, recorded_at)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+                        [
+                            trackingTrip.id,
+                            trackingTrip.owner_user_id || driver.owner_user_id || null,
+                            driver.id,
+                            pingLat,
+                            pingLng,
+                            pingPlace,
+                            cleanString(rawPing?.source) || 'driver-app',
+                            recordedAt.toISOString()
+                        ]
+                    );
+                }
+            } else if (!outageStartedAt) {
+                outageStartedAt = parseTimestampValue(rawPing?.outageStartedAt) || recordedAt;
+            }
+        }
+
+        const computedDriverState = {
+            ...driver,
+            last_lat: lastLat,
+            last_lng: lastLng,
+            last_ping: lastPingAt ? lastPingAt.toISOString() : driver.last_ping,
+            last_location_fix_at: lastFixAt ? lastFixAt.toISOString() : null,
+            last_location_outage_at: outageStartedAt ? outageStartedAt.toISOString() : null,
+            last_location_place: lastLocationPlace,
+            location_enabled: locationEnabledValue ? 1 : 0,
+            assigned_truck: cleanString(driver.assigned_truck) || trackingTrip?.truck_text || null
+        };
+        const trackingAlert = buildTrackingAlertForDriver(req, computedDriverState, tripsRes.rows);
 
         await pool.query(
             `UPDATE drivers
-             SET last_lat = COALESCE($1, last_lat),
-                 last_lng = COALESCE($2, last_lng),
+             SET last_lat = $1,
+                 last_lng = $2,
                  last_ping = $3,
                  location_enabled = $4,
-                 location_alert = $5
-             WHERE id = $6`,
+                 location_alert = $5,
+                 last_location_fix_at = $6,
+                 last_location_outage_at = $7,
+                 last_location_place = $8
+             WHERE id = $9`,
             [
-                toNumberOrNull(lat),
-                toNumberOrNull(lng),
-                lastPing,
-                locationEnabled ? 1 : 0,
-                locationAlert,
+                lastLat,
+                lastLng,
+                lastPingAt ? lastPingAt.toISOString() : null,
+                locationEnabledValue ? 1 : 0,
+                trackingAlert ? trackingAlert.message : null,
+                lastFixAt ? lastFixAt.toISOString() : null,
+                outageStartedAt ? outageStartedAt.toISOString() : null,
+                lastLocationPlace,
                 driver.id
             ]
         );
 
-        if (trackingTrip && !locationUnavailable) {
-            await pool.query(
-                `INSERT INTO trip_locations (trip_id, owner_user_id, driver_id, lat, lng, place, source, recorded_at)
-                 VALUES ($1, $2, $3, $4, $5, $6, 'driver-app', CURRENT_TIMESTAMP)`,
-                [
-                    trackingTrip.id,
-                    trackingTrip.owner_user_id || driver.owner_user_id || null,
-                    driver.id,
-                    toNumberOrNull(lat),
-                    toNumberOrNull(lng),
-                    cleanString(req.body.place || req.body.location)
-                ]
-            );
-        }
-
         res.json({
             message: 'Location updated',
-            alertCreated: !!locationAlert,
+            alertCreated: !!trackingAlert,
             locationRequired: !!trackingTrip,
-            trackingTripId: trackingTrip?.id || null
+            trackingTripId: trackingTrip?.id || null,
+            acceptedPings: normalizedPings.length
         });
     } catch (err) {
         return res.status(500).json({ error: err.message });
@@ -2956,7 +3087,7 @@ app.put('/api/drivers/:id', (req, res) => {
     }
     ensureDriverAccountColumns()
         .then(() => {
-            const sql = `UPDATE drivers SET full_name=?, dob=?, blood_group=?, phone=?, emergency_phone=?, join_date=?, status=?, emp_type=?, assigned_truck=?, salary=?, pay_freq=?, address=?, city=?, state=?, pin=?, dl_no=?, dl_issue=?, dl_expiry=?, rto=?, dl_state=?, license_type=?, vehicle_category=?, hazmat=?, experience=?, aadhar=?, pan=?, owner_user_name=COALESCE(owner_user_name, ?), account_status=COALESCE(account_status, 'Active') WHERE id=?`;
+            const sql = `UPDATE drivers SET full_name=?, dob=?, blood_group=?, phone=?, emergency_phone=?, join_date=?, status=?, emp_type=?, assigned_truck=?, salary=?, pay_freq=?, address=?, city=?, state=?, pin=?, dl_no=?, dl_issue=?, dl_expiry=?, rto=?, dl_state=?, license_type=?, vehicle_category=?, hazmat=?, experience=?, aadhar=?, pan=?, owner_user_name=COALESCE(owner_user_name, ?), account_status='Active', deleted_at=NULL WHERE id=?`;
             const p = [d.fullName, d.dob, d.bloodGroup, phone, emergencyPhone, d.joinDate, d.status, d.empType, d.assignedTruck, d.salary, d.payFreq, d.address, d.city, d.state, d.pin, d.dlNo, d.dlIssue, d.dlExpiry, d.rto, d.dlState, d.licenseType, d.vehicleCategory, d.hazmat, d.experience, d.aadhar, d.pan, req.user?.name || req.user?.full_name || null, req.params.id];
             db.run(sql, p, (err) => {
                 if (err) return res.status(500).json({ error: err.message });
@@ -3383,38 +3514,100 @@ app.post('/api/analyze', authenticateToken, async (req, res) => {
 
 app.get('/api/fleet/locations', authenticateToken, async (req, res) => {
     try {
-        const result = await pool.query(`
-            SELECT
-                d.id,
-                d.full_name,
-                d.phone,
-                d.last_lat,
-                d.last_lng,
-                d.last_ping,
-                d.location_enabled,
-                d.location_alert,
-                d.assigned_truck,
-                t.id AS active_trip_id,
-                t.origin AS active_trip_origin,
-                t.destination AS active_trip_destination,
-                t.status AS active_trip_status,
-                t.start_date AS active_trip_start_date,
-                t.end_date AS active_trip_end_date
-            FROM drivers d
-            LEFT JOIN trips t
-                ON d.full_name = t.driver_text
-                AND t.status IN ('Active', 'En Route')
-            WHERE d.last_lat IS NOT NULL
-               OR d.last_lng IS NOT NULL
-               OR (d.location_alert IS NOT NULL AND d.location_alert != '')
-            ORDER BY
-                CASE WHEN d.location_alert IS NOT NULL AND d.location_alert != '' THEN 0 ELSE 1 END,
-                d.full_name ASC
-        `);
+        const ownerId = req.user?.id || null;
+        const [driversRes, tripsRes] = await Promise.all([
+            pool.query(
+                `SELECT *
+                 FROM drivers
+                 WHERE (owner_user_id = $1 OR transporter_id = $1)
+                   AND COALESCE(account_status, 'Active') != 'Inactive'
+                 ORDER BY full_name ASC`,
+                [ownerId]
+            ),
+            pool.query(
+                `SELECT *
+                 FROM trips
+                 WHERE owner_user_id = $1
+                   AND status IN ('Upcoming', 'Approved', 'Active', 'En Route', 'Scheduled')
+                 ORDER BY COALESCE(start_date_raw, created_at::text) DESC`,
+                [ownerId]
+            )
+        ]);
 
-        res.json(result.rows);
+        const rows = driversRes.rows
+            .map((driver) => {
+                const trackingTrip = findTrackingTripForDriver(driver, tripsRes.rows);
+                const trackingAlert = buildTrackingAlertForDriver(req, driver, tripsRes.rows);
+                if (!trackingTrip && driver.last_lat === null && driver.last_lng === null && !trackingAlert) return null;
+                return {
+                    id: driver.id,
+                    full_name: driver.full_name,
+                    phone: driver.phone,
+                    last_lat: driver.last_lat,
+                    last_lng: driver.last_lng,
+                    last_ping: driver.last_ping,
+                    location_enabled: driver.location_enabled,
+                    location_alert: trackingAlert?.message || driver.location_alert || null,
+                    assigned_truck: trackingTrip?.truck_text || driver.assigned_truck,
+                    active_trip_id: trackingTrip?.id || null,
+                    active_trip_origin: trackingTrip?.origin || null,
+                    active_trip_destination: trackingTrip?.destination || null,
+                    active_trip_status: trackingTrip?.status || null,
+                    active_trip_start_date: trackingTrip?.start_date || null,
+                    active_trip_end_date: trackingTrip?.end_date || null,
+                    last_known_location: formatLastKnownLocation(driver, trackingTrip),
+                    location_share_url: trackingTrip ? buildTripLocationShareUrl(req, trackingTrip.id) : null
+                };
+            })
+            .filter(Boolean)
+            .sort((a, b) => {
+                const aAlert = cleanString(a.location_alert) ? 0 : 1;
+                const bAlert = cleanString(b.location_alert) ? 0 : 1;
+                if (aAlert !== bAlert) return aAlert - bAlert;
+                return String(a.full_name || '').localeCompare(String(b.full_name || ''));
+            });
+
+        res.json(rows);
     } catch (err) {
         console.error('Fleet locations query failed:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/fleet/tracking-alerts', authenticateToken, async (req, res) => {
+    try {
+        const ownerId = req.user?.id || null;
+        if (!ownerId) return res.json([]);
+
+        const [driversRes, tripsRes] = await Promise.all([
+            pool.query(
+                `SELECT *
+                 FROM drivers
+                 WHERE (owner_user_id = $1 OR transporter_id = $1)
+                   AND COALESCE(account_status, 'Active') != 'Inactive'`,
+                [ownerId]
+            ),
+            pool.query(
+                `SELECT *
+                 FROM trips
+                 WHERE owner_user_id = $1
+                   AND status IN ('Upcoming', 'Approved', 'Active', 'En Route', 'Scheduled')`,
+                [ownerId]
+            )
+        ]);
+
+        const alerts = driversRes.rows
+            .map((driver) => buildTrackingAlertForDriver(req, driver, tripsRes.rows))
+            .filter(Boolean)
+            .sort((a, b) => {
+                const aTime = parseTimestampValue(a.lastSeenAt)?.getTime() || 0;
+                const bTime = parseTimestampValue(b.lastSeenAt)?.getTime() || 0;
+                return aTime - bTime;
+            });
+
+        res.json(alerts);
+    } catch (err) {
+        console.error('Tracking alerts query failed:', err.message);
         res.status(500).json({ error: err.message });
     }
 });
@@ -3859,6 +4052,7 @@ app.get('/api/driver-app/by-phone', async (req, res) => {
             return res.status(400).json({ error: 'Valid driver phone is required' });
         }
 
+        let row = null;
         const driverRes = await pool.query(
             `SELECT
                 d.*,
@@ -3879,7 +4073,56 @@ app.get('/api/driver-app/by-phone', async (req, res) => {
              LIMIT 1`,
             [phone]
         );
-        const row = driverRes.rows[0];
+        row = driverRes.rows[0] || null;
+
+        if (!row) {
+            const sqliteDriver = await new Promise((resolve, reject) => {
+                db.get(
+                    `SELECT *
+                     FROM drivers
+                     WHERE phone = ?
+                        OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(phone, ''), '+', ''), '-', ''), ' ', ''), '(', ''), ')', '') = ?
+                        OR substr(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(phone, ''), '+', ''), '-', ''), ' ', ''), '(', ''), ')', ''), -10) = ?
+                     LIMIT 1`,
+                    [phone, phone, phone],
+                    (err, sqliteRow) => err ? reject(err) : resolve(sqliteRow || null)
+                );
+            });
+
+            if (sqliteDriver) {
+                const registerRes = await pool.query(
+                    `SELECT *
+                     FROM driver_document_registers
+                     WHERE driver_id::text = $1
+                        OR lower(coalesce(full_name, '')) = lower($2)
+                     ORDER BY updated_at DESC NULLS LAST, driver_id DESC
+                     LIMIT 1`,
+                    [String(sqliteDriver.id || ''), cleanString(sqliteDriver.full_name || '')]
+                );
+                const registerRow = registerRes.rows[0] || {};
+
+                let transporterPhone = null;
+                const ownerUserId = sqliteDriver.owner_user_id || sqliteDriver.transporter_id || registerRow.owner_user_id || null;
+                if (ownerUserId) {
+                    const userRes = await pool.query(
+                        `SELECT mobile FROM users WHERE id = $1 LIMIT 1`,
+                        [ownerUserId]
+                    );
+                    transporterPhone = userRes.rows[0]?.mobile || null;
+                }
+
+                row = {
+                    ...sqliteDriver,
+                    reg_full_name: registerRow.full_name || null,
+                    dl_document: registerRow.dl_document || null,
+                    aadhar_document: registerRow.aadhar_document || null,
+                    pan_document: registerRow.pan_document || null,
+                    photo_document: registerRow.photo_document || null,
+                    transporter_phone: transporterPhone
+                };
+            }
+        }
+
         if (!row) return res.status(404).json({ error: 'Driver not found' });
 
         const fullName = cleanString(row.full_name) || cleanString(row.reg_full_name);
