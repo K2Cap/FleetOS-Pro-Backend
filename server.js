@@ -1113,8 +1113,8 @@ async function buildDriverAppPayload(req, { driverId = '', phone = '' } = {}) {
          FROM trips
          WHERE (
             driver_id::text = $1
-            OR driver_text = $2
-            OR lower(regexp_replace(coalesce(driver_text, ''), '[^a-z0-9]+', '', 'g')) = $3
+            OR lower(coalesce(driver_text, '')) = lower($2)
+            OR regexp_replace(lower(coalesce(driver_text, '')), '[^a-z0-9]+', '', 'g') = $3
          )
          ORDER BY COALESCE(start_date_raw, start_date, created_at::text) DESC`,
         [resolvedDriverId, fullName, normalizedDriverName]
@@ -3245,14 +3245,14 @@ app.post('/api/driver/location', authenticateToken, async (req, res) => {
         const driver = driverRes.rows[0];
         if (!driver) return res.status(404).json({ error: 'Driver not found' });
 
-        const normalizedDriverName = cleanString(driver.full_name).toLowerCase();
+        const normalizedDriverName = normalizeIdentifierString(driver.full_name);
         const tripsRes = await pool.query(
             `SELECT *
              FROM trips
              WHERE (
                 driver_id::text = $1
-                OR driver_text = $2
-                OR lower(regexp_replace(coalesce(driver_text, ''), '[^a-z0-9]+', '', 'g')) = $3
+                OR lower(coalesce(driver_text, '')) = lower($2)
+                OR regexp_replace(lower(coalesce(driver_text, '')), '[^a-z0-9]+', '', 'g') = $3
              )
                AND status IN ('Upcoming', 'Approved', 'Active', 'En Route', 'Scheduled')
              ORDER BY start_date_raw ASC NULLS LAST, created_at DESC`,
@@ -4110,14 +4110,14 @@ app.get('/api/driver-data', async (req, res) => {
             return res.status(404).json({ error: 'Driver not found' });
         }
         const driverName = driver ? driver.full_name : '';
-        const normalizedDriverName = cleanString(driverName).toLowerCase();
+        const normalizedDriverName = normalizeIdentifierString(driverName);
 
         const tripDriverWhere = `
             (
               driver_id::text = $1
-              OR driver_text = $2
-              OR driver_text = $3
-              OR lower(regexp_replace(coalesce(driver_text, ''), '[^a-z0-9]+', '', 'g')) = $4
+              OR lower(coalesce(driver_text, '')) = lower($2)
+              OR lower(coalesce(driver_text, '')) = lower($3)
+              OR regexp_replace(lower(coalesce(driver_text, '')), '[^a-z0-9]+', '', 'g') = $4
             )
         `;
 
@@ -4327,8 +4327,8 @@ app.get('/api/driver-app/by-phone', async (req, res) => {
              FROM trips
              WHERE (
                 driver_id::text = $1
-                OR driver_text = $2
-                OR lower(regexp_replace(coalesce(driver_text, ''), '[^a-z0-9]+', '', 'g')) = $3
+                OR lower(coalesce(driver_text, '')) = lower($2)
+                OR regexp_replace(lower(coalesce(driver_text, '')), '[^a-z0-9]+', '', 'g') = $3
              )
              ORDER BY COALESCE(start_date_raw, start_date, created_at::text) DESC`,
             [driverId, fullName, normalizedDriverName]
@@ -4686,14 +4686,14 @@ app.post('/api/driver-data', authenticateToken, async (req, res) => {
             return res.status(404).json({ error: 'Driver not found' });
         }
 
-        const normalizedDriverName = cleanString(driver.full_name).toLowerCase();
+        const normalizedDriverName = normalizeIdentifierString(driver.full_name);
         const activeRes = await pool.query(
             `SELECT id
              FROM trips
              WHERE (
                 driver_id::text = $1
-                OR driver_text = $2
-                OR lower(regexp_replace(coalesce(driver_text, ''), '[^a-z0-9]+', '', 'g')) = $3
+                OR lower(coalesce(driver_text, '')) = lower($2)
+                OR regexp_replace(lower(coalesce(driver_text, '')), '[^a-z0-9]+', '', 'g') = $3
              )
                AND status IN ('Active', 'En Route')
              LIMIT 1`,
@@ -4708,8 +4708,8 @@ app.post('/api/driver-data', authenticateToken, async (req, res) => {
             SELECT * FROM trips
             WHERE (
                 driver_id::text = $1
-                OR driver_text = $2
-                OR lower(regexp_replace(coalesce(driver_text, ''), '[^a-z0-9]+', '', 'g')) = $3
+                OR lower(coalesce(driver_text, '')) = lower($2)
+                OR regexp_replace(lower(coalesce(driver_text, '')), '[^a-z0-9]+', '', 'g') = $3
             )
               AND status IN ('Upcoming', 'Approved', 'Scheduled')
         `;
