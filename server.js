@@ -924,6 +924,12 @@ function sanitizeDriverRow(row, { includeTransporterOtp = false } = {}) {
     return sanitized;
 }
 
+function dbGetAsync(query, params = []) {
+    return new Promise((resolve, reject) => {
+        db.get(query, params, (err, row) => err ? reject(err) : resolve(row || null));
+    });
+}
+
 async function enrichDriverAppRow(row) {
     if (!row) return null;
 
@@ -981,6 +987,204 @@ async function enrichDriverAppRow(row) {
         pan_document: row.pan_document || registerRow?.pan_document || null,
         photo_document: row.photo_document || registerRow?.photo_document || null,
         transporter_phone: transporterPhone || null
+    };
+}
+
+async function buildDriverAppPayload(req, { driverId = '', phone = '' } = {}) {
+    let row = null;
+    const cleanedDriverId = cleanString(driverId);
+    const normalizedPhoneValue = normalizePhone(phone);
+
+    if (cleanedDriverId) {
+        const driverRes = await pool.query(
+            `SELECT
+                d.*,
+                r.full_name AS reg_full_name,
+                r.dl_document,
+                r.aadhar_document,
+                r.pan_document,
+                r.photo_document,
+                u.mobile AS transporter_phone
+             FROM drivers d
+             LEFT JOIN driver_document_registers r
+               ON r.driver_id = d.id
+             LEFT JOIN users u
+               ON u.id = COALESCE(d.owner_user_id, d.transporter_id, r.owner_user_id)
+             WHERE d.id::text = $1
+             LIMIT 1`,
+            [cleanedDriverId]
+        );
+        row = driverRes.rows[0] || null;
+    }
+
+    if (!row && normalizedPhoneValue) {
+        const driverRes = await pool.query(
+            `SELECT
+                d.*,
+                r.full_name AS reg_full_name,
+                r.dl_document,
+                r.aadhar_document,
+                r.pan_document,
+                r.photo_document,
+                u.mobile AS transporter_phone
+             FROM drivers d
+             LEFT JOIN driver_document_registers r
+               ON r.driver_id = d.id
+             LEFT JOIN users u
+               ON u.id = COALESCE(d.owner_user_id, d.transporter_id, r.owner_user_id)
+             WHERE d.phone = $1
+                OR regexp_replace(coalesce(d.phone, ''), '\D', '', 'g') = $1
+                OR right(regexp_replace(coalesce(d.phone, ''), '\D', '', 'g'), 10) = $1
+             LIMIT 1`,
+            [normalizedPhoneValue]
+        );
+        row = driverRes.rows[0] || null;
+    }
+
+    row = await enrichDriverAppRow(row);
+
+    if (!row) {
+        let sqliteDriver = null;
+        if (cleanedDriverId) {
+            sqliteDriver = await dbGetAsync(
+                `SELECT *
+                 FROM drivers
+                 WHERE id = ?
+                    OR CAST(id AS TEXT) = ?
+                 LIMIT 1`,
+                [driverId, cleanedDriverId]
+            );
+        }
+        if (!sqliteDriver && normalizedPhoneValue) {
+            sqliteDriver = await dbGetAsync(
+                `SELECT *
+                 FROM drivers
+                 WHERE phone = ?
+                    OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(phone, ''), '+', ''), '-', ''), ' ', ''), '(', ''), ')', '') = ?
+                    OR substr(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(phone, ''), '+', ''), '-', ''), ' ', ''), '(', ''), ')', ''), -10) = ?
+                 LIMIT 1`,
+                [normalizedPhoneValue, normalizedPhoneValue, normalizedPhoneValue]
+            );
+        }
+
+        if (sqliteDriver) {
+            const registerRes = await pool.query(
+                `SELECT *
+                 FROM driver_document_registers
+                 WHERE ($1 <> '' AND driver_id::text = $1)
+                    OR ($2 <> '' AND lower(coalesce(full_name, '')) = lower($2))
+                 ORDER BY updated_at DESC NULLS LAST, driver_id DESC
+                 LIMIT 1`,
+                [cleanString(sqliteDriver.id || ''), cleanString(sqliteDriver.full_name || '')]
+            );
+            const registerRow = registerRes.rows[0] || {};
+
+            let transporterPhone = null;
+            const ownerUserId = sqliteDriver.owner_user_id || sqliteDriver.transporter_id || registerRow.owner_user_id || null;
+            if (ownerUserId) {
+                const userRes = await pool.query(
+                    `SELECT mobile FROM users WHERE id = $1 LIMIT 1`,
+                    [ownerUserId]
+                );
+                transporterPhone = userRes.rows[0]?.mobile || null;
+            }
+
+            row = {
+                ...sqliteDriver,
+                reg_full_name: registerRow.full_name || null,
+                dl_document: registerRow.dl_document || null,
+                aadhar_document: registerRow.aadhar_document || null,
+                pan_document: registerRow.pan_document || null,
+                photo_document: registerRow.photo_document || null,
+                transporter_phone: transporterPhone
+            };
+        }
+    }
+
+    row = await enrichDriverAppRow(row);
+    if (!row) return null;
+
+    const fullName = cleanString(row.full_name) || cleanString(row.reg_full_name);
+    const normalizedDriverName = normalizeIdentifierString(fullName);
+    const resolvedDriverId = String(row.id || cleanedDriverId || '');
+
+    const tripsRes = await pool.query(
+        `SELECT *
+         FROM trips
+         WHERE (
+            driver_id::text = $1
+            OR driver_text = $2
+            OR lower(regexp_replace(coalesce(driver_text, ''), '[^a-z0-9]+', '', 'g')) = $3
+         )
+         ORDER BY COALESCE(start_date_raw, start_date, created_at::text) DESC`,
+        [resolvedDriverId, fullName, normalizedDriverName]
+    );
+
+    const expensesRes = await pool.query(
+        `SELECT *
+         FROM expenses
+         WHERE driver_id::text = $1
+         ORDER BY COALESCE(date, created_at::text) DESC
+         LIMIT 20`,
+        [resolvedDriverId]
+    );
+
+    const mappedTrips = tripsRes.rows.map((t) => buildTripPayloadForDriverApp({
+        ...t,
+        truck: t.truck_text,
+        route: t.origin,
+        dest: t.destination,
+        driver: t.driver_text,
+        startDate: t.start_date,
+        totalExpenses: 0,
+        distanceKm: parseFloat(t.distance_km || 0),
+        km: parseFloat(t.distance_km || 0),
+        earned: Math.round((parseFloat(t.freight) || 0) / 100),
+        truckPurchasePrice: 0,
+        truckTyresCount: 0
+    }, {
+        locationShareUrl: buildTripLocationShareUrl(req, t.id)
+    }));
+
+    const activeTrip = mappedTrips.find((t) => ['Active', 'En Route'].includes(t.status)) || null;
+    const upcomingTrip = [...mappedTrips]
+        .filter((t) => ['Upcoming', 'Approved', 'Scheduled'].includes(String(t.status || '')))
+        .sort((a, b) => (resolveTripStartDate(a)?.getTime() || 0) - (resolveTripStartDate(b)?.getTime() || 0))[0] || null;
+    const expenseEligibleTrips = [...mappedTrips]
+        .filter((t) => isTripEligibleForExpenseSubmission(t))
+        .sort((a, b) => {
+            const aStatus = String(a.status || '').toLowerCase();
+            const bStatus = String(b.status || '').toLowerCase();
+            const aPriority = ['active', 'en route'].includes(aStatus) ? 0 : (aStatus === 'approved' ? 1 : 2);
+            const bPriority = ['active', 'en route'].includes(bStatus) ? 0 : (bStatus === 'approved' ? 1 : 2);
+            if (aPriority !== bPriority) return aPriority - bPriority;
+            return (resolveTripEndDate(b)?.getTime() || resolveTripStartDate(b)?.getTime() || 0) - (resolveTripEndDate(a)?.getTime() || resolveTripStartDate(a)?.getTime() || 0);
+        });
+
+    return {
+        driver: sanitizeDriverRow({
+            ...row,
+            full_name: fullName || row.full_name,
+            dl_document: row.dl_document,
+            aadhar_document: row.aadhar_document,
+            pan_document: row.pan_document,
+            photo_document: row.photo_document
+        }),
+        transporter_phone: normalizePhone(row.transporter_phone),
+        stats: {
+            tripsCount: mappedTrips.length,
+            totalKM: mappedTrips
+                .filter((trip) => String(trip.status || '').toLowerCase() === 'completed')
+                .reduce((sum, trip) => sum + (parseFloat(trip.km) || 0), 0)
+        },
+        expenses: expensesRes.rows.map((expense) => {
+            const serialized = serializeExpenseRow(expense, { includeReceiptData: false });
+            return { ...serialized, amount: serialized.total_paise };
+        }),
+        trips: mappedTrips,
+        expenseEligibleTrips,
+        activeTrip,
+        upcomingTrip
     };
 }
 
@@ -2969,10 +3173,38 @@ app.post('/api/driver-auth/login-pin', (req, res) => {
         }
 
         const token = jwt.sign({ id: driver.id, role: 'driver', name: driver.full_name }, JWT_SECRET, { expiresIn: '7d' });
-        res.json({ 
-            message: 'Login Successful', 
-            token, 
-            driver: { id: driver.id, name: driver.full_name, phone: driver.phone } 
+        (async () => {
+            try {
+                const payload = await buildDriverAppPayload(req, { driverId: String(driver.id || ''), phone: driver.phone });
+                if (payload) {
+                    return res.json({
+                        message: 'Login Successful',
+                        token,
+                        ...payload,
+                        driver: {
+                            ...(payload.driver || {}),
+                            id: payload?.driver?.id || driver.id,
+                            name: payload?.driver?.full_name || payload?.driver?.name || driver.full_name,
+                            phone: normalizePhone(payload?.driver?.phone || driver.phone)
+                        }
+                    });
+                }
+            } catch (bootstrapErr) {
+                console.error('Driver login bootstrap failed:', bootstrapErr.message);
+            }
+
+            return res.json({
+                message: 'Login Successful',
+                token,
+                driver: { id: driver.id, name: driver.full_name, phone: driver.phone }
+            });
+        })().catch((bootstrapErr) => {
+            console.error('Driver login bootstrap failed:', bootstrapErr.message);
+            res.json({
+                message: 'Login Successful',
+                token,
+                driver: { id: driver.id, name: driver.full_name, phone: driver.phone }
+            });
         });
     });
 });
@@ -3995,159 +4227,9 @@ app.get('/api/driver-app/bootstrap', authenticateToken, async (req, res) => {
         if (req.user?.role !== 'driver') {
             return res.status(403).json({ error: 'Driver access required' });
         }
-
-        const driverId = String(req.user.id || '');
-        let row = null;
-        const driverRes = await pool.query(
-            `SELECT
-                d.*,
-                r.full_name AS reg_full_name,
-                r.dl_document,
-                r.aadhar_document,
-                r.pan_document,
-                r.photo_document,
-                u.mobile AS transporter_phone
-             FROM drivers d
-             LEFT JOIN driver_document_registers r
-               ON r.driver_id = d.id
-             LEFT JOIN users u
-               ON u.id = COALESCE(d.owner_user_id, d.transporter_id, r.owner_user_id)
-             WHERE d.id::text = $1
-             LIMIT 1`,
-            [driverId]
-        );
-        row = driverRes.rows[0] || null;
-        row = await enrichDriverAppRow(row);
-        if (!row) {
-            const sqliteDriver = await new Promise((resolve, reject) => {
-                db.get(
-                    `SELECT *
-                     FROM drivers
-                     WHERE id = ?
-                        OR CAST(id AS TEXT) = ?
-                     LIMIT 1`,
-                    [req.user.id, driverId],
-                    (err, sqliteRow) => err ? reject(err) : resolve(sqliteRow || null)
-                );
-            });
-
-            if (sqliteDriver) {
-                const registerRes = await pool.query(
-                    `SELECT *
-                     FROM driver_document_registers
-                     WHERE driver_id::text = $1
-                        OR lower(coalesce(full_name, '')) = lower($2)
-                     ORDER BY updated_at DESC NULLS LAST, driver_id DESC
-                     LIMIT 1`,
-                    [String(sqliteDriver.id || ''), cleanString(sqliteDriver.full_name || '')]
-                );
-                const registerRow = registerRes.rows[0] || {};
-
-                let transporterPhone = null;
-                const ownerUserId = sqliteDriver.owner_user_id || sqliteDriver.transporter_id || registerRow.owner_user_id || null;
-                if (ownerUserId) {
-                    const userRes = await pool.query(
-                        `SELECT mobile FROM users WHERE id = $1 LIMIT 1`,
-                        [ownerUserId]
-                    );
-                    transporterPhone = userRes.rows[0]?.mobile || null;
-                }
-
-                row = {
-                    ...sqliteDriver,
-                    reg_full_name: registerRow.full_name || null,
-                    dl_document: registerRow.dl_document || null,
-                    aadhar_document: registerRow.aadhar_document || null,
-                    pan_document: registerRow.pan_document || null,
-                    photo_document: registerRow.photo_document || null,
-                    transporter_phone: transporterPhone
-                };
-            }
-        }
-        row = await enrichDriverAppRow(row);
-        if (!row) return res.status(404).json({ error: 'Driver not found' });
-
-        const fullName = cleanString(row.full_name) || cleanString(row.reg_full_name);
-        const normalizedDriverName = normalizeIdentifierString(fullName);
-
-        const tripsRes = await pool.query(
-            `SELECT *
-             FROM trips
-             WHERE (
-                driver_id::text = $1
-                OR driver_text = $2
-                OR lower(regexp_replace(coalesce(driver_text, ''), '[^a-z0-9]+', '', 'g')) = $3
-             )
-             ORDER BY COALESCE(start_date_raw, start_date, created_at::text) DESC`,
-            [driverId, fullName, normalizedDriverName]
-        );
-
-        const expensesRes = await pool.query(
-            `SELECT *
-             FROM expenses
-             WHERE driver_id::text = $1
-             ORDER BY COALESCE(date, created_at::text) DESC
-             LIMIT 20`,
-            [driverId]
-        );
-
-        const mappedTrips = tripsRes.rows.map((t) => buildTripPayloadForDriverApp({
-            ...t,
-            truck: t.truck_text,
-            route: t.origin,
-            dest: t.destination,
-            driver: t.driver_text,
-            startDate: t.start_date,
-            totalExpenses: 0,
-            distanceKm: parseFloat(t.distance_km || 0),
-            km: parseFloat(t.distance_km || 0),
-            earned: Math.round((parseFloat(t.freight) || 0) / 100),
-            truckPurchasePrice: 0,
-            truckTyresCount: 0
-        }, {
-            locationShareUrl: buildTripLocationShareUrl(req, t.id)
-        }));
-
-        const activeTrip = mappedTrips.find(t => ['Active', 'En Route'].includes(t.status)) || null;
-        const upcomingTrip = [...mappedTrips]
-            .filter((t) => ['Upcoming', 'Approved', 'Scheduled'].includes(String(t.status || '')))
-            .sort((a, b) => (resolveTripStartDate(a)?.getTime() || 0) - (resolveTripStartDate(b)?.getTime() || 0))[0] || null;
-        const expenseEligibleTrips = [...mappedTrips]
-            .filter((t) => isTripEligibleForExpenseSubmission(t))
-            .sort((a, b) => {
-                const aStatus = String(a.status || '').toLowerCase();
-                const bStatus = String(b.status || '').toLowerCase();
-                const aPriority = ['active', 'en route'].includes(aStatus) ? 0 : (aStatus === 'approved' ? 1 : 2);
-                const bPriority = ['active', 'en route'].includes(bStatus) ? 0 : (bStatus === 'approved' ? 1 : 2);
-                if (aPriority !== bPriority) return aPriority - bPriority;
-                return (resolveTripEndDate(b)?.getTime() || resolveTripStartDate(b)?.getTime() || 0) - (resolveTripEndDate(a)?.getTime() || resolveTripStartDate(a)?.getTime() || 0);
-            });
-
-        res.json({
-            driver: sanitizeDriverRow({
-                ...row,
-                full_name: fullName || row.full_name,
-                dl_document: row.dl_document,
-                aadhar_document: row.aadhar_document,
-                pan_document: row.pan_document,
-                photo_document: row.photo_document
-            }),
-            transporter_phone: normalizePhone(row.transporter_phone),
-            stats: {
-                tripsCount: mappedTrips.length,
-                totalKM: mappedTrips
-                    .filter((trip) => String(trip.status || '').toLowerCase() === 'completed')
-                    .reduce((sum, trip) => sum + (parseFloat(trip.km) || 0), 0)
-            },
-            expenses: expensesRes.rows.map((expense) => {
-                const serialized = serializeExpenseRow(expense, { includeReceiptData: false });
-                return { ...serialized, amount: serialized.total_paise };
-            }),
-            trips: mappedTrips,
-            expenseEligibleTrips,
-            activeTrip,
-            upcomingTrip
-        });
+        const payload = await buildDriverAppPayload(req, { driverId: String(req.user.id || '') });
+        if (!payload) return res.status(404).json({ error: 'Driver not found' });
+        res.json(payload);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: err.message });
